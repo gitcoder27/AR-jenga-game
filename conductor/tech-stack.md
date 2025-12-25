@@ -18,3 +18,7 @@
 
 ## Utilities
 *   **`@react-three/drei`:** A collection of useful helpers for R3F (OrbitControls, Environment, etc.) to speed up development.
+
+## Testing & Quality Assurance
+*   **Vitest:** A blazing fast unit test framework powered by Vite.
+*   **React Testing Library:** For testing React components in a way that resembles how they are used by end users.

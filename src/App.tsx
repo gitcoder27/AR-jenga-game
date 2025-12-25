@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import { Physics } from '@react-three/rapier'
 import './App.css'
 import Webcam from './components/Webcam'
 import Hand from './components/Hand'
+import Floor from './components/Floor'
 import useHandTracking from './hooks/useHandTracking'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 
@@ -40,15 +42,18 @@ function App() {
         <p>Hands Detected: {result?.landmarks?.length || 0}</p>
       </div>
 
-      <Canvas camera={{ position: [0, 0, 5] }}>
-          <color attach="background" args={['#111']} />
-          <ambientLight intensity={0.5} />
-          <pointLight position={[10, 10, 10]} />
-          
-          <Hand result={result} />
-          
-          <OrbitControls />
-          <gridHelper args={[20, 20]} />
+      <Canvas camera={{ position: [0, 5, 5] }}>
+          <Physics gravity={[0, -9.81, 0]}>
+              <color attach="background" args={['#111']} />
+              <ambientLight intensity={0.5} />
+              <pointLight position={[10, 10, 10]} />
+              
+              <Floor />
+              <Hand result={result} />
+              
+              <OrbitControls />
+              <gridHelper args={[20, 20]} />
+          </Physics>
       </Canvas>
     </div>
   )
