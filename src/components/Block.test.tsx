@@ -29,6 +29,14 @@ vi.mock('@react-three/rapier', () => ({
     ),
 }))
 
+vi.mock('@react-three/drei', () => ({
+    RoundedBox: ({ children, args, radius, smoothness, ...props }: any) => (
+        <div data-testid="rounded-box" data-args={JSON.stringify(args)} data-radius={radius} {...props}>
+            {children}
+        </div>
+    )
+}))
+
 describe('Block', () => {
     beforeEach(() => {
         mockSetGameState.mockClear()

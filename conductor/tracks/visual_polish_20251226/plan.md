@@ -48,13 +48,23 @@
 - [ ] Task: Conductor - User Manual Verification 'Fine-tuning Input Mapping & Cursors' (Protocol in workflow.md)
 
 ## Phase 2: Textures & Materials (Blocks)
-- [ ] Task: Implement Wood Material
-    - [ ] Create `utils/materials.ts` or similar to manage shared materials.
-    - [ ] Create `test/materials.test.ts`.
-    - [ ] Load textures (Albedo, Normal, Roughness) - *Self-correction: Use placeholder/procedural textures if assets not available, or standard Drei materials.*
-    - [ ] Update `Block.tsx` to use the new wood material logic.
-    - [ ] Ensure `castShadow` and `receiveShadow` are true on Blocks.
+- [x] Task: Implement Wood Material
+    - [x] Create `utils/materials.ts` or similar to manage shared materials.
+    - [x] Create `test/materials.test.ts`.
+    - [x] Load textures (Albedo, Normal, Roughness) - *Self-correction: Use placeholder/procedural textures if assets not available, or standard Drei materials.*
+    - [x] Update `Block.tsx` to use the new wood material logic.
+    - [x] Ensure `castShadow` and `receiveShadow` are true on Blocks.
 - [ ] Task: Conductor - User Manual Verification 'Textures & Materials (Blocks)' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Textures & Materials (Blocks)' (Protocol in workflow.md)
+
+## Phase 2.5: Block Visual Distinction (User Feedback)
+- [x] Task: Switch to RoundedBox
+    - [x] Update `Block.tsx` to use `RoundedBox` from `@react-three/drei`.
+    - [x] Set `radius` (bevel) to a small value (e.g., 0.05).
+- [x] Task: Randomize Block Colors
+    - [x] Update `Block.tsx` to apply slight random variation to the base wood color.
+    - [x] Ensures blocks are distinguishable even from a distance.
+- [ ] Task: Conductor - User Manual Verification 'Block Visual Distinction' (Protocol in workflow.md)
 
 ## Phase 3: Hand Model Integration
 - [ ] Task: Implement Robotic Hand Model

@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { RigidBody, type CollisionEnterPayload } from '@react-three/rapier'
+import { RoundedBox } from '@react-three/drei'
+import * as THREE from 'three'
 import { useGameStore } from '../store/gameStore'
+import { WoodMaterial } from './materials/WoodMaterial'
 
 interface BlockProps {
     id: string
@@ -13,6 +16,14 @@ export default function Block({ id, position, rotation }: BlockProps) {
     const heldBlockId = useGameStore((state) => state.heldBlockId)
     const gameState = useGameStore((state) => state.gameState)
     const [isSafe, setIsSafe] = useState(false)
+
+    // Generate random shade variation per block
+    const color = useMemo(() => {
+        const base = new THREE.Color("#E3C099")
+        // Vary HSL slightly: Lightness +/- 10%
+        base.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2) 
+        return base
+    }, [])
 
     useEffect(() => {
         if (heldBlockId === id) {
@@ -42,10 +53,15 @@ export default function Block({ id, position, rotation }: BlockProps) {
             name={`block-${id}`}
             onCollisionEnter={handleCollision}
         >
-            <mesh>
-                <boxGeometry args={[2.5, 1.5, 7.5]} />
-                <meshStandardMaterial color="#d2b48c" />
-            </mesh>
+            <RoundedBox 
+                args={[2.5, 1.5, 7.5]} 
+                radius={0.05} 
+                smoothness={4} 
+                castShadow 
+                receiveShadow
+            >
+                <WoodMaterial color={color} />
+            </RoundedBox>
         </RigidBody>
     )
 }
