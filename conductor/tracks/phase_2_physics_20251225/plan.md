@@ -19,8 +19,8 @@
 - [~] Task: Conductor - User Manual Verification 'Phase 2.2: The Tower Generator' (Protocol in workflow.md)
 
 ## Phase 2.3: Hand-Physics Interaction
-- [ ] Task: Upgrade Hand to Kinematic Body
-    - [ ] Sub-task: Write Tests: Verify Hand component renders physics colliders (KinematicPosition)
-    - [ ] Sub-task: Update `Hand.tsx` to wrap joint meshes in `RigidBody` type="kinematicPosition"
-    - [ ] Sub-task: Ensure physics positions update in `useFrame` sync with visual positions
-- [ ] Task: Conductor - User Manual Verification 'Phase 2.3: Hand-Physics Interaction' (Protocol in workflow.md)
+- [x] Task: Upgrade Hand to Kinematic Body
+    - [x] Sub-task: Write Tests: Verify Hand component renders physics colliders (KinematicPosition)
+    - [x] Sub-task: Update `Hand.tsx` to wrap joint meshes in `RigidBody` type="kinematicPosition"
+    - [x] Sub-task: Ensure physics positions update in `useFrame` sync with visual positions
+- [~] Task: Conductor - User Manual Verification 'Phase 2.3: Hand-Physics Interaction' (Protocol in workflow.md)

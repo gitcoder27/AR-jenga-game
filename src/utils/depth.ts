@@ -14,8 +14,8 @@ export function calculateDepth(landmarks: NormalizedLandmark[]) {
     // Tunable parameters
     const MIN_DIST = 0.05; // Hand far
     const MAX_DIST = 0.3;  // Hand close
-    const MIN_Z = -5;
-    const MAX_Z = 2;
+    const MIN_Z = -5; // Pushing deep
+    const MAX_Z = 10; // Safe distance
     
     const clampedDist = Math.max(MIN_DIST, Math.min(MAX_DIST, distance));
     

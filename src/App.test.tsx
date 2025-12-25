@@ -12,6 +12,9 @@ vi.mock('./components/Hand', () => ({
 vi.mock('./components/Floor', () => ({
     default: () => <div>Floor Mock</div>
 }))
+vi.mock('./components/Tower', () => ({
+    default: () => <div>Tower Mock</div>
+}))
 vi.mock('./hooks/useHandTracking', () => ({
     default: () => ({ detect: vi.fn(), isReady: true })
 }))

@@ -1,5 +1,5 @@
-const WORLD_WIDTH = 10;
-const WORLD_HEIGHT = 8;
+const WORLD_WIDTH = 40;
+const WORLD_HEIGHT = 30;
 
 export function normalizeCoordinates(x: number, y: number) {
   // Mirror X: (0.5 - x) * width
