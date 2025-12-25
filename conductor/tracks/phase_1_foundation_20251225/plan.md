@@ -11,16 +11,16 @@
 - [~] Task: Conductor - User Manual Verification 'Phase 1.1: Project Setup' (Protocol in workflow.md)
 
 ## Phase 1.2: MediaPipe Integration
-- [ ] Task: Create Webcam Component
-    - [ ] Sub-task: Write Tests: Verify component renders video element and requests permissions
-    - [ ] Sub-task: Implement hidden video element with permission handling
-- [ ] Task: Implement Hand Landmarker Service
-    - [ ] Sub-task: Write Tests: Mock MediaPipe and verify initialization
-    - [ ] Sub-task: Implement service to load model and process video frames
-- [ ] Task: Coordinate Normalization Logic
-    - [ ] Sub-task: Write Tests: Unit tests for 2D to 3D coordinate conversion functions (including X-axis inversion)
-    - [ ] Sub-task: Implement coordinate transformation utility
-- [ ] Task: Conductor - User Manual Verification 'Phase 1.2: MediaPipe Integration' (Protocol in workflow.md)
+- [x] Task: Create Webcam Component
+    - [x] Sub-task: Write Tests: Verify component renders video element and requests permissions
+    - [x] Sub-task: Implement hidden video element with permission handling
+- [x] Task: Implement Hand Landmarker Service
+    - [x] Sub-task: Write Tests: Mock MediaPipe and verify initialization
+    - [x] Sub-task: Implement service to load model and process video frames
+- [x] Task: Coordinate Normalization Logic
+    - [x] Sub-task: Write Tests: Unit tests for 2D to 3D coordinate conversion functions (including X-axis inversion)
+    - [x] Sub-task: Implement coordinate transformation utility
+- [~] Task: Conductor - User Manual Verification 'Phase 1.2: MediaPipe Integration' (Protocol in workflow.md)
 
 ## Phase 1.3: The Virtual Hand Rig
 - [ ] Task: Create Visual Debugger (Hand Component)

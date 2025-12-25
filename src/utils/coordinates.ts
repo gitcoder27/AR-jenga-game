@@ -1,0 +1,12 @@
+const WORLD_WIDTH = 10;
+const WORLD_HEIGHT = 8;
+
+export function normalizeCoordinates(x: number, y: number) {
+  // Mirror X: (0.5 - x) * width
+  const worldX = (0.5 - x) * WORLD_WIDTH;
+  
+  // Invert Y: (0.5 - y) * height
+  const worldY = (0.5 - y) * WORLD_HEIGHT;
+
+  return { x: worldX, y: worldY };
+}
