@@ -111,6 +111,16 @@
     color: #000;
 }
 
+.hud-button.exit-game {
+    border-color: #ff4e00;
+    color: #ff4e00;
+}
+
+.hud-button.exit-game:hover {
+    background: #ff4e00;
+    color: #000;
+}
+
 .hud-button:hover {
     background: #00e5ff;
     color: #000;

@@ -60,6 +60,10 @@ export const HUD: React.FC = () => {
                         RESET TOWER
                     </button>
                 )}
+
+                <button className="hud-button exit-game" onClick={returnToMenu}>
+                    EXIT GAME
+                </button>
             </div>
 
             {/* Game Over Modal */}

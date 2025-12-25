@@ -51,7 +51,7 @@ function App() {
 
   return (
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
-      <Webcam onVideoReady={handleVideoReady} />
+      <Webcam key={gameMode} onVideoReady={handleVideoReady} />
 
       <Canvas shadows camera={{ position: [0, 10, 20] }}>
         <Physics gravity={[0, -9.81, 0]}>
