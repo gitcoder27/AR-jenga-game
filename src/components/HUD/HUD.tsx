@@ -3,11 +3,13 @@ import { useGameStore } from '../../store/gameStore';
 import './HUD.css';
 
 export const HUD: React.FC = () => {
-    const { 
-        score, 
-        gameState, 
-        resetGame, 
-        isWebcamVisible, 
+    const {
+        score,
+        gameState,
+        gameMode,
+        resetGame,
+        returnToMenu,
+        isWebcamVisible,
         setWebcamVisible,
         isInstructionsVisible,
         setInstructionsVisible
@@ -27,7 +29,7 @@ export const HUD: React.FC = () => {
             {/* Top Bar: Score & Title */}
             <div className="hud-top-bar">
                 <div className="hud-title-container">
-                    <h1>ROBOTIC JENGA</h1>
+                    <h1 onClick={returnToMenu} style={{ cursor: 'pointer' }}>ROBOTIC JENGA</h1>
                     <div className="hud-status-led" data-state={gameState}></div>
                 </div>
                 <div className="hud-score">
@@ -46,12 +48,18 @@ export const HUD: React.FC = () => {
 
             {/* Bottom Controls */}
             <div className="hud-bottom-controls">
-                <button 
+                <button
                     className={`hud-button ${isWebcamVisible ? 'active' : ''}`}
                     onClick={() => setWebcamVisible(!isWebcamVisible)}
                 >
                     {isWebcamVisible ? 'HIDE CAMERA' : 'SHOW CAMERA'}
                 </button>
+
+                {gameMode === 'SANDBOX' && (
+                    <button className="hud-button sandbox-reset" onClick={resetGame}>
+                        RESET TOWER
+                    </button>
+                )}
             </div>
 
             {/* Game Over Modal */}
@@ -63,9 +71,14 @@ export const HUD: React.FC = () => {
                             <span className="label">FINAL SCORE</span>
                             <span className="value">{score}</span>
                         </div>
-                        <button className="hud-reset-button" onClick={resetGame}>
-                            RE-INITIALIZE
-                        </button>
+                        <div className="hud-modal-actions">
+                            <button className="hud-reset-button" onClick={resetGame}>
+                                RE-INITIALIZE
+                            </button>
+                            <button className="hud-menu-button" onClick={returnToMenu}>
+                                MAIN MENU
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

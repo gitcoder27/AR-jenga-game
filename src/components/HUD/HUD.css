@@ -7,7 +7,8 @@
     pointer-events: none;
     font-family: 'Courier New', Courier, monospace;
     color: #00e5ff;
-    z-index: 999; /* Higher to ensure it's on top of Canvas */
+    z-index: 999;
+    /* Higher to ensure it's on top of Canvas */
 }
 
 .hud-top-bar {
@@ -15,8 +16,9 @@
     justify-content: space-between;
     align-items: flex-start;
     padding: 20px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
-    pointer-events: auto; /* Allow clicking title/score if needed */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+    pointer-events: auto;
+    /* Allow clicking title/score if needed */
 }
 
 .hud-title-container {
@@ -62,7 +64,8 @@
 
 .hud-instructions {
     position: absolute;
-    top: 15%; /* Higher up */
+    top: 15%;
+    /* Higher up */
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
@@ -84,16 +87,28 @@
     bottom: 20px;
     left: 20px;
     pointer-events: auto;
+    display: flex;
+    gap: 15px;
 }
 
 .hud-button {
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     border: 1px solid #00e5ff;
     color: #00e5ff;
     padding: 10px 20px;
     cursor: pointer;
     font-family: inherit;
     transition: all 0.2s;
+}
+
+.hud-button.sandbox-reset {
+    border-color: #ff00ff;
+    color: #ff00ff;
+}
+
+.hud-button.sandbox-reset:hover {
+    background: #ff00ff;
+    color: #000;
 }
 
 .hud-button:hover {
@@ -112,7 +127,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -150,7 +165,14 @@
     color: #00e5ff;
 }
 
-.hud-reset-button {
+.hud-modal-actions {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.hud-reset-button,
+.hud-menu-button {
     background: transparent;
     border: 1px solid #00e5ff;
     color: #00e5ff;
@@ -160,16 +182,23 @@
     font-family: inherit;
 }
 
-.hud-reset-button:hover {
+.hud-reset-button:hover,
+.hud-menu-button:hover {
     background: #00e5ff;
     color: #000;
 }
 
 @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
 
 .fade-out {
-    animation: fadeOut 1s forwards 4s; /* Start fading after 4s */
+    animation: fadeOut 1s forwards 4s;
+    /* Start fading after 4s */
 }

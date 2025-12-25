@@ -14,13 +14,14 @@ export default function Block({ id, position, rotation }: BlockProps) {
     const setGameState = useGameStore((state) => state.setGameState)
     const heldBlockId = useGameStore((state) => state.heldBlockId)
     const gameState = useGameStore((state) => state.gameState)
+    const gameMode = useGameStore((state) => state.gameMode)
     const [isSafe, setIsSafe] = useState(false)
 
     // Generate random shade variation per block
     const color = useMemo(() => {
         const base = new THREE.Color("#E3C099")
         // Vary HSL slightly: Lightness +/- 10%
-        base.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2) 
+        base.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2)
         return base
     }, [])
 
@@ -35,19 +36,19 @@ export default function Block({ id, position, rotation }: BlockProps) {
 
         const otherName = other.rigidBodyObject?.name
         if (otherName === 'floor') {
-            if (id !== heldBlockId && !isSafe) {
+            if (id !== heldBlockId && !isSafe && gameMode === 'CLASSIC') {
                 setGameState('GAME_OVER')
             }
         }
     }
 
     return (
-        <RigidBody 
-            position={position} 
-            rotation={rotation} 
-            type="dynamic" 
-            mass={2} 
-            friction={1} 
+        <RigidBody
+            position={position}
+            rotation={rotation}
+            type="dynamic"
+            mass={2}
+            friction={1}
             restitution={0}
             name={`block-${id}`}
             onCollisionEnter={handleCollision}

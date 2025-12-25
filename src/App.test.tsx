@@ -51,10 +51,10 @@ vi.mock('@react-three/rapier', () => ({
 
 vi.mock('three', () => {
     return {
-        Color: class {},
-        AmbientLight: class {},
-        PointLight: class {},
-        GridHelper: class {},
+        Color: class { },
+        AmbientLight: class { },
+        PointLight: class { },
+        GridHelper: class { },
     }
 })
 
@@ -73,67 +73,79 @@ vi.mock('./components/DepthCursor', () => ({
 }))
 
 describe('App', () => {
-  const mockResetGame = vi.fn()
-  const mockUseGameStore = vi.mocked(useGameStore)
+    const mockResetGame = vi.fn()
+    const mockUseGameStore = vi.mocked(useGameStore)
 
-  const defaultState = {
-      gameState: 'PLAYING',
-      score: 0,
-      resetGame: mockResetGame,
-      isWebcamVisible: false,
-      isInstructionsVisible: false,
-      setWebcamVisible: vi.fn(),
-      setInstructionsVisible: vi.fn(),
-      gameId: 0,
-  }
+    const defaultState = {
+        gameState: 'PLAYING',
+        gameMode: 'MENU',
+        score: 0,
+        resetGame: mockResetGame,
+        returnToMenu: vi.fn(),
+        startGame: vi.fn(),
+        isWebcamVisible: false,
+        isInstructionsVisible: false,
+        setWebcamVisible: vi.fn(),
+        setInstructionsVisible: vi.fn(),
+        gameId: 0,
+    }
 
-  beforeEach(() => {
-      // Default mock behavior
-      mockUseGameStore.mockImplementation((selector: any) => {
-          return selector ? selector(defaultState) : defaultState
-      })
-      mockResetGame.mockClear()
-  })
+    beforeEach(() => {
+        // Default mock behavior
+        mockUseGameStore.mockImplementation((selector: any) => {
+            return selector ? selector(defaultState) : defaultState
+        })
+        mockResetGame.mockClear()
+    })
 
-  it('renders the title', () => {
-    render(<App />)
-    expect(screen.getByText('ROBOTIC JENGA')).toBeInTheDocument()
-  })
+    it('renders fixed header on start screen', () => {
+        render(<App />)
+        expect(screen.getByText('ROBOTIC JENGA')).toBeInTheDocument()
+        expect(screen.getByText('CLASSIC MODE')).toBeInTheDocument()
+    })
 
-  it('renders environment components', () => {
-    render(<App />)
-    expect(screen.getByTestId('lighting')).toBeInTheDocument()
-    expect(screen.getByTestId('environment-setup')).toBeInTheDocument()
-    expect(screen.getByTestId('studio-room')).toBeInTheDocument()
-  })
+    it('renders environment components in game mode', () => {
+        mockUseGameStore.mockImplementation((selector: any) => {
+            const state = { ...defaultState, gameMode: 'CLASSIC' }
+            return selector ? selector(state) : state
+        })
+        render(<App />)
+        expect(screen.getByTestId('lighting')).toBeInTheDocument()
+        expect(screen.getByTestId('environment-setup')).toBeInTheDocument()
+        expect(screen.getByTestId('studio-room')).toBeInTheDocument()
+    })
 
-  it('wraps scene in Physics with correct gravity', () => {
-    render(<App />)
-    const physics = screen.getByTestId('physics')
-    expect(physics).toBeInTheDocument()
-    expect(physics).toHaveAttribute('data-gravity', JSON.stringify([0, -9.81, 0]))
-  })
+    it('wraps scene in Physics with correct gravity in game mode', () => {
+        mockUseGameStore.mockImplementation((selector: any) => {
+            const state = { ...defaultState, gameMode: 'CLASSIC' }
+            return selector ? selector(state) : state
+        })
+        render(<App />)
+        const physics = screen.getByTestId('physics')
+        expect(physics).toBeInTheDocument()
+        expect(physics).toHaveAttribute('data-gravity', JSON.stringify([0, -9.81, 0]))
+    })
 
-  it('shows game over overlay when game is over', () => {
-      mockUseGameStore.mockImplementation((selector: any) => {
-          const state = { ...defaultState, gameState: 'GAME_OVER' }
-          return selector ? selector(state) : state
-      })
+    it('shows game over overlay when game is over', () => {
+        mockUseGameStore.mockImplementation((selector: any) => {
+            const state = { ...defaultState, gameState: 'GAME_OVER', gameMode: 'CLASSIC' }
+            return selector ? selector(state) : state
+        })
 
-      render(<App />)
-      expect(screen.getByText('TOWER COLLAPSED')).toBeInTheDocument()
-      expect(screen.getByText('RE-INITIALIZE')).toBeInTheDocument()
-  })
+        render(<App />)
+        expect(screen.getByText('TOWER COLLAPSED')).toBeInTheDocument()
+        expect(screen.getByText('RE-INITIALIZE')).toBeInTheDocument()
+    })
 
-  it('resets game when reset button clicked', () => {
-      mockUseGameStore.mockImplementation((selector: any) => {
-          const state = { ...defaultState, gameState: 'GAME_OVER' }
-          return selector ? selector(state) : state
-      })
+    it('resets game when reset button clicked', () => {
+        mockUseGameStore.mockImplementation((selector: any) => {
+            const state = { ...defaultState, gameState: 'GAME_OVER', gameMode: 'CLASSIC' }
+            return selector ? selector(state) : state
+        })
 
-      render(<App />)
-      const btn = screen.getByText('RE-INITIALIZE')
-      fireEvent.click(btn)
-      expect(mockResetGame).toHaveBeenCalled()
-  })
+        render(<App />)
+        const btn = screen.getByText('RE-INITIALIZE')
+        fireEvent.click(btn)
+        expect(mockResetGame).toHaveBeenCalled()
+    })
 })

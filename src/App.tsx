@@ -16,6 +16,7 @@ import { EnvironmentSetup } from './components/EnvironmentSetup'
 import { StudioRoom } from './components/StudioRoom'
 import { DepthCursor } from './components/DepthCursor'
 import { HUD } from './components/HUD/HUD'
+import StartScreen from './components/StartScreen/StartScreen'
 
 function App() {
   const { detect, isReady } = useHandTracking()
@@ -23,46 +24,51 @@ function App() {
   const [result, setResult] = useState<HandLandmarkerResult | null>(null)
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const requestRef = useRef<number>(0)
-  
+
   const gameId = useGameStore((state) => state.gameId)
+  const gameMode = useGameStore((state) => state.gameMode)
 
   const handleVideoReady = useCallback((vid: HTMLVideoElement) => {
-      setCameraActive(true)
-      setVideoElement(vid)
+    setCameraActive(true)
+    setVideoElement(vid)
   }, [])
 
   useEffect(() => {
-    if (isReady && videoElement && cameraActive) {
-        const loop = () => {
-            const res = detect(videoElement, performance.now())
-            if (res) setResult(res)
-            requestRef.current = requestAnimationFrame(loop)
-        }
-        loop()
-        return () => cancelAnimationFrame(requestRef.current)
+    if (isReady && videoElement && cameraActive && gameMode !== 'MENU') {
+      const loop = () => {
+        const res = detect(videoElement, performance.now())
+        if (res) setResult(res)
+        requestRef.current = requestAnimationFrame(loop)
+      }
+      loop()
+      return () => cancelAnimationFrame(requestRef.current)
     }
-  }, [isReady, videoElement, cameraActive, detect])
+  }, [isReady, videoElement, cameraActive, detect, gameMode])
+
+  if (gameMode === 'MENU') {
+    return <StartScreen />
+  }
 
   return (
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
       <Webcam onVideoReady={handleVideoReady} />
-      
+
       <Canvas shadows camera={{ position: [0, 10, 20] }}>
-          <Physics gravity={[0, -9.81, 0]}>
-              <color attach="background" args={['#111']} />
-              <Lighting />
-              <EnvironmentSetup />
-              <StudioRoom />
-              
-              <Floor />
-              <Table />
-              <Tower key={gameId} />
-              <Hand result={result} />
-              <DepthCursor result={result} />
-              
-              <OrbitControls />
-              <gridHelper args={[20, 20]} />
-          </Physics>
+        <Physics gravity={[0, -9.81, 0]}>
+          <color attach="background" args={['#111']} />
+          <Lighting />
+          <EnvironmentSetup />
+          <StudioRoom />
+
+          <Floor />
+          <Table />
+          <Tower key={gameId} />
+          <Hand result={result} />
+          <DepthCursor result={result} />
+
+          <OrbitControls />
+          <gridHelper args={[20, 20]} />
+        </Physics>
       </Canvas>
 
       <HUD />
