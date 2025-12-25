@@ -10,48 +10,58 @@ interface DepthCursorProps {
   result: HandLandmarkerResult | null;
 }
 
+const PARKING_POSITION = new THREE.Vector3(0, -100, 0);
+
 export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
   const cursorRef = useRef<THREE.Mesh>(null);
-  const positionRef = useRef(new THREE.Vector3(0, 0.1, 0)); // Start slightly above 0 to avoid z-fighting
+  const positionRef = useRef(new THREE.Vector3().copy(PARKING_POSITION));
+  const isFirstFrameRef = useRef(true);
 
   useFrame(() => {
-    if (!cursorRef.current || !result || !result.landmarks || result.landmarks.length === 0) return;
+    if (!result || !result.landmarks || result.landmarks.length === 0) {
+        if (!isFirstFrameRef.current && cursorRef.current) {
+            positionRef.current.copy(PARKING_POSITION);
+            cursorRef.current.position.copy(PARKING_POSITION);
+            isFirstFrameRef.current = true;
+        }
+        return;
+    }
+
+    if (!cursorRef.current) return;
 
     const landmarks = result.landmarks[0];
-    // Use Thumb Tip (4) and Index Finger Tip (8) for cursor position
     const thumb = landmarks[4];
     const index = landmarks[8];
     
     const midX = (thumb.x + index.x) / 2;
     const midY = (thumb.y + index.y) / 2;
-    // Landmark Z is relative to wrist in MediaPipe (roughly). 
-    // We need to apply the same depth logic as Hand.tsx
     const midZRaw = (thumb.z + index.z) / 2;
 
-    const { x, y } = normalizeCoordinates(midX, midY);
+    const { x } = normalizeCoordinates(midX, midY);
     const handZ = calculateDepth(landmarks);
     const z = handZ + (midZRaw * -10);
     
-    // Smooth the target position
     const targetPos = new THREE.Vector3(x, 0.05, z);
     
-    // We can use the same smoothing util, but it expects a ref to a vector.
-    // Let's manually lerp here for simplicity or adapt the util.
-    // Actually, `smoothCoordinates` updates a Ref's current value.
-    // Let's just do simple lerp here since it's just a visual guide.
-    positionRef.current.lerp(targetPos, 0.2);
+    if (isFirstFrameRef.current) {
+        positionRef.current.copy(targetPos);
+        isFirstFrameRef.current = false;
+    } else {
+        positionRef.current.lerp(targetPos, 0.2);
+    }
 
     cursorRef.current.position.copy(positionRef.current);
   });
 
-  if (!result || !result.landmarks || result.landmarks.length === 0) return null;
+  const isVisible = !!(result && result.landmarks && result.landmarks.length > 0);
 
   return (
     <Ring 
         ref={cursorRef} 
         args={[0.3, 0.4, 32]} 
-        rotation={[-Math.PI / 2, 0, 0]} // Flat on floor
-        position={[0, 0.05, 0]} 
+        rotation={[-Math.PI / 2, 0, 0]} 
+        position={[0, -100, 0]} // Initial parking
+        visible={isVisible}
     >
       <meshBasicMaterial color="cyan" transparent opacity={0.5} side={THREE.DoubleSide} />
     </Ring>

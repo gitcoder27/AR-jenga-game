@@ -15,9 +15,11 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 describe('DepthCursor', () => {
-  it('renders nothing when result is null', () => {
-    const { queryByTestId } = render(<DepthCursor result={null} />);
-    expect(queryByTestId('depth-cursor')).toBeNull();
+  it('is hidden when result is null', () => {
+    const { getByTestId } = render(<DepthCursor result={null} />);
+    const cursor = getByTestId('depth-cursor');
+    // React omits boolean false attributes on DOM elements
+    expect(cursor.getAttribute('visible')).toBeNull();
   });
 
   it('renders cursor when result is provided and updates without crash', () => {

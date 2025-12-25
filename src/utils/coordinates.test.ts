@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { normalizeCoordinates } from './coordinates'
 
 describe('normalizeCoordinates', () => {
-  it('converts center (0.5, 0.5) to (0, 0)', () => {
+  it('converts center (0.5, 0.5) to expected center with offset', () => {
     const { x, y } = normalizeCoordinates(0.5, 0.5)
     expect(x).toBeCloseTo(0)
-    expect(y).toBeCloseTo(0)
+    expect(y).toBeCloseTo(8.5) // Y_OFFSET
   })
 
   it('inverts X axis (0 -> positive world X)', () => {

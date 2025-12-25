@@ -1,12 +1,12 @@
 # Product Guidelines
 
 ## Visual Identity
-*   **Aesthetic:** **Lo-Fi / Cozy.** The game environment should evoke a relaxed, warm atmosphere, similar to a comfortable study room. Use soft, warm lighting, wooden textures, and a calming color palette to create an inviting space that contrasts with the tension of the gameplay.
-*   **Atmosphere:** Immersive and grounded. The visual design should minimize digital distractions, making the virtual Jenga tower feel like a physical object in a real room.
+*   **Aesthetic:** **Studio / Professional.** The game environment features high-end studio lighting (HDR), neutral professional backdrops, and a mix of natural textures (wood) with futuristic robotic elements.
+*   **Atmosphere:** Clean, high-fidelity, and focused. The design emphasizes clarity and precision, reflecting the mechanical nature of the robotic interaction.
 
 ## User Interface (UX/UI)
 *   **Design Philosophy:** **Minimalist & Diegetic.** The User Interface should be as unobtrusive as possible. Where possible, embed information directly into the 3D world (e.g., stability indicators on the table surface) or use subtle, clean overlays that do not break immersion.
-*   **Feedback:** Visual feedback for interactions (like the "pinch" gesture) should be clear but stylized to fit the cozy aesthetic, avoiding jarring, high-contrast arcade effects.
+*   **Feedback:** Visual feedback should be high-tech but clean. For example, the robotic hand glows cyan when active, and the HUD uses monospace typography and LED-style status indicators.
 
 ## Voice & Tone
 *   **Style:** **Direct & Instructional.** All text, including tutorials, error messages, and in-game prompts, should be clear, concise, and unambiguous.

@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { RigidBody, type CollisionEnterPayload } from '@react-three/rapier'
-import { RoundedBox } from '@react-three/drei'
+import { RigidBody, CuboidCollider, type CollisionEnterPayload } from '@react-three/rapier'
+import { Instance } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../store/gameStore'
-import { WoodMaterial } from './materials/WoodMaterial'
 
 interface BlockProps {
     id: string
@@ -52,16 +51,11 @@ export default function Block({ id, position, rotation }: BlockProps) {
             restitution={0}
             name={`block-${id}`}
             onCollisionEnter={handleCollision}
+            canSleep={true}
+            colliders={false} // Disable auto-colliders to be safe
         >
-            <RoundedBox 
-                args={[2.5, 1.5, 7.5]} 
-                radius={0.05} 
-                smoothness={4} 
-                castShadow 
-                receiveShadow
-            >
-                <WoodMaterial color={color} />
-            </RoundedBox>
+            <CuboidCollider args={[1.25, 0.75, 3.75]} />
+            <Instance color={color} />
         </RigidBody>
     )
 }

@@ -67,25 +67,49 @@
 - [ ] Task: Conductor - User Manual Verification 'Block Visual Distinction' (Protocol in workflow.md)
 
 ## Phase 3: Hand Model Integration
-- [ ] Task: Implement Robotic Hand Model
-    - [ ] Create `components/RoboticHand.tsx`.
-    - [ ] Create `components/RoboticHand.test.tsx`.
-    - [ ] *Implementation Strategy:* Since we might not have an external GLB ready, proceed with a "Programmatic" Robotic Hand using Three.js primitives (Cylinders/Boxes) grouped to look mechanical.
-    - [ ] Map the 21 MediaPipe landmarks to the robotic joints/segments.
-    - [ ] Ensure smooth updates (reuse existing `smoothing.ts`).
-- [ ] Task: Integration with Game Logic
-    - [ ] Replace `Hand.tsx` (debug spheres) with `RoboticHand.tsx` in the main scene.
-    - [ ] Verify physics interactions remain accurate (the visual hand aligns with the physics hand).
-- [ ] Task: Conductor - User Manual Verification 'Hand Model Integration' (Protocol in workflow.md)
+- [x] Task: Implement Robotic Hand Visuals
+    - [x] Update `Hand.tsx` to render "Bones" (cylinders) connecting landmarks.
+    - [x] Create `components/HandBone.tsx` to handle looking at/scaling between two points.
+    - [x] Stylize joints (RigidBodies) to look mechanical (e.g., metallic material).
+- [x] Task: Integration with Game Logic
+    - [x] Ensure physics colliders (tips) remain accurate.
+    - [x] Verify visual alignment with physics.
+- [x] Task: Conductor - User Manual Verification 'Hand Model Integration' (Protocol in workflow.md)
 
 ## Phase 4: UI & HUD Polish
-- [ ] Task: Minimal HUD Architecture
-    - [ ] Create `components/HUD/HUD.tsx`.
-    - [ ] Create `components/HUD/HUD.test.tsx`.
-    - [ ] Implement `WebcamFeed` component (hidden by default, togglable via state).
-    - [ ] Implement `InstructionsOverlay` component (auto-fade out after N seconds).
-    - [ ] Implement `GameOverModal` component (styled professionally).
-- [ ] Task: Integration & State Management
-    - [ ] Update `gameStore.ts` to handle UI states (isWebcamVisible, isInstructionsVisible).
-    - [ ] Wire up HUD components to the store.
-- [ ] Task: Conductor - User Manual Verification 'UI & HUD Polish' (Protocol in workflow.md)
+- [x] Task: Minimal HUD Architecture
+    - [x] Create `components/HUD/HUD.tsx`.
+    - [x] Create `components/HUD/HUD.test.tsx`.
+    - [x] Implement `WebcamFeed` component (hidden by default, togglable via state).
+    - [x] Implement `InstructionsOverlay` component (auto-fade out after N seconds).
+    - [x] Implement `GameOverModal` component (styled professionally).
+- [x] Task: Integration & State Management
+    - [x] Update `gameStore.ts` to handle UI states (isWebcamVisible, isInstructionsVisible).
+    - [x] Wire up HUD components to the store.
+- [x] Task: Conductor - User Manual Verification 'UI & HUD Polish' (Protocol in workflow.md)
+
+## Phase 4.1: HUD & Webcam Stability (User Feedback)
+- [x] Task: Fix Webcam Flickering
+    - [x] Memoize `onVideoReady` in `App.tsx` to prevent unnecessary re-initializations.
+- [x] Task: Adjust Instructions Position
+    - [x] Move instructions higher in `HUD.css` to avoid overlap with the tower.
+    - [x] Ensure HUD renders on top of the Canvas.
+- [x] Task: Conductor - User Manual Verification 'HUD & Webcam Stability' (Protocol in workflow.md)
+
+## Phase 4.2: Interaction & Mapping Final Polish (User Feedback)
+- [x] Task: Expand Hand Tracking Range
+    - [x] Update `utils/coordinates.ts` with sensitivity (1.1x) and Y-offset (8.5) to cover visible area and corners.
+    - [x] Calibrate bounds to stay within visible frustum above table.
+- [x] Task: Tweak Smoothing
+    - [x] Set smoothing to 0.12 in `Hand.tsx` for better stability.
+- [x] Task: Conductor - User Manual Verification 'Interaction & Mapping Final Polish' (Protocol in workflow.md)
+
+## Phase 4.3: Hand Spawning & Teleport Fix (User Feedback)
+- [x] Task: Implement Hand Parking
+    - [x] Initialize hand and cursor positions at `[0, -100, 0]` to avoid tower collisions.
+    - [x] Hide hand/cursor when tracking is lost.
+- [x] Task: Instant Teleport Logic
+    - [x] Snaps hand to position on the first frame of detection to bypass smoothing slide.
+- [x] Task: Conductor - User Manual Verification 'Hand Spawning Fix' (Protocol in workflow.md)
+
+## Phase 5: Optimization & Deployment

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { FilesetResolver, HandLandmarker, type HandLandmarkerResult } from '@mediapipe/tasks-vision'
 
 export default function useHandTracking() {
@@ -34,11 +34,11 @@ export default function useHandTracking() {
     }
   }, [])
 
-  const detect = (video: HTMLVideoElement, timestamp: number): HandLandmarkerResult | null => {
+  const detect = useCallback((video: HTMLVideoElement, timestamp: number): HandLandmarkerResult | null => {
       if (!handLandmarkerRef.current || !isReady) return null
       if (video.videoWidth === 0 || video.videoHeight === 0) return null
       return handLandmarkerRef.current.detectForVideo(video, timestamp)
-  }
+  }, [isReady])
 
   return { detect, isReady }
 }

@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
+import { Instances } from '@react-three/drei'
 import Block from './Block'
+import { WoodMaterial } from './materials/WoodMaterial'
 
 export default function Tower() {
     const blocks = useMemo(() => {
@@ -46,10 +48,12 @@ export default function Tower() {
     }, []);
 
     return (
-        <group>
+        <Instances range={54}>
+            <boxGeometry args={[2.5, 1.5, 7.5]} />
+            <WoodMaterial />
             {blocks.map(b => (
                 <Block key={b.id} id={b.id} position={b.position} rotation={b.rotation} />
             ))}
-        </group>
+        </Instances>
     )
 }

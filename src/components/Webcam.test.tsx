@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import Webcam from './Webcam'
 
@@ -7,7 +7,7 @@ describe('Webcam Component', () => {
 
   beforeEach(() => {
     // Mock navigator.mediaDevices
-    Object.defineProperty(global.navigator, 'mediaDevices', {
+    Object.defineProperty(globalThis.navigator, 'mediaDevices', {
       value: {
         getUserMedia: getUserMediaMock,
       },
@@ -21,16 +21,15 @@ describe('Webcam Component', () => {
   })
 
   it('renders a video element', () => {
-    getUserMediaMock.mockResolvedValue({} as MediaStream)
+    getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as any)
 
     render(<Webcam onVideoReady={() => {}} />)
-    // Should fail because we return <div></div>
     const videoElement = screen.getByTestId('webcam-video')
     expect(videoElement).toBeInTheDocument()
   })
 
   it('requests camera permissions on mount', () => {
-    const mockStream = {} as MediaStream
+    const mockStream = { getTracks: () => [] } as any
     getUserMediaMock.mockResolvedValue(mockStream)
 
     render(<Webcam onVideoReady={() => {}} />)
@@ -42,6 +41,38 @@ describe('Webcam Component', () => {
         height: { ideal: 720 },
       },
       audio: false,
+    })
+  })
+
+  it('shows error overlay when permission is denied', async () => {
+    getUserMediaMock.mockRejectedValue(new Error('Permission denied'))
+
+    render(<Webcam onVideoReady={() => {}} />)
+
+    await waitFor(() => {
+        expect(screen.getByText(/Camera access required/i)).toBeInTheDocument()
+    })
+  })
+
+  it('retries camera access when retry button is clicked', async () => {
+    // First attempt fails
+    getUserMediaMock.mockRejectedValueOnce(new Error('Permission denied'))
+    
+    render(<Webcam onVideoReady={() => {}} />)
+
+    await waitFor(() => {
+        expect(screen.getByText(/Camera access required/i)).toBeInTheDocument()
+    })
+
+    // Second attempt succeeds
+    getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as any)
+
+    const retryButton = screen.getByText(/Retry/i)
+    fireEvent.click(retryButton)
+
+    await waitFor(() => {
+        expect(getUserMediaMock).toHaveBeenCalledTimes(2)
+        expect(screen.queryByText(/Camera access required/i)).not.toBeInTheDocument()
     })
   })
 })

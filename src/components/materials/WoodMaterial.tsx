@@ -1,5 +1,4 @@
 import React from 'react'
-import { useTexture } from '@react-three/drei'
 
 export const WoodMaterial: React.FC = (props) => {
     // Uncomment when textures are present in public/textures/wood/

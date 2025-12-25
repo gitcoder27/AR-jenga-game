@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import * as useGestureHook from '../hooks/useGesture'
 import * as rapier from '@react-three/rapier'
@@ -71,7 +71,6 @@ describe('Hand Component', () => {
       render(<Hand result={result} />)
       
       const useFrameMock = vi.mocked(useFrame)
-      const callback = useFrameMock.mock.calls[0][0]
       
       // Mock intersection to return a hit
       const mockBody = {
@@ -90,8 +89,11 @@ describe('Hand Component', () => {
       
       mockWorld.intersectionWithShape.mockReturnValue(mockCollider)
       
-      // Execute the frame callback
-      callback()
+      // Execute all frame callbacks (from HandBones and UpdateLogic)
+      useFrameMock.mock.calls.forEach(call => {
+          const callback = call[0]
+          callback({} as any, 0)
+      })
       
       expect(mockWorld.intersectionWithShape).toHaveBeenCalled()
       expect(mockRapier.Ball).toHaveBeenCalledWith(0.5)

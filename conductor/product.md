@@ -12,6 +12,7 @@ A browser-based 3D simulation of the classic game "Jenga" controlled entirely vi
 *   **High-Fidelity Physics:** A realistic physics simulation powered by Rapier.js, ensuring that blocks behave authentically with correct friction, gravity, and collision responses.
 *   **Gesture Recognition:** Intuitive "Pinch to Grab" gesture control, enabling precise manipulation of Jenga blocks for strategic gameplay.
 *   **Immersive 3D Environment:** A visually polished 3D scene built with Three.js and React Three Fiber, featuring realistic lighting and materials.
+*   **Futuristic HUD & UI:** A professional Heads-Up Display (HUD) providing real-time score, game status LED, and contextual instructions without breaking immersion.
 *   **Win/Loss Logic:** Automated detection of tower collapse, triggering a "Game Over" state with score tracking and restart functionality.
 
 ## Primary Goal

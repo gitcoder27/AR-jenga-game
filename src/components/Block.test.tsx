@@ -14,7 +14,7 @@ vi.mock('../store/gameStore', () => ({
 }))
 
 vi.mock('@react-three/rapier', () => ({
-    RigidBody: ({ children, type, mass, friction, restitution, onCollisionEnter, name, userData }: any) => (
+    RigidBody: ({ children, type, mass, friction, restitution, onCollisionEnter, name, canSleep }: any) => (
         <div 
             data-testid="block-rb" 
             data-type={type} 
@@ -22,18 +22,18 @@ vi.mock('@react-three/rapier', () => ({
             data-friction={friction}
             data-restitution={restitution}
             data-name={name}
+            data-can-sleep={canSleep}
             onClick={() => onCollisionEnter && onCollisionEnter({ other: { rigidBodyObject: { name: 'floor' } } })}
         >
             {children}
         </div>
     ),
+    CuboidCollider: ({ args }: any) => <div data-testid="cuboid-collider" data-args={JSON.stringify(args)} />,
 }))
 
 vi.mock('@react-three/drei', () => ({
-    RoundedBox: ({ children, args, radius, smoothness, ...props }: any) => (
-        <div data-testid="rounded-box" data-args={JSON.stringify(args)} data-radius={radius} {...props}>
-            {children}
-        </div>
+    Instance: ({ color }: any) => (
+        <div data-testid="block-instance" data-color={color ? 'has-color' : 'no-color'} />
     )
 }))
 
@@ -50,6 +50,14 @@ describe('Block', () => {
         expect(rb).toHaveAttribute('data-mass', '2')
         expect(rb).toHaveAttribute('data-friction', '1')
         expect(rb).toHaveAttribute('data-restitution', '0')
+        expect(rb).toHaveAttribute('data-can-sleep', 'true')
+        
+        const collider = getByTestId('cuboid-collider')
+        expect(collider).toBeInTheDocument()
+        expect(collider).toHaveAttribute('data-args', JSON.stringify([1.25, 0.75, 3.75]))
+
+        const instance = getByTestId('block-instance')
+        expect(instance).toBeInTheDocument()
     })
 
     it('triggers GAME_OVER when colliding with floor if not safe', () => {
