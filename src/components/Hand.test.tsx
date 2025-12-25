@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
+import * as useGestureHook from '../hooks/useGesture'
 
 vi.mock('@react-three/fiber', () => ({
     useFrame: vi.fn(),
@@ -14,6 +15,10 @@ vi.mock('@react-three/rapier', () => ({
     ),
 }))
 
+vi.mock('../hooks/useGesture', () => ({
+    default: vi.fn()
+}))
+
 vi.mock('three', () => {
     return {
         Mesh: class {},
@@ -26,6 +31,10 @@ vi.mock('three', () => {
 import Hand from './Hand'
 
 describe('Hand Component', () => {
+  beforeEach(() => {
+      vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: false })
+  })
+
   it('renders null when no result', () => {
     const { container } = render(<Hand result={null} />)
     expect(container.firstChild).toBeNull()
@@ -41,15 +50,26 @@ describe('Hand Component', () => {
     const result = { landmarks: [Array(21).fill({x:0, y:0, z:0})] } as any
     const { getAllByTestId } = render(<Hand result={result} />)
     
-    // It should render 21 RigidBodies
-    // But currently Hand.tsx renders 21 meshes directly.
-    // So this test expects the implementation to be done.
-    // The test is "Red" (Failing) because implementation is not there.
-    // But it failed due to R3F error, not assertion error.
-    // Now with R3F mocked, it should fail assertion (0 found).
-    
     const rbs = getAllByTestId('hand-rb')
     expect(rbs.length).toBe(21)
     expect(rbs[0]).toHaveAttribute('data-type', 'kinematicPosition')
+  })
+
+  it('renders hotpink color by default', () => {
+      const result = { landmarks: [Array(21).fill({x:0, y:0, z:0})] } as any
+      const { container } = render(<Hand result={result} />)
+      
+      const material = container.querySelector('meshStandardMaterial')
+      expect(material).toHaveAttribute('color', 'hotpink')
+  })
+
+  it('renders blue color when pinching', () => {
+      vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: true })
+      
+      const result = { landmarks: [Array(21).fill({x:0, y:0, z:0})] } as any
+      const { container } = render(<Hand result={result} />)
+      
+      const material = container.querySelector('meshStandardMaterial')
+      expect(material).toHaveAttribute('color', 'blue')
   })
 })

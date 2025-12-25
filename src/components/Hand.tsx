@@ -5,6 +5,7 @@ import { RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { normalizeCoordinates } from '../utils/coordinates'
 import { calculateDepth } from '../utils/depth'
 import { lerp } from '../utils/smoothing'
+import useGesture from '../hooks/useGesture'
 
 interface HandProps {
     result: HandLandmarkerResult | null
@@ -12,6 +13,7 @@ interface HandProps {
 
 export default function Hand({ result }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
+    const { isPinching } = useGesture(result?.landmarks?.[0])
     
     if (!result || !result.landmarks || result.landmarks.length === 0) return null
 
@@ -26,7 +28,7 @@ export default function Hand({ result }: HandProps) {
                 >
                     <mesh>
                         <sphereGeometry args={[0.1, 16, 16]} />
-                        <meshStandardMaterial color="hotpink" />
+                        <meshStandardMaterial color={isPinching ? 'blue' : 'hotpink'} />
                     </mesh>
                 </RigidBody>
             ))}
