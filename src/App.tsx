@@ -6,6 +6,7 @@ import './App.css'
 import Webcam from './components/Webcam'
 import Hand from './components/Hand'
 import Floor from './components/Floor'
+import Tower from './components/Tower'
 import useHandTracking from './hooks/useHandTracking'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 
@@ -42,13 +43,14 @@ function App() {
         <p>Hands Detected: {result?.landmarks?.length || 0}</p>
       </div>
 
-      <Canvas camera={{ position: [0, 5, 5] }}>
+      <Canvas camera={{ position: [0, 10, 20] }}>
           <Physics gravity={[0, -9.81, 0]}>
               <color attach="background" args={['#111']} />
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} />
               
               <Floor />
+              <Tower />
               <Hand result={result} />
               
               <OrbitControls />
