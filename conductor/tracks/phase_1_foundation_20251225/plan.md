@@ -1,14 +1,14 @@
 # Track Plan: Phase 1: Foundation & "The Ghost Hand"
 
 ## Phase 1.1: Project Setup
-- [ ] Task: Initialize React project with Vite and TypeScript
-    - [ ] Sub-task: Create new Vite project
-    - [ ] Sub-task: Clean up boilerplate
-- [ ] Task: Install Dependencies
-    - [ ] Sub-task: Install `three`, `@react-three/fiber`, `@react-three/drei`
-    - [ ] Sub-task: Install `@mediapipe/tasks-vision`
-    - [ ] Sub-task: Install `zustand`
-- [ ] Task: Conductor - User Manual Verification 'Phase 1.1: Project Setup' (Protocol in workflow.md)
+- [x] Task: Initialize React project with Vite and TypeScript
+    - [x] Sub-task: Create new Vite project
+    - [x] Sub-task: Clean up boilerplate
+- [x] Task: Install Dependencies
+    - [x] Sub-task: Install `three`, `@react-three/fiber`, `@react-three/drei`
+    - [x] Sub-task: Install `@mediapipe/tasks-vision`
+    - [x] Sub-task: Install `zustand`
+- [~] Task: Conductor - User Manual Verification 'Phase 1.1: Project Setup' (Protocol in workflow.md)
 
 ## Phase 1.2: MediaPipe Integration
 - [ ] Task: Create Webcam Component
