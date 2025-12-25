@@ -6,20 +6,23 @@ export function calculateDepth(landmarks: NormalizedLandmark[]) {
     const wrist = landmarks[0];
     const middleMCP = landmarks[9];
 
-    // Euclidean distance in 2D plane
+    // SECONDARY: Hand size heuristic (useful for stability)
     const dx = wrist.x - middleMCP.x;
     const dy = wrist.y - middleMCP.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Tunable parameters
-    const MIN_DIST = 0.05; // Hand far
-    const MAX_DIST = 0.3;  // Hand close
-    const MIN_Z = -2.5; // Pushing deep (halved for closer interaction)
-    const MAX_Z = 2; // Safe distance (halved for closer interaction)
-
+    // Tunable parameters for size-based depth
+    const MIN_DIST = 0.02; // Hand far
+    const MAX_DIST = 0.35;  // Hand close
     const clampedDist = Math.max(MIN_DIST, Math.min(MAX_DIST, distance));
 
     const t = (clampedDist - MIN_DIST) / (MAX_DIST - MIN_DIST);
 
-    return MIN_Z + t * (MAX_Z - MIN_Z);
+    // Range: -8 (far) to +8 (close) relative to anchor
+    // Increased range to ensure user can reach the tower
+    const zFromSize = -8 + t * 16;
+
+    return zFromSize;
 }
+
+

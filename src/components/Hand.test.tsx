@@ -7,8 +7,15 @@ import Hand from './Hand'
 
 vi.mock('@react-three/fiber', () => ({
     useFrame: vi.fn(),
+    useThree: vi.fn(() => ({
+        camera: {
+            position: { x: 0, y: 10, z: 20 },
+            quaternion: { x: 0, y: 0, z: 0, w: 1 },
+        }
+    })),
     extend: vi.fn(),
 }))
+
 
 vi.mock('@react-three/rapier', async (importOriginal) => {
     const actual = await importOriginal() as any
@@ -39,64 +46,64 @@ vi.mock('../hooks/useGesture', () => ({
 
 
 describe('Hand Component', () => {
-  const mockWorld = {
-      intersectionWithShape: vi.fn(),
-      createImpulseJoint: vi.fn(),
-      removeImpulseJoint: vi.fn(),
-  }
-  const mockRapier = {
-      Ball: vi.fn(),
-      JointData: {
-          fixed: vi.fn().mockReturnValue({}),
-      },
-  }
+    const mockWorld = {
+        intersectionWithShape: vi.fn(),
+        createImpulseJoint: vi.fn(),
+        removeImpulseJoint: vi.fn(),
+    }
+    const mockRapier = {
+        Ball: vi.fn(),
+        JointData: {
+            fixed: vi.fn().mockReturnValue({}),
+        },
+    }
 
-  beforeEach(() => {
-      vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: false })
-      vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as any)
-      
-      mockWorld.intersectionWithShape.mockClear()
-      mockWorld.createImpulseJoint.mockClear()
-      mockWorld.removeImpulseJoint.mockClear()
-      mockRapier.Ball.mockClear()
-      mockRapier.JointData.fixed.mockClear()
-  })
+    beforeEach(() => {
+        vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: false })
+        vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as any)
 
-  // ...
+        mockWorld.intersectionWithShape.mockClear()
+        mockWorld.createImpulseJoint.mockClear()
+        mockWorld.removeImpulseJoint.mockClear()
+        mockRapier.Ball.mockClear()
+        mockRapier.JointData.fixed.mockClear()
+    })
 
-  it('attempts to find a block when pinching starts', () => {
-      vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: true })
-      
-      const result = { landmarks: [Array(21).fill({x:0, y:0, z:0})] } as any
-      render(<Hand result={result} />)
-      
-      const useFrameMock = vi.mocked(useFrame)
-      
-      // Mock intersection to return a hit
-      const mockBody = {
-          isDynamic: vi.fn().mockReturnValue(true),
-          wakeUp: vi.fn(),
-          linearDamping: vi.fn().mockReturnValue(0),
-          angularDamping: vi.fn().mockReturnValue(0),
-          setLinearDamping: vi.fn(),
-          setAngularDamping: vi.fn(),
-          translation: vi.fn().mockReturnValue({x:0, y:0, z:0}),
-          rotation: vi.fn().mockReturnValue({x:0, y:0, z:0, w:1}),
-      }
-      const mockCollider = {
-          parent: vi.fn().mockReturnValue(mockBody),
-      }
-      
-      mockWorld.intersectionWithShape.mockReturnValue(mockCollider)
-      
-      // Execute all frame callbacks (from HandBones and UpdateLogic)
-      useFrameMock.mock.calls.forEach(call => {
-          const callback = call[0]
-          callback({} as any, 0)
-      })
-      
-      expect(mockWorld.intersectionWithShape).toHaveBeenCalled()
-      expect(mockRapier.Ball).toHaveBeenCalledWith(0.5)
-      expect(mockWorld.createImpulseJoint).toHaveBeenCalled()
-  })
+    // ...
+
+    it('attempts to find a block when pinching starts', () => {
+        vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: true })
+
+        const result = { landmarks: [Array(21).fill({ x: 0, y: 0, z: 0 })] } as any
+        render(<Hand result={result} />)
+
+        const useFrameMock = vi.mocked(useFrame)
+
+        // Mock intersection to return a hit
+        const mockBody = {
+            isDynamic: vi.fn().mockReturnValue(true),
+            wakeUp: vi.fn(),
+            linearDamping: vi.fn().mockReturnValue(0),
+            angularDamping: vi.fn().mockReturnValue(0),
+            setLinearDamping: vi.fn(),
+            setAngularDamping: vi.fn(),
+            translation: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }),
+            rotation: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0, w: 1 }),
+        }
+        const mockCollider = {
+            parent: vi.fn().mockReturnValue(mockBody),
+        }
+
+        mockWorld.intersectionWithShape.mockReturnValue(mockCollider)
+
+        // Execute all frame callbacks (from HandBones and UpdateLogic)
+        useFrameMock.mock.calls.forEach(call => {
+            const callback = call[0]
+            callback({} as any, 0)
+        })
+
+        expect(mockWorld.intersectionWithShape).toHaveBeenCalled()
+        expect(mockRapier.Ball).toHaveBeenCalledWith(0.5)
+        expect(mockWorld.createImpulseJoint).toHaveBeenCalled()
+    })
 })
