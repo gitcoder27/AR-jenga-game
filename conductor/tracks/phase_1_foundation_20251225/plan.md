@@ -23,13 +23,13 @@
 - [~] Task: Conductor - User Manual Verification 'Phase 1.2: MediaPipe Integration' (Protocol in workflow.md)
 
 ## Phase 1.3: The Virtual Hand Rig
-- [ ] Task: Create Visual Debugger (Hand Component)
-    - [ ] Sub-task: Write Tests: Verify component renders correct number of joint spheres based on input
-    - [ ] Sub-task: Implement R3F component to render spheres at landmark positions
-- [ ] Task: Implement Z-Axis Depth Logic
-    - [ ] Sub-task: Write Tests: Unit tests for depth calculation (Wrist to Middle Finger MCP distance)
-    - [ ] Sub-task: Implement depth estimation logic
-- [ ] Task: Implement Movement Smoothing (Lerp)
-    - [ ] Sub-task: Write Tests: Unit tests for Lerp function ensuring smooth transition
-    - [ ] Sub-task: Apply Lerp to landmark coordinates in the update loop
-- [ ] Task: Conductor - User Manual Verification 'Phase 1.3: The Virtual Hand Rig' (Protocol in workflow.md)
+- [x] Task: Create Visual Debugger (Hand Component)
+    - [x] Sub-task: Write Tests: Verify component renders correct number of joint spheres based on input
+    - [x] Sub-task: Implement R3F component to render spheres at landmark positions
+- [x] Task: Implement Z-Axis Depth Logic
+    - [x] Sub-task: Write Tests: Unit tests for depth calculation (Wrist to Middle Finger MCP distance)
+    - [x] Sub-task: Implement depth estimation logic
+- [x] Task: Implement Movement Smoothing (Lerp)
+    - [x] Sub-task: Write Tests: Unit tests for Lerp function ensuring smooth transition
+    - [x] Sub-task: Apply Lerp to landmark coordinates in the update loop
+- [~] Task: Conductor - User Manual Verification 'Phase 1.3: The Virtual Hand Rig' (Protocol in workflow.md)
