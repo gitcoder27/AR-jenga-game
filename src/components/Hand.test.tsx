@@ -18,6 +18,7 @@ vi.mock('@react-three/rapier', async (importOriginal) => {
         RigidBody: React.forwardRef(({ children, type }: any, ref: any) => {
             React.useImperativeHandle(ref, () => ({
                 translation: () => ({ x: 0, y: 0, z: 0 }),
+                rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
                 setNextKinematicTranslation: vi.fn(),
             }))
             return (
@@ -35,14 +36,7 @@ vi.mock('../hooks/useGesture', () => ({
     default: vi.fn()
 }))
 
-vi.mock('three', () => {
-    return {
-        Mesh: class {},
-        Vector3: class { set() {} },
-        Quaternion: class { setFromEuler() {} },
-        Euler: class {},
-    }
-})
+
 
 describe('Hand Component', () => {
   const mockWorld = {
@@ -53,7 +47,7 @@ describe('Hand Component', () => {
   const mockRapier = {
       Ball: vi.fn(),
       JointData: {
-          fixed: vi.fn(),
+          fixed: vi.fn().mockReturnValue({}),
       },
   }
 
@@ -83,6 +77,12 @@ describe('Hand Component', () => {
       const mockBody = {
           isDynamic: vi.fn().mockReturnValue(true),
           wakeUp: vi.fn(),
+          linearDamping: vi.fn().mockReturnValue(0),
+          angularDamping: vi.fn().mockReturnValue(0),
+          setLinearDamping: vi.fn(),
+          setAngularDamping: vi.fn(),
+          translation: vi.fn().mockReturnValue({x:0, y:0, z:0}),
+          rotation: vi.fn().mockReturnValue({x:0, y:0, z:0, w:1}),
       }
       const mockCollider = {
           parent: vi.fn().mockReturnValue(mockBody),

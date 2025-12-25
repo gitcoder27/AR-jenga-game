@@ -19,6 +19,34 @@
     - [x] Apply a neutral, non-distracting material.
 - [ ] Task: Conductor - User Manual Verification 'Environment & Lighting' (Protocol in workflow.md)
 
+## Phase 1.5: Gameplay & Interaction Refinements (User Feedback)
+- [x] Task: Fix Hand Tracking Range & Mapping
+    - [x] Create `test/coordinates_range.test.ts` to verify mapping limits.
+    - [x] Update `utils/coordinates.ts` to expand the mapped range (allow hand to reach edges/corners).
+    - [x] Verify hand can travel fully across the scene.
+- [x] Task: Enhance Depth Perception (Z-Axis)
+    - [x] Create `components/DepthCursor.tsx`.
+    - [x] Implement a visual guide (e.g., a semi-transparent ring) projected on the table/floor at the hand's [x, 0, z] position.
+    - [x] Ensure the cursor is visible only when hand is tracked.
+- [x] Task: Refine Physics & Grabbing
+    - [x] Update `Hand.tsx` (or `RoboticHand.tsx` later) logic.
+    - [x] Add damping to the held block to reduce jitter.
+    - [x] Experiment with `mass` properties in `Block.tsx`.
+- [x] Task: Fix Game Over Logic
+    - [x] Update `store/gameStore.ts` logic.
+    - [x] Logic change: Ignore collision with floor if the block is currently "held" (pinched) or was just released by the user (grace period?).
+    - [x] Ensure Game Over only triggers if *non-held* blocks hit the floor.
+- [ ] Task: Conductor - User Manual Verification 'Gameplay & Interaction Refinements' (Protocol in workflow.md)
+
+## Phase 1.6: Fine-tuning Input Mapping & Cursors (User Feedback)
+- [x] Task: Fix Bottom Screen Mapping
+    - [x] Update `utils/coordinates.ts` to increase Y-axis range or offset.
+    - [x] Verify Y=1 (bottom of webcam) maps to lower World Y coordinate.
+- [x] Task: Align Cursor with Pinch Point
+    - [x] Update `components/DepthCursor.tsx` to calculate position based on Index Tip and Thumb Tip midpoint.
+    - [x] Ensure cursor follows the "fingers" not the "wrist".
+- [ ] Task: Conductor - User Manual Verification 'Fine-tuning Input Mapping & Cursors' (Protocol in workflow.md)
+
 ## Phase 2: Textures & Materials (Blocks)
 - [ ] Task: Implement Wood Material
     - [ ] Create `utils/materials.ts` or similar to manage shared materials.

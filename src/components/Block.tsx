@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { RigidBody, type CollisionEnterPayload } from '@react-three/rapier'
 import { useGameStore } from '../store/gameStore'
 
@@ -11,13 +12,20 @@ export default function Block({ id, position, rotation }: BlockProps) {
     const setGameState = useGameStore((state) => state.setGameState)
     const heldBlockId = useGameStore((state) => state.heldBlockId)
     const gameState = useGameStore((state) => state.gameState)
+    const [isSafe, setIsSafe] = useState(false)
+
+    useEffect(() => {
+        if (heldBlockId === id) {
+            setIsSafe(true)
+        }
+    }, [heldBlockId, id])
 
     const handleCollision = ({ other }: CollisionEnterPayload) => {
         if (gameState !== 'PLAYING') return
 
         const otherName = other.rigidBodyObject?.name
         if (otherName === 'floor') {
-            if (id !== heldBlockId) {
+            if (id !== heldBlockId && !isSafe) {
                 setGameState('GAME_OVER')
             }
         }
@@ -28,8 +36,8 @@ export default function Block({ id, position, rotation }: BlockProps) {
             position={position} 
             rotation={rotation} 
             type="dynamic" 
-            mass={1} 
-            friction={0.8} 
+            mass={2} 
+            friction={1} 
             restitution={0}
             name={`block-${id}`}
             onCollisionEnter={handleCollision}

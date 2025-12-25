@@ -15,6 +15,7 @@ import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
 import { StudioRoom } from './components/StudioRoom'
+import { DepthCursor } from './components/DepthCursor'
 
 function App() {
   const { detect, isReady } = useHandTracking()
@@ -89,6 +90,7 @@ function App() {
               <Table />
               <Tower key={gameId} />
               <Hand result={result} />
+              <DepthCursor result={result} />
               
               <OrbitControls />
               <gridHelper args={[20, 20]} />
