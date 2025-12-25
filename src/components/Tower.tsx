@@ -48,7 +48,7 @@ export default function Tower() {
     return (
         <group>
             {blocks.map(b => (
-                <Block key={b.id} position={b.position} rotation={b.rotation} />
+                <Block key={b.id} id={b.id} position={b.position} rotation={b.rotation} />
             ))}
         </group>
     )

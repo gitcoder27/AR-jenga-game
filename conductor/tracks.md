@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Phase 3: Advanced Interaction & Game Logic
-*Link: [./conductor/tracks/phase_3_advanced_20251225/](./conductor/tracks/phase_3_advanced_20251225/)*
+## [~] Track: Phase 4: Visual Polish & Atmosphere
+*Link: [./conductor/tracks/visual_polish_20251226/](./conductor/tracks/visual_polish_20251226/)*

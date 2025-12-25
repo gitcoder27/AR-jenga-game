@@ -18,11 +18,11 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3.2: Grabbing Mechanics' (Protocol in workflow.md)
 
 ## Phase 3.3: Game State & Win/Loss Logic
-- [ ] Task: Implement Game Store
-    - [ ] Sub-task: Create `useGameStore` (Zustand) to track `gameState` (PLAYING, GAME_OVER), `score`, and `heldBlockId`
-- [ ] Task: Loss Detection
-    - [ ] Sub-task: Update `Block.tsx` or `Tower.tsx` to detect collision with floor
-    - [ ] Sub-task: Trigger `GAME_OVER` if a non-held block hits the floor
-- [ ] Task: Game UI
-    - [ ] Sub-task: Add "Game Over" overlay and "Reset Game" button to `App.tsx`
-- [ ] Task: Conductor - User Manual Verification 'Phase 3.3: Game State & Win/Loss Logic' (Protocol in workflow.md)
+- [x] Task: Implement Game Store
+    - [x] Sub-task: Create `useGameStore` (Zustand) to track `gameState` (PLAYING, GAME_OVER), `score`, and `heldBlockId`
+- [x] Task: Loss Detection
+    - [x] Sub-task: Update `Block.tsx` or `Tower.tsx` to detect collision with floor
+    - [x] Sub-task: Trigger `GAME_OVER` if a non-held block hits the floor
+- [x] Task: Game UI
+    - [x] Sub-task: Add "Game Over" overlay and "Reset Game" button to `App.tsx`
+- [x] Task: Conductor - User Manual Verification 'Phase 3.3: Game State & Win/Loss Logic' (Protocol in workflow.md)
