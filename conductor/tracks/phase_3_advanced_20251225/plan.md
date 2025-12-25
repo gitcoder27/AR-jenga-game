@@ -9,13 +9,13 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3.1: Pinch Detection System' (Protocol in workflow.md)
 
 ## Phase 3.2: Grabbing Mechanics
-- [ ] Task: Implement Grabbing Physics
-    - [ ] Sub-task: Write Tests: Verify joint creation/destruction logic
-    - [ ] Sub-task: Implement logic to find the closest block to the pinch point
-    - [ ] Sub-task: Use `@react-three/rapier` `useFixedJoint` or equivalent to link hand and block
-- [ ] Task: Release Logic
-    - [ ] Sub-task: Ensure the joint is destroyed and block becomes dynamic again when pinch released
-- [ ] Task: Conductor - User Manual Verification 'Phase 3.2: Grabbing Mechanics' (Protocol in workflow.md)
+- [x] Task: Implement Grabbing Physics
+    - [x] Sub-task: Write Tests: Verify joint creation/destruction logic
+    - [x] Sub-task: Implement logic to find the closest block to the pinch point
+    - [x] Sub-task: Use `@react-three/rapier` `useFixedJoint` or equivalent to link hand and block
+- [x] Task: Release Logic
+    - [x] Sub-task: Ensure the joint is destroyed and block becomes dynamic again when pinch released
+- [x] Task: Conductor - User Manual Verification 'Phase 3.2: Grabbing Mechanics' (Protocol in workflow.md)
 
 ## Phase 3.3: Game State & Win/Loss Logic
 - [ ] Task: Implement Game Store
