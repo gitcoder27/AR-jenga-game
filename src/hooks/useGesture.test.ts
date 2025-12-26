@@ -27,4 +27,29 @@ describe('useGesture', () => {
     const { result } = renderHook(() => useGesture(landmarks))
     expect(result.current.isPinching).toBe(false)
   })
-})
+
+  it('detects closed fist when all fingertips are close to palm', () => {
+    const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
+    // Wrist at (0,0,0)
+    // Fingertips 8, 12, 16, 20 all at distance 0.1
+    [8, 12, 16, 20].forEach(idx => {
+      landmarks[idx] = { x: 0.1, y: 0, z: 0 };
+    });
+
+    const { result } = renderHook(() => useGesture(landmarks))
+    expect(result.current.isClosedFist).toBe(true)
+  })
+
+  it('does not detect closed fist when fingers are extended', () => {
+    const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
+    // Wrist at (0,0,0)
+    // One finger extended (distance 0.3 > threshold 0.25)
+    [8, 12, 16, 20].forEach(idx => {
+      landmarks[idx] = { x: 0.1, y: 0, z: 0 };
+    });
+    landmarks[8] = { x: 0.3, y: 0, z: 0 };
+
+    const { result } = renderHook(() => useGesture(landmarks))
+    expect(result.current.isClosedFist).toBe(false)
+  })
+});

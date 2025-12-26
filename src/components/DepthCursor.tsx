@@ -1,9 +1,9 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Ring } from '@react-three/drei';
 import { calculateDepth } from '../utils/depth';
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
+import useGesture from '../hooks/useGesture';
 
 interface DepthCursorProps {
   result: HandLandmarkerResult | null;
@@ -12,27 +12,30 @@ interface DepthCursorProps {
 const PARKING_POSITION = new THREE.Vector3(0, -100, 0);
 
 export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
-  const cursorRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const positionRef = useRef(new THREE.Vector3().copy(PARKING_POSITION));
   const isFirstFrameRef = useRef(true);
 
+  const { isPinching } = useGesture(result?.landmarks?.[0]);
+
   useFrame(() => {
     if (!result || !result.landmarks || result.landmarks.length === 0) {
-      if (!isFirstFrameRef.current && cursorRef.current) {
+      if (!isFirstFrameRef.current && groupRef.current) {
         positionRef.current.copy(PARKING_POSITION);
-        cursorRef.current.position.copy(PARKING_POSITION);
+        groupRef.current.position.copy(PARKING_POSITION);
         isFirstFrameRef.current = true;
       }
       return;
     }
 
-    if (!cursorRef.current) return;
+    if (!groupRef.current) return;
 
     const landmarks = result.landmarks[0];
     const thumb = landmarks[4];
     const index = landmarks[8];
 
+    // Calculate pinch midpoint - this is where the grab will happen
     const midX = (thumb.x + index.x) / 2;
     const midY = (thumb.y + index.y) / 2;
     const midZRaw = (thumb.z + index.z) / 2;
@@ -50,7 +53,6 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
 
     // Transform to camera-relative world position
     const localPos = new THREE.Vector3(lx, ly, lz);
-
     const worldPos = localPos.applyQuaternion(camera.quaternion).add(camera.position);
 
     if (isFirstFrameRef.current) {
@@ -60,21 +62,51 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
       positionRef.current.lerp(worldPos, 0.2);
     }
 
-    cursorRef.current.position.copy(positionRef.current);
-  });
+    groupRef.current.position.copy(positionRef.current);
 
+    // Make the cursor face the camera
+    groupRef.current.lookAt(camera.position);
+  });
 
   const isVisible = !!(result && result.landmarks && result.landmarks.length > 0);
 
+  // Color based on pinch state
+  const cursorColor = isPinching ? '#00ff00' : '#ffffff';
+  const cursorOpacity = isPinching ? 0.9 : 0.6;
+
   return (
-    <Ring
-      ref={cursorRef}
-      args={[0.3, 0.4, 32]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, -100, 0]} // Initial parking
-      visible={isVisible}
-    >
-      <meshBasicMaterial color="cyan" transparent opacity={0.5} side={THREE.DoubleSide} />
-    </Ring>
+    <group ref={groupRef} position={[0, -100, 0]} visible={isVisible}>
+      {/* Outer ring */}
+      <mesh>
+        <ringGeometry args={[0.35, 0.4, 32]} />
+        <meshBasicMaterial
+          color={cursorColor}
+          transparent
+          opacity={cursorOpacity}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Inner dot - pinch indicator */}
+      <mesh>
+        <circleGeometry args={[0.08, 16]} />
+        <meshBasicMaterial
+          color={cursorColor}
+          transparent
+          opacity={cursorOpacity}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Crosshair lines */}
+      <mesh rotation={[0, 0, 0]}>
+        <planeGeometry args={[0.02, 0.6]} />
+        <meshBasicMaterial color={cursorColor} transparent opacity={cursorOpacity * 0.7} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <planeGeometry args={[0.02, 0.6]} />
+        <meshBasicMaterial color={cursorColor} transparent opacity={cursorOpacity * 0.7} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
   );
 };

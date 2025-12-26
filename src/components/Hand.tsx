@@ -25,11 +25,24 @@ const PARKING_POSITION: [number, number, number] = [0, -100, 0];
 
 export default function Hand({ result }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const { isPinching } = useGesture(result?.landmarks?.[0])
+    const { isPinching, isClosedFist } = useGesture(result?.landmarks?.[0])
 
     // We keep the component mounted to avoid "pop-in" at [0,0,0]
     // but we hide the visuals if no result
     const isVisible = !!(result && result.landmarks && result.landmarks.length > 0);
+
+    // Determine hand color based on gesture state
+    const getHandColor = () => {
+        if (isPinching) return '#00e5ff'; // Cyan for pinch
+        if (isClosedFist) return '#ff9800'; // Orange for closed fist
+        return '#cccccc'; // Default gray
+    };
+
+    const getBoneColor = () => {
+        if (isPinching) return '#00e5ff';
+        if (isClosedFist) return '#ff9800';
+        return '#888888';
+    };
 
     return (
         <group visible={isVisible}>
@@ -45,7 +58,7 @@ export default function Hand({ result }: HandProps) {
                     <mesh>
                         <sphereGeometry args={[0.05, 12, 12]} />
                         <meshStandardMaterial
-                            color={isPinching ? '#00e5ff' : '#cccccc'}
+                            color={getHandColor()}
                             metalness={1.0}
                             roughness={0.2}
                         />
@@ -60,7 +73,7 @@ export default function Hand({ result }: HandProps) {
                     refs={refs}
                     startIdx={start}
                     endIdx={end}
-                    color={isPinching ? '#00e5ff' : '#888888'}
+                    color={getBoneColor()}
                 />
             ))}
 

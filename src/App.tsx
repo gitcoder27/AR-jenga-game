@@ -17,6 +17,8 @@ import { StudioRoom } from './components/StudioRoom'
 import { DepthCursor } from './components/DepthCursor'
 import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
+import GestureOrbitController from './components/GestureOrbitController'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 function App() {
   const { detect, isReady } = useHandTracking()
@@ -24,6 +26,7 @@ function App() {
   const [result, setResult] = useState<HandLandmarkerResult | null>(null)
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const requestRef = useRef<number>(0)
+  const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
   const gameId = useGameStore((state) => state.gameId)
   const gameMode = useGameStore((state) => state.gameMode)
@@ -66,7 +69,8 @@ function App() {
           <Hand result={result} />
           <DepthCursor result={result} />
 
-          <OrbitControls />
+          <OrbitControls ref={orbitControlsRef} />
+          <GestureOrbitController result={result} controlsRef={orbitControlsRef} />
           <gridHelper args={[20, 20]} />
         </Physics>
       </Canvas>
