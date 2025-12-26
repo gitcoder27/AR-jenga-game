@@ -59,7 +59,15 @@ describe('Hand Component', () => {
     }
 
     beforeEach(() => {
-        vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: false, isClosedFist: false })
+        vi.mocked(useGestureHook.default).mockReturnValue({
+            isPinching: false,
+            isOpenPalm: false,
+            isClosedFist: false,
+            gestureState: 'IDLE',
+            confidence: 0,
+            pinchPoint: null,
+            metrics: null,
+        })
         vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as any)
 
         mockWorld.intersectionWithShape.mockClear()
@@ -72,7 +80,15 @@ describe('Hand Component', () => {
     // ...
 
     it('attempts to find a block when pinching starts', () => {
-        vi.mocked(useGestureHook.default).mockReturnValue({ isPinching: true, isClosedFist: false })
+        vi.mocked(useGestureHook.default).mockReturnValue({
+            isPinching: true,
+            isOpenPalm: false,
+            isClosedFist: false,
+            gestureState: 'PINCHING',
+            confidence: 0.9,
+            pinchPoint: { x: 0, y: 0, z: 0 },
+            metrics: { pinchDistance: 0.03, avgFingerExtension: 0.3, fingerSpread: 0.1, allFingersExtended: false, thumbExtended: false },
+        })
 
         const result = { landmarks: [Array(21).fill({ x: 0, y: 0, z: 0 })] } as any
         render(<Hand result={result} />)

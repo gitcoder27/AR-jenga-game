@@ -3,7 +3,7 @@ import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, type RapierRigidBody, useRapier } from '@react-three/rapier'
 import { calculateDepth } from '../utils/depth'
-import { lerp } from '../utils/smoothing'
+import { adaptiveLerp, calculateVelocity } from '../utils/smoothing'
 import useGesture from '../hooks/useGesture'
 import { HandBone } from './HandBone'
 import * as THREE from 'three'
@@ -77,18 +77,20 @@ export default function Hand({ result }: HandProps) {
                 />
             ))}
 
-            <UpdateLogic result={result} refs={refs} isPinching={isPinching} />
+            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isClosedFist={isClosedFist} />
         </group>
     )
 }
 
-function UpdateLogic({ result, refs, isPinching }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean }) {
+function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isClosedFist: boolean }) {
     const { world, rapier } = useRapier()
     const { camera } = useThree()
     const jointRef = useRef<any>(null)
     const grabbedBodyRef = useRef<RapierRigidBody | null>(null)
     const previousDampingRef = useRef<{ linear: number, angular: number }>({ linear: 0, angular: 0 })
     const isFirstFrameRef = useRef(true)
+    // Velocity tracking for adaptive smoothing
+    const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
 
     useFrame(() => {
         if (!result || !result.landmarks || result.landmarks.length === 0) {
@@ -104,8 +106,6 @@ function UpdateLogic({ result, refs, isPinching }: { result: HandLandmarkerResul
 
         const landmarks = result.landmarks[0]
         const handZ = calculateDepth(landmarks)
-
-        const smoothingFactor = 0.12
 
         // Viewport parameters defining the interaction volume in front of camera
         const VIEW_WIDTH = 45;
@@ -137,13 +137,21 @@ function UpdateLogic({ result, refs, isPinching }: { result: HandLandmarkerResul
                 if (isFirstFrameRef.current) {
                     // Teleport instantly on first frame to avoid knocking tower from center
                     rb.setNextKinematicTranslation({ x: worldPos.x, y: worldPos.y, z: worldPos.z })
+                    prevPositionsRef.current.set(index, { x: worldPos.x, y: worldPos.y, z: worldPos.z });
                 } else {
                     const currentPos = rb.translation()
-                    // More aggressive smoothing to handle larger range
-                    const newX = lerp(currentPos.x, worldPos.x, smoothingFactor)
-                    const newY = lerp(currentPos.y, worldPos.y, smoothingFactor)
-                    const newZ = lerp(currentPos.z, worldPos.z, smoothingFactor)
+                    const prevPos = prevPositionsRef.current.get(index) || currentPos;
+
+                    // Calculate velocity for adaptive smoothing
+                    const velocity = calculateVelocity(prevPos, worldPos);
+
+                    // Adaptive smoothing: fast movements = responsive, slow = stable
+                    const newX = adaptiveLerp(currentPos.x, worldPos.x, velocity)
+                    const newY = adaptiveLerp(currentPos.y, worldPos.y, velocity)
+                    const newZ = adaptiveLerp(currentPos.z, worldPos.z, velocity)
+
                     rb.setNextKinematicTranslation({ x: newX, y: newY, z: newZ })
+                    prevPositionsRef.current.set(index, { x: newX, y: newY, z: newZ });
                 }
             }
         })
@@ -151,7 +159,8 @@ function UpdateLogic({ result, refs, isPinching }: { result: HandLandmarkerResul
 
         isFirstFrameRef.current = false
 
-        if (isPinching) {
+        // Only grab if pinching AND not in fist state (mutual exclusion)
+        if (isPinching && !isClosedFist) {
             if (!jointRef.current) {
                 const thumbTip = refs.current[4]
                 const indexTip = refs.current[8]

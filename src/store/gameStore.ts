@@ -8,6 +8,7 @@ interface GameStore {
     gameState: GameState
     score: number
     heldBlockId: string | null
+    hoveredBlockId: string | null  // Block currently under the pointer
     gameId: number
     isWebcamVisible: boolean
     isInstructionsVisible: boolean
@@ -16,6 +17,7 @@ interface GameStore {
     returnToMenu: () => void
     incrementScore: () => void
     setHeldBlockId: (id: string | null) => void
+    setHoveredBlockId: (id: string | null) => void
     setWebcamVisible: (visible: boolean) => void
     setInstructionsVisible: (visible: boolean) => void
     resetGame: () => void
@@ -26,6 +28,7 @@ export const useGameStore = create<GameStore>((set) => ({
     gameState: 'PLAYING',
     score: 0,
     heldBlockId: null,
+    hoveredBlockId: null,
     gameId: 0,
     isWebcamVisible: false,
     isInstructionsVisible: false,
@@ -35,17 +38,20 @@ export const useGameStore = create<GameStore>((set) => ({
         gameState: 'PLAYING',
         score: 0,
         heldBlockId: null,
+        hoveredBlockId: null,
         isInstructionsVisible: true
     }),
-    returnToMenu: () => set({ gameMode: 'MENU', gameState: 'PLAYING' }),
+    returnToMenu: () => set({ gameMode: 'MENU', gameState: 'PLAYING', hoveredBlockId: null }),
     incrementScore: () => set((state) => ({ score: state.score + 1 })),
     setHeldBlockId: (heldBlockId) => set({ heldBlockId }),
+    setHoveredBlockId: (hoveredBlockId) => set({ hoveredBlockId }),
     setWebcamVisible: (isWebcamVisible) => set({ isWebcamVisible }),
     setInstructionsVisible: (isInstructionsVisible) => set({ isInstructionsVisible }),
     resetGame: () => set((state) => ({
         gameState: 'PLAYING',
         score: 0,
         heldBlockId: null,
+        hoveredBlockId: null,
         gameId: state.gameId + 1,
         isInstructionsVisible: state.gameMode === 'CLASSIC'
     })),
