@@ -67,7 +67,16 @@ describe('Hand Component', () => {
         createImpulseJoint: vi.fn().mockReturnValue({ setContactsEnabled: vi.fn() }),
         removeImpulseJoint: vi.fn(),
         // The soft grab's proxy body (G-1)
-        createRigidBody: vi.fn().mockReturnValue({ handle: 99 }),
+        createRigidBody: vi.fn().mockReturnValue({
+            handle: 99,
+            setEnabled: vi.fn(),
+            setTranslation: vi.fn(),
+            setLinvel: vi.fn(),
+            setRotation: vi.fn(),
+            translation: () => ({ x: 0, y: 0, z: 0 }),
+            rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
+        }),
+        createCollider: vi.fn().mockReturnValue({ setSolverGroups: vi.fn(), shape: {} }),
         removeRigidBody: vi.fn(),
         getRigidBody: vi.fn(),
         forEachRigidBody: vi.fn(),
@@ -78,10 +87,22 @@ describe('Hand Component', () => {
         setGravityScale: () => proxyDesc,
         setCanSleep: () => proxyDesc,
         setAdditionalMassProperties: () => proxyDesc,
+        // The fingertip (G-3)
+        setCcdEnabled: () => proxyDesc,
+        lockRotations: () => proxyDesc,
+        setAdditionalMass: () => proxyDesc,
+        setEnabled: () => proxyDesc,
+    }
+    const colliderDesc = {
+        setDensity: () => colliderDesc,
+        setFriction: () => colliderDesc,
+        setSolverGroups: () => colliderDesc,
     }
     const mockRapier = {
         Ball: vi.fn(),
         RigidBodyDesc: { dynamic: () => proxyDesc },
+        ColliderDesc: { capsule: () => colliderDesc },
+        Capsule: vi.fn(),
         JointData: {
             fixed: vi.fn().mockReturnValue({}),
         },

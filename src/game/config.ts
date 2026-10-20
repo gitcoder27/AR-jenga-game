@@ -58,8 +58,27 @@ export const CAMERA_MAX_POLAR_ANGLE = (80 * Math.PI) / 180;
 
 // Hand / grab
 export const HAND_JOINT_COUNT = 21;
-export const HAND_JOINT_RADIUS = 0.05;
 export const HAND_PARKING_POSITION: Vec3Tuple = [0, -100, 0];
+/** Blocks use Rapier's default density 1 (P-3), so a block's mass is its volume. */
+export const BLOCK_MASS = BLOCK_WIDTH * BLOCK_HEIGHT * BLOCK_LENGTH;
+/*
+ * The index fingertip (G-3): the only part of the hand that pushes. A capsule
+ * driven by a velocity target with speed and force caps.
+ */
+export const FINGERTIP_RADIUS = 0.25;
+/** Half the length of the capsule's straight part, along the finger */
+export const FINGERTIP_HALF_LENGTH = 0.2;
+export const FINGERTIP_MASS = 1;
+/** Fastest the fingertip moves, whatever the tracking does (units/s) */
+export const FINGERTIP_MAX_SPEED = 10;
+/** Hardest it pushes: one block's weight. Moves a loose block, not a loaded one. */
+export const FINGERTIP_MAX_FORCE = BLOCK_MASS * Math.hypot(...GRAVITY);
+/** It aims to close the gap to the tracked tip in this long */
+export const FINGERTIP_RESPONSE_S = 0.05;
+/** Further behind than this (blocked, or the hand jumped), it teleports with its collider off */
+export const FINGERTIP_SNAP_DISTANCE = 1.5;
+/** A disabled fingertip collider comes back only once it is this far clear of every block */
+export const FINGERTIP_CLEARANCE = 0.15;
 export const GRAB_RADIUS = 0.5;
 /*
  * Soft grab (G-1): a proxy at the pinch point, fixed to the block, chased by a
@@ -90,4 +109,5 @@ export const TRACKING_LOSS_GRACE_S = 0.25;
 export const KILL_PLANE_Y = -10;
 
 export const THUMB_TIP = 4;
+export const INDEX_DIP = 7;
 export const INDEX_TIP = 8;

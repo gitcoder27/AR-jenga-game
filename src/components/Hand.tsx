@@ -60,7 +60,8 @@ export default function Hand({ result, aspect = 1 }: HandProps) {
                     key={i}
                     ref={(el: RapierRigidBody | null) => { refs.current[i] = el }}
                     type="kinematicPosition"
-                    colliders="ball"
+                    // Visual only: the hand touches blocks through HandPhysics' fingertip (G-3)
+                    colliders={false}
                     position={HAND_PARKING_POSITION} // Start far away
                 >
                     <mesh castShadow>

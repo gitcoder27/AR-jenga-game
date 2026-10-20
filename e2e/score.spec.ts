@@ -1,15 +1,14 @@
-import { test, expect, flakyKnownBug } from './fixtures'
+import { test, expect } from './fixtures'
 import { carryTo, grabBlock, release, storeState } from './helpers'
 
 const ID = '2-0'
 const TOP_FACE = 18 * 1.5
 
 // C-1 / C-3: the core loop. Extract a block, put it on top, let the tower settle: +1.
-// The rules score this (tests/physics/moves.test.ts). End to end it passes about 1 in 3
-// with the soft grab (G-1): carried over the top, the hand's 21 infinite-mass joint
-// colliders hit the held block or the top level, flinging the block or letting it go
-// early (G-3). Plain once the finger colliders are fixed.
-flakyKnownBug('a full move (extract, place on top, settle) scores 1 [C-1, C-3]', async ({ page, driver, startGame }) => {
+// The rules score this (tests/physics/moves.test.ts). End to end it needed the soft
+// grab (G-1) and fingertip-only hand colliders (G-3): before them the hand's 21 joint
+// balls knocked neighbours out or flung the carried block.
+test('a full move (extract, place on top, settle) scores 1 [C-1, C-3]', async ({ page, driver, startGame }) => {
   test.setTimeout(240_000)
   await startGame('CLASSIC')
   const block = (await driver((d) => d.blockPositions()))[ID]

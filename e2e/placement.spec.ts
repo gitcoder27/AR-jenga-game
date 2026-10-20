@@ -30,7 +30,8 @@ test('a block from an odd level, let go over the top, snaps into the next slot t
   await carryTo(page, driver, out, 2000, 600)
   const offset = { x: pinch.x - b.x, y: pinch.y - b.y, z: pinch.z - b.z }
   const handFor = (c: { x: number; y: number; z: number }) => ({ x: c.x + offset.x, y: c.y + offset.y, z: c.z + offset.z })
-  await carryTo(page, driver, handFor({ x: b.x + 8, y: TOP_FACE + 4, z: b.z }), 1500, 600)
+  // ~7 u/s, as in score.spec.ts: a faster lift lags past the carry slip distance at SwiftShader's ~12 FPS
+  await carryTo(page, driver, handFor({ x: b.x + 8, y: TOP_FACE + 4, z: b.z }), 3000, 600)
   await carryTo(page, driver, handFor({ x: 0.8, y: TOP_FACE + 2, z: 0.5 }), 1500, 1000)
   await expect.poll(async () => driver((d) => d.store().placementTarget)).not.toBeNull()
 

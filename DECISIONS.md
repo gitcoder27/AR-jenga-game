@@ -202,3 +202,47 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   At 2 u/s the rigid grab moved the whole tower for 1-0, 2-0 and 8-0, so a low shift there is not a clean pull.
   The soft grab is a big improvement on slow pulls. At 6 u/s it is about even, slightly worse on some edge
   blocks. These are simulated scripted pulls; hand-tracking feel is not measured.
+
+### Hand colliders (G-3)
+
+- **Only the index fingertip touches blocks.** The 21 joint bodies keep driving the visuals but have no
+  colliders, in the app and in the headless scene. The pushing part is one dynamic capsule on the index tip:
+  - Size: radius 0.25, 0.4 straight length, along the distal phalanx.
+  - Drive: a velocity target that closes the gap in 0.05 s.
+  - Caps: at most 10 u/s, and a force of one block's weight, which moves a loose block but not a loaded one.
+  - Snap: if it falls 1.5 behind (blocked, or a tracking jump), it teleports and stops pushing.
+  - Re-arm: it pushes again only once it is 0.15 clear of every block, so it never starts inside the tower or
+    against the face of the block it just let go of.
+- **"Pinch proxy" is the held block.** The review asks for the index tip and a pinch proxy. While carrying,
+  the held block itself is the hand's contact, driven by the soft grab (G-1); a second collider at the pinch
+  would only shove the block it holds. The fingertip pushes only with a relaxed or pointing hand: not while
+  pinching or closing, not while holding, and not with an open palm (camera gesture, H-2).
+- **Fingertip on/off uses solver groups, not `collider.setEnabled(false)`.** In rapier3d-compat 0.19, a
+  disabled collider's existing contact pair kept applying force: an "off" fingertip inside 8-0 pushed it for
+  another 40 steps, then let go, and the spring-back kicked the top of the tower by 0.5.
+- **The fingertip's mass is on the body, not its collider.** A dynamic body whose only collider is off has no
+  mass, and it stalled the solver for the whole island: grabbed blocks stopped following the hand.
+- **The soft grab's angular controller now uses per-axis inertia** (block frame, about the pinch point). The
+  single "end over end" inertia was about 28× too high for rolling about the long axis, which put roll near
+  the 60 Hz stability limit. The thumb and index joint balls used to hide this by physically gripping the
+  block; without them, a block lowered onto the top rolled onto its side.
+
+  Max displacement of any block, rigid joint balls (HEAD) vs fingertip, seed 1:
+
+  | Scenario | Joint balls | Fingertip |
+  |----------|-------------|-----------|
+  | Brush past the front face, palm and fingers overlapping the tower, 6 u/s | 26.4 | 0.01 |
+  | 60 u/s swipe through the top level | 127.9 | 0.01 |
+  | Poke a loose top block (17-1) 1.5 units in | 17-1: 1.92, others 0.04 | 17-1: 2.89, others 0.02 |
+  | Poke a loaded block (8-0) 1.5 units in | 8-0 rammed 1.55, others 0.15 | 8-0: 0.00, others 0.01 |
+
+  The last row is a gameplay change: a loaded block can no longer be rammed out with a finger. It has to be
+  pulled (G-1), or poked once looser blocks exist (block tolerance variance, C-6, #15).
+- **E2E after G-1/G-3.**
+  - The score E2E (a full move scores 1) is now a plain test, and passed 3/3 before landing.
+  - The careful-pull E2E now uses the review's sim 6b threshold (0.5) instead of 0.3, as the physics pull
+    tests do. Over 8 runs, 3-1 (above 2-0) moved 0.18–0.38 with either angular controller.
+  - The lifts in the score and placement E2E take 3 s (were 1.5 s). At SwiftShader's ~12 FPS, a 20–28-unit
+    lift in 1.5 s lags past the 3-unit carry slip distance.
+  - Level 16 pulls are chaotic in the sim: 16-1 at 2 u/s gave 2.6–11.8 for small controller gain changes. They
+    are tracked only through the 16-0 known bug.

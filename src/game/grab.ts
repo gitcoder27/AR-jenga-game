@@ -1,9 +1,9 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
 import type { ImpulseJoint, RigidBody, World } from '@dimforge/rapier3d-compat';
-import type { Collider } from '@dimforge/rapier3d-compat';
 import {
     BLOCK_HEIGHT,
     BLOCK_LENGTH,
+    BLOCK_WIDTH,
     GRAB_ANGULAR_FREQUENCY,
     GRAB_FREQUENCY,
     GRAB_MAX_ACCELERATION,
@@ -14,11 +14,13 @@ import {
     GRAB_CARRY_SLIP_DISTANCE,
     GRAVITY,
     HAND_PARKING_POSITION,
+    INDEX_DIP,
     INDEX_TIP,
     THUMB_TIP,
     TOWER_FOOTPRINT,
     TRACKING_LOSS_GRACE_S,
 } from './config';
+import { Fingertip } from './fingertip';
 
 export type Rapier = typeof RAPIER;
 
@@ -121,10 +123,6 @@ function isLiveJoint(world: World, joint: ImpulseJoint): boolean {
     return world.getImpulseJoint(joint.handle) === joint;
 }
 
-function forEachCollider(body: RigidBody, fn: (collider: Collider) => void): void {
-    for (let i = 0; i < body.numColliders(); i++) fn(body.collider(i));
-}
-
 type Quat = { x: number; y: number; z: number; w: number };
 
 function quatMultiply(a: Quat, b: Quat): Quat {
@@ -150,6 +148,17 @@ function rotationError(from: Quat, to: Quat): Vec3 {
     return { x: (d.x / sin) * angle, y: (d.y / sin) * angle, z: (d.z / sin) * angle };
 }
 
+/** `v` (world) in the frame rotated by `q`, and back. */
+function toLocal(q: Quat, v: Vec3): Vec3 {
+    const l = quatMultiply(quatMultiply(quatConjugate(q), { ...v, w: 0 }), q);
+    return { x: l.x, y: l.y, z: l.z };
+}
+
+function toWorld(q: Quat, v: Vec3): Vec3 {
+    const w = quatMultiply(quatMultiply(q, { ...v, w: 0 }), quatConjugate(q));
+    return { x: w.x, y: w.y, z: w.z };
+}
+
 const GRAVITY_MAGNITUDE = Math.hypot(...GRAVITY);
 
 /** A block's long axis (its local +Z) in world space. */
@@ -172,7 +181,8 @@ interface SoftGrab {
     block: RigidBody;
     /** Proxy + block */
     mass: number;
-    inertia: number;
+    /** Moments of inertia about the pinch point, along the block's local axes */
+    inertia: Vec3;
     targetRotation: Quat;
     /**
      * Being drawn out from under other blocks: pulled along its length only and
@@ -197,15 +207,15 @@ function hasBlocksAbove(world: World, body: RigidBody): boolean {
 }
 
 /**
- * Drives the kinematic hand joint bodies and owns the grab.
- * The bodies are supplied by the caller (React components in the app, the
- * headless scene in tests).
+ * Drives the hand joint bodies and owns the grab and the fingertip.
+ * The joint bodies are supplied by the caller (React components in the app, the
+ * headless scene in tests). They are kinematic and have no colliders (G-3):
+ * the hand touches the tower only through the Fingertip, and through the held
+ * block while carrying.
  *
  * Tracking loss (H-5): the hand freezes where it was for TRACKING_LOSS_GRACE_S,
  * so brief dropouts keep the grab. After that the grab is released and the hand
- * is parked with its colliders disabled. Parking and re-acquiring teleport the
- * bodies (no velocity), and a joint's collider is only re-enabled once it is
- * clear of every block, so the hand never sweeps through or spawns inside the tower.
+ * is parked. Parking and re-acquiring teleport the bodies (no velocity).
  */
 export class HandPhysics {
     private held: SoftGrab | null = null;
@@ -222,6 +232,8 @@ export class HandPhysics {
     private readonly drop: Vec3 = { x: 0, y: 0, z: 0 };
     private hasDrop = false;
     private hover: CursorFeedback = NO_FEEDBACK;
+    /** Created on the first tracked frame, so constructing a HandPhysics has no side effects on the world */
+    private tip: Fingertip | null = null;
     /** Called with the block id on grab and null when the grab ends for any reason (C-2). */
     onHeldChange: ((blockId: string | null) => void) | null;
     /** Called when the block a pinch would grab changes (F-1). */
@@ -244,12 +256,18 @@ export class HandPhysics {
         return this.held?.block ?? null;
     }
 
+    /** The pushing fingertip's body, once the hand has been tracked. */
+    get fingertipBody(): RigidBody | null {
+        return this.tip?.body ?? null;
+    }
+
     /**
      * Drive the held block toward the pinch point. Call before every physics
      * step (useBeforePhysicsStep): the forces are recomputed from the current
      * error, so they stay correct whatever the render frame rate.
      */
     beforeStep(): void {
+        this.tip?.beforeStep();
         const held = this.held;
         if (!held) return;
         if (!isLiveBody(this.world, held.block) || !isLiveBody(this.world, held.proxy)) {
@@ -299,10 +317,13 @@ export class HandPhysics {
 
         // Keep the orientation it was grabbed with (the placement assist turns it on release)
         const wa = 2 * Math.PI * GRAB_ANGULAR_FREQUENCY;
-        const e = rotationError(proxy.rotation(), held.targetRotation);
-        const av = proxy.angvel();
-        const ka = inertia * wa * wa, ca = 2 * inertia * wa;
-        let tx = ka * e.x - ca * av.x, ty = ka * e.y - ca * av.y, tz = ka * e.z - ca * av.z;
+        // Per axis in the block's frame: rolling about its long axis takes far less torque than turning it end over end
+        const q = proxy.rotation();
+        const e = toLocal(q, rotationError(q, held.targetRotation));
+        const av = toLocal(q, proxy.angvel());
+        const torque = (i: number, err: number, vel: number) => i * wa * wa * err - 2 * i * wa * vel;
+        const local = { x: torque(inertia.x, e.x, av.x), y: torque(inertia.y, e.y, av.y), z: torque(inertia.z, e.z, av.z) };
+        let { x: tx, y: ty, z: tz } = toWorld(q, local);
         const tMax = fMax * GRAB_SLIP_DISTANCE * 2;
         const t = Math.hypot(tx, ty, tz);
         if (t > tMax) {
@@ -364,7 +385,6 @@ export class HandPhysics {
         } else {
             input.joints.forEach((target, i) => bodies[i]?.setNextKinematicTranslation(target));
         }
-        this.enableClearColliders(bodies);
 
         const thumbTip = bodies[THUMB_TIP];
         const indexTip = bodies[INDEX_TIP];
@@ -391,12 +411,22 @@ export class HandPhysics {
             if (!input.closing) this.armed = true;
         }
         this.setHover(this.held ? NO_FEEDBACK : feedback);
+
+        // The fingertip pushes only with a pointing or relaxed hand: not while pinching or carrying (the held block is the contact), nor with an open palm (camera)
+        const tip = input.joints[INDEX_TIP], dip = input.joints[INDEX_DIP];
+        if (tip && dip) {
+            this.tip ??= new Fingertip(this.world, this.rapier);
+            const push = !this.held && !input.pinching && !input.closing && !input.openPalm;
+            this.tip.track(tip, { x: tip.x - dip.x, y: tip.y - dip.y, z: tip.z - dip.z }, push);
+        }
     }
 
     private updateDropPoint(): void {
         const ray = new this.rapier.Ray(this.pinch, { x: 0, y: -1, z: 0 });
-        // Skip the hand itself (kinematic) and the block it carries
-        const hit = this.world.castRay(ray, 100, true, this.rapier.QueryFilterFlags.EXCLUDE_KINEMATIC, undefined, undefined, this.held?.block);
+        // Skip the hand itself (kinematic joints, the fingertip) and the block it carries
+        const tip = this.tip?.body;
+        const hit = this.world.castRay(ray, 100, true, this.rapier.QueryFilterFlags.EXCLUDE_KINEMATIC, undefined, undefined, this.held?.block,
+            tip ? (collider) => collider.parent() !== tip : undefined);
         this.hasDrop = hit !== null;
         if (hit) {
             this.drop.x = this.pinch.x;
@@ -443,29 +473,11 @@ export class HandPhysics {
         this.armed = false;
         this.pinchTime = 0;
         const [x, y, z] = HAND_PARKING_POSITION;
-        for (const body of bodies) {
-            if (!body) continue;
-            forEachCollider(body, (c) => c.setEnabled(false));
-            body.setTranslation({ x, y, z }, false);
-        }
+        for (const body of bodies) body?.setTranslation({ x, y, z }, false);
+        this.tip?.park();
         this.parked = true;
     }
 
-    private enableClearColliders(bodies: (RigidBody | null)[]): void {
-        for (const body of bodies) {
-            if (!body) continue;
-            forEachCollider(body, (collider) => {
-                if (collider.isEnabled()) return;
-                const overlapping = this.world.intersectionWithShape(
-                    body.translation(),
-                    IDENTITY_ROTATION,
-                    collider.shape,
-                    this.rapier.QueryFilterFlags.ONLY_DYNAMIC,
-                );
-                if (!overlapping) collider.setEnabled(true);
-            });
-        }
-    }
     /** Fix a proxy to the block at the pinch point and start driving it (see SoftGrab). */
     private grab(body: RigidBody): void {
         const { rapier, world } = this;
@@ -481,8 +493,7 @@ export class HandPhysics {
         );
         // Block-local position of the pinch point: the proxy stays fixed there
         const t = body.translation();
-        const inv = quatConjugate(rotation);
-        const r = quatMultiply(quatMultiply(inv, { x: at.x - t.x, y: at.y - t.y, z: at.z - t.z, w: 0 }), rotation);
+        const r = toLocal(rotation, { x: at.x - t.x, y: at.y - t.y, z: at.z - t.z });
         const joint = world.createImpulseJoint(
             rapier.JointData.fixed({ x: 0, y: 0, z: 0 }, IDENTITY_ROTATION, { x: r.x, y: r.y, z: r.z }, IDENTITY_ROTATION),
             proxy,
@@ -491,8 +502,13 @@ export class HandPhysics {
         );
         joint.setContactsEnabled(false);
         const mass = body.mass() + GRAB_PROXY_MASS;
-        // Moment of inertia about the pinch point, roughly: the block's own (about its long axis's normal) plus m·r²
-        const inertia = body.mass() * ((BLOCK_LENGTH ** 2 + BLOCK_HEIGHT ** 2) / 12 + Math.hypot(r.x, r.y, r.z) ** 2);
+        // Moments of inertia about the pinch point along the block's axes: the cuboid's own plus the parallel-axis term
+        const m = body.mass(), r2 = r.x * r.x + r.y * r.y + r.z * r.z;
+        const inertia = {
+            x: m * ((BLOCK_HEIGHT ** 2 + BLOCK_LENGTH ** 2) / 12 + r2 - r.x * r.x),
+            y: m * ((BLOCK_WIDTH ** 2 + BLOCK_LENGTH ** 2) / 12 + r2 - r.y * r.y),
+            z: m * ((BLOCK_WIDTH ** 2 + BLOCK_HEIGHT ** 2) / 12 + r2 - r.z * r.z),
+        };
         this.held = { proxy, joint, block: body, mass, inertia, targetRotation: { ...rotation }, extracting: hasBlocksAbove(world, body) };
         body.wakeUp();
         this.onHeldChange?.(blockIdOf(body));

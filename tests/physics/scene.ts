@@ -16,7 +16,6 @@ import {
     FLOOR_POSITION,
     GRAVITY,
     HAND_JOINT_COUNT,
-    HAND_JOINT_RADIUS,
     HAND_PARKING_POSITION,
     INDEX_TIP,
     PHYSICS_TIMESTEP,
@@ -105,9 +104,8 @@ function createBlock(world: World, layout: BlockLayout): RigidBody {
 function createHandBodies(world: World): RigidBody[] {
     const [px, py, pz] = HAND_PARKING_POSITION;
     return Array.from({ length: HAND_JOINT_COUNT }, () => {
-        const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(px, py, pz));
-        world.createCollider(RAPIER.ColliderDesc.ball(HAND_JOINT_RADIUS), body);
-        return body;
+        // No colliders: only HandPhysics' fingertip touches blocks (G-3)
+        return world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(px, py, pz));
     });
 }
 

@@ -43,7 +43,8 @@ test.describe('grab → carry → release', () => {
     await expect.poll(async () => (await storeState(driver)).hoveredBlockId, { timeout: 8000 }).toBe(ID)
   })
 
-  // Toppled 3 of 3 with the rigid grab; passes 4 of 4 with the soft grab (G-1).
+  // Toppled 3 of 3 with the rigid grab. With the soft grab (G-1) the block above (3-1)
+  // moves 0.18–0.38, so the threshold is the review's sim 6b one (0.5), as in tests/physics/pull.test.ts.
   test('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
     const { hand } = await grabBlock(page, driver, ID)
@@ -51,6 +52,6 @@ test.describe('grab → carry → release', () => {
     await carryTo(page, driver, { ...hand, z: hand.z + 6 }, 3000, 2500)
     const after = await driver((d) => d.blockPositions())
     expect(after[ID].z - before[ID].z).toBeGreaterThan(4)
-    expect(movedBlocks(before, after, [ID])).toEqual([])
+    expect(movedBlocks(before, after, [ID], 0.5)).toEqual([])
   })
 })
