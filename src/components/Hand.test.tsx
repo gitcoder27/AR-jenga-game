@@ -44,9 +44,12 @@ vi.mock('@react-three/rapier', async (importOriginal) => {
     }
 })
 
-// The cursor's frame callback needs real three.js objects; it has its own test.
+// The cursor's and the ghost's frame callbacks need real three.js objects; it has its own test.
 vi.mock('./DepthCursor', () => ({
     DepthCursor: () => null,
+}))
+vi.mock('./PlacementGhost', () => ({
+    PlacementGhost: () => null,
 }))
 
 vi.mock('../hooks/useGesture', () => ({
@@ -62,6 +65,8 @@ describe('Hand Component', () => {
         castRay: vi.fn().mockReturnValue(null),
         createImpulseJoint: vi.fn(),
         removeImpulseJoint: vi.fn(),
+        getRigidBody: vi.fn(),
+        forEachRigidBody: vi.fn(),
     }
     const mockRapier = {
         Ball: vi.fn(),

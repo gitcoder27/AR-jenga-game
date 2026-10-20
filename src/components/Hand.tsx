@@ -11,6 +11,8 @@ import { HAND_PARKING_POSITION } from '../game/config'
 import { handToWorld } from '../tracking/mapping'
 import type * as THREE from 'three'
 import { DepthCursor } from './DepthCursor'
+import { PlacementGhost } from './PlacementGhost'
+import { PlacementAssist } from '../game/placement'
 import { useGameStore } from '../store/gameStore'
 
 interface HandProps {
@@ -102,7 +104,14 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, con
     )
     const gameId = useGameStore((state) => state.gameId)
     // A reset remounts the tower, removing the held block and its joint (G-8).
-    useEffect(() => handPhysics.forget(), [gameId, handPhysics])
+    const assist = useMemo(
+        () => new PlacementAssist(world, (target) => useGameStore.getState().setPlacementTarget(target)),
+        [world],
+    )
+    useEffect(() => {
+        handPhysics.forget()
+        assist.forget()
+    }, [gameId, handPhysics, assist])
     // Unmount: the Physics world may already be gone, so drop the grab without touching Rapier.
     useEffect(() => () => {
         handPhysics.forget()
@@ -115,6 +124,7 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, con
     useFrame((_, delta) => {
         if (!result || !result.landmarks || result.landmarks.length === 0) {
             handPhysics.update(null, delta)
+            assist.update(handPhysics.heldBody, delta)
             return
         }
 
@@ -148,6 +158,12 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, con
         })
 
         handPhysics.update({ joints, pinching: isPinching, closing: isPinchForming, openPalm: isOpenPalm }, delta)
+        assist.update(handPhysics.heldBody, delta)
     })
-    return <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isOpenPalm={isOpenPalm} confidence={confidence} />
+    return (
+        <>
+            <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isOpenPalm={isOpenPalm} confidence={confidence} />
+            <PlacementGhost assist={assist} />
+        </>
+    )
 }

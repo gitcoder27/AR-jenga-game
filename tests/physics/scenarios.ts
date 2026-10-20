@@ -91,3 +91,51 @@ export function pullBlock(
         stillHeld: scene.hand.heldBody === block.body,
     };
 }
+
+/** Move the hand in a straight line from `from` to `to` at `speed` units/s, pinching or open. */
+export function carry(scene: Scene, from: Vec3, to: Vec3, speed: number, back: Vec3, pinching = true, beforeStep?: () => void): void {
+    const steps = Math.max(1, Math.round((Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z) / speed) * 60));
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const at = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t, z: from.z + (to.z - from.z) * t };
+        scene.step(() => {
+            beforeStep?.();
+            scene.hand.update(handInput(at, pinching, back), PHYSICS_TIMESTEP);
+        });
+    }
+}
+
+/**
+ * Pull `id` out with a brisk 9-unit pull, lift it over the tower and bring
+ * its centre to `centre` (keeping the grab offset). Returns the hand position.
+ * `beforeStep` runs before every physics step, e.g. the placement assist.
+ */
+export function extractAndCarryTo(scene: Scene, id: string, centre: Vec3, liftY: number, beforeStep?: () => void): Vec3 {
+    const pull = pullBlock(scene, id, 15, 9, 0.5);
+    if (!pull.grabbed || !pull.stillHeld) throw new Error(`could not extract ${id}`);
+    const axis = blockAxis(scene.block(id));
+    const hand = { ...scene.hand.pinchPoint! };
+    const block = scene.block(id).body.translation();
+    const via = (c: Vec3) => ({ x: c.x + hand.x - block.x, y: c.y + hand.y - block.y, z: c.z + hand.z - block.z });
+    const lifted = via({ x: block.x, y: liftY, z: block.z });
+    const above = via({ x: centre.x, y: liftY, z: centre.z });
+    const at = via(centre);
+    carry(scene, hand, lifted, 8, axis, true, beforeStep);
+    carry(scene, lifted, above, 8, axis, true, beforeStep);
+    carry(scene, above, at, 3, axis, true, beforeStep);
+    scene.stepFor(0.3, () => {
+        beforeStep?.();
+        scene.hand.update(handInput(at, true, axis), PHYSICS_TIMESTEP);
+    });
+    return at;
+}
+
+/** Open the hand where it is, then take it away (open) along +z, and let tracking lapse. */
+export function releaseAndLeave(scene: Scene, at: Vec3, beforeStep?: () => void): void {
+    scene.stepFor(0.2, () => {
+        beforeStep?.();
+        scene.hand.update(handInput(at, false), PHYSICS_TIMESTEP);
+    });
+    carry(scene, at, { ...at, z: at.z + 8 }, 8, { x: 0, y: 0, z: 1 }, false, beforeStep);
+    scene.hand.update(null, PHYSICS_TIMESTEP);
+}

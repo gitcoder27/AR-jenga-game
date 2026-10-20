@@ -97,3 +97,38 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   disagreed with the real mapping in `tracking/mapping.ts`.
 - **Branding.** "Robotic Jenga" everywhere (in-game title, page title, README). The README says what the app
   does today, including that placements don't score until C-1.
+
+### Framing and reach (C-3, V-1, M-4)
+
+- **Camera.** FOV 50°, orbit target at the tower's middle plus placing headroom (`[0, 14, 0]`), default
+  distance 40 at 20° elevation, zoom 36–48, polar 15–80°. `src/tracking/mapping.test.ts` sweeps every allowed
+  orbit, zoom and four aspect ratios. At each one, the top placement point must be on screen and reachable.
+  The default camera also needs the bottom and top levels reachable. The review suggested camera ≈ `[0, 18, 34]`
+  with target y ≈ 12. With that framing the top point sits just outside the frustum, so it was re-derived with
+  the sweep.
+- **Target-relative volume.** Depth is centred on the orbit target. The hand-size depth in [-1, 1] spans
+  ±45% of the camera→target distance, as the review recommends. A fixed range can't reach the top from the 15°
+  top-down view.
+- **Frustum mapping (M-4) landed with this item, not Phase 2 #12.** Once the volume follows the camera, its
+  width and height must come from the frustum anyway. Image x/y are unprojected through the camera at the
+  hand's depth, so a landmark appears on screen where it is in the webcam frame, at any screen aspect. #12
+  still covers the responsive layout (M-5).
+- **Frame-to-screen gain 1.18, centre row 0.45.** The middle 85% of the frame spans the screen. The frame row
+  that maps to the screen centre is slightly above the middle, so pinching near the bottom of the screen keeps
+  the wrist in frame.
+- **The hand is drawn at 0.6× around its pinch point.** At 1:1 the hand would be about 4 blocks tall on screen.
+  Scaling around the thumb–index midpoint keeps the grab point exact.
+- `calculateDepth` now returns a normalized depth in [-1, 1]. The mapping turns it into world units.
+
+### Placement assist (C-3, G-6)
+
+- **Snap on release, no in-hand yaw.** The review offers "ease the held block's yaw … or snap on release". The
+  rigid joint (and later the PD proxy) holds the block's orientation, so turning it in the hand would mean
+  driving joint frames. Instead, the ghost shows the slot in the level's orientation, and letting go within
+  1.2 block widths of it, up to 4 block heights above, eases the block in: across and turning for 60% of
+  0.25 s, then down. Wrist-roll yaw is not implemented.
+- **Slot choice.** The next slot is a free slot in the top level if that level isn't full, otherwise one in a
+  new level. Of those, the one nearest the held block wins. It is computed from block positions, not from the
+  rules' bookkeeping.
+- **The optional auto "placement view" is skipped.** The new framing already shows the top at every allowed
+  orbit (see the sweep).

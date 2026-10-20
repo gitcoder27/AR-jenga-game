@@ -22,6 +22,8 @@ export interface GameStore {
     movingBlockId: string | null
     /** Block a pinch would grab right now (same id format as heldBlockId) */
     hoveredBlockId: string | null
+    /** Slot ("level-slot") the held block would snap into if let go now (C-3) */
+    placementTarget: string | null
     gameId: number
     /** Seeds the tower's layout jitter and block shades; new for every game */
     towerSeed: number
@@ -41,6 +43,7 @@ export interface GameStore {
     incrementScore: () => void
     setHeldBlockId: (id: string | null) => void
     setHoveredBlockId: (id: string | null) => void
+    setPlacementTarget: (target: string | null) => void
     setWebcamVisible: (visible: boolean) => void
     setInstructionsVisible: (visible: boolean) => void
     resetGame: () => void
@@ -52,13 +55,19 @@ export interface GameStore {
 
 const newTowerSeed = () => Math.floor(Math.random() * 2 ** 31)
 
-export const useGameStore = create<GameStore>((set) => ({
-    gameMode: 'MENU',
+/** Per-game state, cleared on start, reset and exit. */
+const FRESH_GAME = {
     gameState: 'PLAYING',
     score: 0,
     heldBlockId: null,
     movingBlockId: null,
     hoveredBlockId: null,
+    placementTarget: null,
+} satisfies Partial<GameStore>
+
+export const useGameStore = create<GameStore>((set) => ({
+    gameMode: 'MENU',
+    ...FRESH_GAME,
     gameId: 0,
     towerSeed: 1,
     isWebcamVisible: false,
@@ -71,29 +80,22 @@ export const useGameStore = create<GameStore>((set) => ({
     setGameState: (gameState) => set({ gameState }),
     startGame: (gameMode) => set({
         gameMode,
-        gameState: 'PLAYING',
-        score: 0,
-        heldBlockId: null,
-        movingBlockId: null,
-        hoveredBlockId: null,
+        ...FRESH_GAME,
         towerSeed: newTowerSeed(),
         isInstructionsVisible: true
     }),
-    returnToMenu: () => set({ gameMode: 'MENU', gameState: 'PLAYING', heldBlockId: null, movingBlockId: null, hoveredBlockId: null }),
+    returnToMenu: () => set({ gameMode: 'MENU', ...FRESH_GAME }),
     incrementScore: () => set((state) => ({ score: state.score + 1 })),
     setHeldBlockId: (heldBlockId) => set((state) => ({
         heldBlockId,
         movingBlockId: heldBlockId ?? state.movingBlockId,
     })),
     setHoveredBlockId: (hoveredBlockId) => set({ hoveredBlockId }),
+    setPlacementTarget: (placementTarget) => set({ placementTarget }),
     setWebcamVisible: (isWebcamVisible) => set({ isWebcamVisible }),
     setInstructionsVisible: (isInstructionsVisible) => set({ isInstructionsVisible }),
     resetGame: () => set((state) => ({
-        gameState: 'PLAYING',
-        score: 0,
-        heldBlockId: null,
-        movingBlockId: null,
-        hoveredBlockId: null,
+        ...FRESH_GAME,
         gameId: state.gameId + 1,
         towerSeed: newTowerSeed(),
         isInstructionsVisible: state.gameMode === 'CLASSIC'

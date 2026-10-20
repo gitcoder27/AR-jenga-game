@@ -114,6 +114,14 @@ export function orbitTarget(): Vec3 {
     return { x: controls.target.x, y: controls.target.y, z: controls.target.z };
 }
 
+/** Orbit the camera to `azimuth` (radians from +Z toward +X), keeping its polar angle and distance. */
+export function setOrbitAzimuth(azimuth: number): void {
+    const controls = rootState().controls as unknown as { setAzimuthalAngle(a: number): void; update(): void } | null;
+    if (!controls) throw new Error('no default controls');
+    controls.setAzimuthalAngle(azimuth);
+    controls.update();
+}
+
 /** World position of every block, keyed by id ("2-0"). */
 export function blockPositions(): Record<string, Vec3> {
     const out: Record<string, Vec3> = {};
@@ -129,6 +137,21 @@ export function blockPositions(): Record<string, Vec3> {
 }
 
 /** World positions of the rendered hand joints (debugging aid). */
+/** Each block's long axis (its local +Z) in world space. */
+export function blockAxes(): Record<string, Vec3> {
+    const out: Record<string, Vec3> = {};
+    const q = new THREE.Quaternion();
+    if (_roots.size === 0) return out;
+    rootState().scene.traverse((o) => {
+        if (o.name.startsWith('block-')) {
+            o.getWorldQuaternion(q);
+            const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+            out[o.name.slice('block-'.length)] = { x: axis.x, y: axis.y, z: axis.z };
+        }
+    });
+    return out;
+}
+
 export function handJointPositions(): Vec3[] {
     const out: Vec3[] = [];
     const v = new THREE.Vector3();
