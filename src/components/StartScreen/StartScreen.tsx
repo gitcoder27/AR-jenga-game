@@ -32,7 +32,7 @@ const StartScreen: React.FC = () => {
                 </div>
 
                 <div className="start-footer">
-                    <p>SYSTEM READY // CALIBRATE HANDS FOR BEST EXPERIENCE</p>
+                    <p>SYSTEM READY // CALIBRATE YOUR REACH IN GAME: DEPTH → CALIBRATE</p>
                 </div>
             </div>
         </div>

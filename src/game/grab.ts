@@ -111,8 +111,11 @@ export interface HandInput {
      * doesn't look like it opened and closed again (G-4).
      */
     closing?: boolean;
-    /** Camera mode (H-2): the hand turns the view, so it touches, hovers and grabs nothing */
-    camera?: boolean;
+    /**
+     * The hand touches, hovers and grabs nothing: camera mode (H-2), where it
+     * turns the view, or depth calibration (H-4), where it reaches near and far.
+     */
+    inert?: boolean;
 }
 
 /*
@@ -484,11 +487,11 @@ export class HandPhysics {
             this.pinch.x = (t.x + i.x) / 2;
             this.pinch.y = (t.y + i.y) / 2;
             this.pinch.z = (t.z + i.z) / 2;
-            if (!this.held && !input.camera) feedback = queryCursorFeedback(this.world, this.rapier, this.pinch);
+            if (!this.held && !input.inert) feedback = queryCursorFeedback(this.world, this.rapier, this.pinch);
             this.updateDropPoint();
         }
 
-        if (input.camera) {
+        if (input.inert) {
             // The pinch or fist that leaves camera mode must not grab: reopen first (H-2)
             this.release();
             this.pinchTime = 0;
@@ -506,12 +509,12 @@ export class HandPhysics {
         }
         this.setHover(this.held ? NO_FEEDBACK : feedback);
 
-        // The fingertip pushes only with a pointing or relaxed hand: not while pinching or carrying (the held block is the contact), with an open palm, or in camera mode
+        // The fingertip pushes only with a pointing or relaxed hand: not while pinching or carrying (the held block is the contact), with an open palm, or while inert
         const tip = input.joints[INDEX_TIP], dip = input.joints[INDEX_DIP];
         if (tip && dip) {
             // Aimed every physics step in beforeStep(), along the eased hand
             this.tip ??= new Fingertip(this.world, this.rapier);
-            this.tipPushes = !this.held && !input.pinching && !input.closing && !input.openPalm && !input.camera;
+            this.tipPushes = !this.held && !input.pinching && !input.closing && !input.openPalm && !input.inert;
         }
     }
 

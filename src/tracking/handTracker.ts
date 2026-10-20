@@ -5,7 +5,7 @@ import {
     transitionGestureState,
     type GestureState,
 } from '../utils/gestureState';
-import { depthFromPalmLength, palmLength } from '../utils/depth';
+import { DEFAULT_DEPTH_SETTINGS, depthFromHandSize, handSize, type DepthSettings } from '../utils/depth';
 import { OneEuroFilter, type OneEuroParams } from './oneEuro';
 
 export interface Landmark {
@@ -29,8 +29,10 @@ export interface TrackedHand {
     /** The 21 filtered landmarks, MediaPipe normalized image coordinates */
     landmarks: Landmark[];
     gesture: HandGesture;
-    /** Hand-size depth in [-1, 1] (see calculateDepth), from its own, steadier filter */
+    /** Hand-size depth in [-1, 1] (see depthFromHandSize), from its own, steadier filter */
     depth: number;
+    /** The filtered hand size it came from (frame heights, see handSize): what calibration records */
+    size: number;
     /** Detection timestamp (ms) */
     timestamp: number;
 }
@@ -87,10 +89,11 @@ export class HandTracker {
 
     /**
      * Feed one detection: the raw landmarks of the first hand (undefined when no
-     * hand was found), the detection timestamp in ms and the video's width / height.
+     * hand was found), the detection timestamp in ms, the video's width / height
+     * and the depth direction and calibration (H-3, H-4).
      * Returns the tracked hand, or null while there is none.
      */
-    update(raw: readonly Landmark[] | undefined, timestamp: number, aspect = 1): TrackedHand | null {
+    update(raw: readonly Landmark[] | undefined, timestamp: number, aspect = 1, depthSettings: DepthSettings = DEFAULT_DEPTH_SETTINGS): TrackedHand | null {
         if (!raw || raw.length < 21) {
             this.lostSince ??= timestamp;
             return null;
@@ -111,8 +114,9 @@ export class HandTracker {
             y: this.filters[i * 3 + 1].filter(l.y, dt),
             z: this.filters[i * 3 + 2].filter(l.z * aspect, dt) / aspect,
         }));
-        const depth = depthFromPalmLength(this.depthFilter.filter(palmLength(raw), dt));
-        this.last = { landmarks, gesture: this.updateGesture(landmarks, timestamp, aspect), depth, timestamp };
+        const size = this.depthFilter.filter(handSize(raw, aspect), dt);
+        const depth = depthFromHandSize(size, depthSettings);
+        this.last = { landmarks, gesture: this.updateGesture(landmarks, timestamp, aspect), depth, size, timestamp };
         return this.last;
     }
 

@@ -72,6 +72,14 @@ export const CAMERA_ORBIT_DEADZONE = 0.01;
 /** Time constant (s) of the orbit's smoothing */
 export const CAMERA_ORBIT_SMOOTHING_S = 0.08;
 
+// Depth calibration (H-4): hand near, then far, for this long each (ms)
+export const CALIBRATION_PHASE_MS = 2500;
+/** Hand sizes are sampled over the last part of each phase, once the hand has got there */
+export const CALIBRATION_SAMPLE_MS = 1000;
+export const CALIBRATION_MIN_SAMPLES = 5;
+/** Near must look at least this many times bigger than far */
+export const CALIBRATION_MIN_RATIO = 1.4;
+
 // Hand / grab
 export const HAND_JOINT_COUNT = 21;
 export const HAND_PARKING_POSITION: Vec3Tuple = [0, -100, 0];

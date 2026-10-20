@@ -15,6 +15,7 @@ function hand(gesture: keyof typeof GESTURES, timestamp: number, x = 0.5, y = 0.
         landmarks: Array.from({ length: 21 }, () => ({ x, y, z: 0 })),
         gesture: GESTURES[gesture],
         depth: 0,
+        size: 0.18,
         timestamp,
     };
 }

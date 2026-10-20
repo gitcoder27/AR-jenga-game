@@ -11,6 +11,7 @@ import useHandTracking from './hooks/useHandTracking'
 import { HandTracker, type TrackedHand } from './tracking/handTracker'
 import { onVideoFrames } from './tracking/videoFrames'
 import { CameraClutch } from './tracking/cameraClutch'
+import { DepthCalibrator } from './tracking/depthCalibration'
 import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
@@ -21,6 +22,8 @@ import GestureOrbitController from './components/GestureOrbitController'
 import GameRules from './components/GameRules'
 import CameraControls from './components/CameraControls'
 import SceneErrorBoundary from './components/SceneErrorBoundary'
+import { DepthGauge, DepthGaugeSync } from './components/DepthGauge'
+import { DepthGaugeView } from './components/depthGaugeView'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { CAMERA_FOV, CAMERA_POSITION } from './game/config'
 
@@ -45,8 +48,12 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const [tracker] = useState(() => new HandTracker())
   // When the hand enters and leaves camera mode, on the same detections (H-2)
   const [clutch] = useState(() => new CameraClutch())
+  // The 5-second near/far depth calibration, on the same detections (H-4)
+  const [calibrator] = useState(() => new DepthCalibrator())
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
+  // Depth gauge DOM, moved from the frame loop (H-3)
+  const [gauge] = useState(() => new DepthGaugeView())
 
   const gameId = useGameStore((state) => state.gameId)
   const resetGame = useGameStore((state) => state.resetGame)
@@ -65,16 +72,25 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
         if (res) {
           // MediaPipe landmarks are normalized per axis; gestures and filtering need the frame's aspect
           const aspect = videoElement.videoHeight ? videoElement.videoWidth / videoElement.videoHeight : 1
-          handRef.current = tracker.update(res.landmarks[0], now, aspect)
-          const { isCameraMode, heldBlockId, setCameraMode } = useGameStore.getState()
-          const change = clutch.update(handRef.current, isCameraMode, heldBlockId !== null)
-          if (change) setCameraMode(change === 'enter')
+          const state = useGameStore.getState()
+          handRef.current = tracker.update(res.landmarks[0], now, aspect, state.depthSettings)
+          const calibrating = state.calibrationStatus === 'near' || state.calibrationStatus === 'far'
+          if (calibrating) {
+            const step = calibrator.update(handRef.current, now)
+            if ('phase' in step) {
+              if (step.phase !== state.calibrationStatus) state.setCalibrationStatus(step.phase)
+            } else if ('done' in step) state.finishCalibration(step.done)
+            else state.setCalibrationStatus(step.failed)
+          } else calibrator.reset()
+          // Never arms while calibrating: the near step is an open hand held still
+          const change = clutch.update(handRef.current, state.isCameraMode, state.heldBlockId !== null || calibrating)
+          if (change) state.setCameraMode(change === 'enter')
           const status = res.landmarks.length > 0 ? 'ready' : 'no-hand'
           if (useGameStore.getState().trackingStatus !== status) setTrackingStatus(status)
         }
       })
     }
-  }, [isReady, videoElement, cameraActive, detect, tracker, clutch])
+  }, [isReady, videoElement, cameraActive, detect, tracker, clutch, calibrator])
 
   return (
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
@@ -96,10 +112,12 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
 
             <CameraControls controlsRef={orbitControlsRef} />
             <GestureOrbitController handRef={handRef} controlsRef={orbitControlsRef} />
+            <DepthGaugeSync view={gauge} handRef={handRef} />
           </Physics>
         </Canvas>
       </SceneErrorBoundary>
 
+      <DepthGauge view={gauge} />
       <HUD />
     </div>
   )

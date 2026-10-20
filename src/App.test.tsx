@@ -80,6 +80,11 @@ vi.mock('./components/CameraControls', () => ({
     default: () => <div data-testid="camera-controls" />
 }))
 
+vi.mock('./components/DepthGauge', () => ({
+    DepthGauge: () => null,
+    DepthGaugeSync: () => null,
+}))
+
 describe('App', () => {
     const mockResetGame = vi.fn()
     const mockUseGameStore = vi.mocked(useGameStore)

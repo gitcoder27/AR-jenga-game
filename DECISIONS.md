@@ -400,3 +400,49 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   - The playtest metric (unintended camera moves per minute ≈ 0) needs people.
 - The 390 px bottom bar already clipped EXIT GAME before H-2, and the fifth button adds to it. M-5 (#12) owns that
   layout.
+
+### Depth direction, gauge and calibration (H-3, H-4)
+
+- **Mirror stays the default, with a reach-in setting**, as decided. No A/B playtest was run.
+  - **DEPTH → TOWARD YOU / INTO THE SCENE** sets `depthSettings.reachIn`.
+  - `depthFromHandSize` (`src/utils/depth.ts`) applies it. That function is the one mapping, shared with its inverse
+    `handSizeForDepth`, which the E2E driver uses.
+  - The HUD instructions follow the setting. README fixed in Phase 1 and extended here.
+- **Depth gauge** (`DepthGauge.tsx`): a bar on the right edge, FAR at the top and NEAR at the bottom.
+  - The tower's front-to-back extent is an orange band, measured along the view at the pinch point's height.
+  - The hand is a cyan line.
+  - It is DOM positioned from the frame loop through `DepthGaugeView`, so it never re-renders. It shows only while a
+    hand is tracked.
+  - It complements F-3's drop marker, which shows height above the surface.
+- **Pitch-robust hand size** (`handSize`): the larger of the palm length and 1.35 × the palm width, in frame heights
+  (x corrected for aspect).
+  - The review suggests 1.4, the typical ratio. At 1.4 the width, whose noise the factor scales up, won the max about
+    half the time on an untilted hand. Still-hand depth jitter then broke the H-6 bound: 0.073 at 60 fps, raw
+    0.192 → 0.208.
+  - A lower depth `beta` fixed the jitter but slowed a small depth step to 100 ms, and `minCutoff` made no difference.
+  - At 1.35 the length wins until pitch shortens it by about 4%. Jitter is back to raw 0.192 and filtered
+    0.068 / 0.064, and every lag is under 80 ms.
+  - Synthetic 30° pitch at a fixed distance, default camera: the depth moves 0.79 world units, against 2.71 with palm
+    length alone and the review's < 1 target. 30° roll: 0 either way for this pose.
+  - Measured on the synthetic poses only. The review's check needs a real device.
+- **5-second calibration** (`DepthCalibrator`):
+  - **DEPTH → CALIBRATE (5 S)** prompts the near step, then the far step, each 2.5 s with a progress bar.
+  - Each end is the median filtered hand size over the last 1 s of its step. It fails if there are fewer than 5
+    samples ("couldn't see your hand") or if near < 1.4 × far ("too alike").
+  - It runs once per detection, as the clutch does. The hand is inert while calibrating: `HandInput.camera` became
+    `inert`, which covers camera mode and calibration. The camera clutch doesn't arm while calibrating.
+  - The start screen's old "CALIBRATE HANDS" promise now points to this.
+- **Persistence:** `depthSettings` (the direction and the calibration) is kept in localStorage through zustand
+  `persist`, and nothing else is. It is a per-viewer convenience; without storage it simply starts at the defaults.
+- **The depth filter** was already heavier than x/y, and on its own filter (H-6).
+- **Validation:**
+  - Unit: `depth.test.ts` (pitch and roll in world units, aspect independence, the direction, calibrated ends, the
+    inverse), `depthCalibration.test.ts`, the HUD and store tests.
+  - E2E (`e2e/depth.spec.ts`):
+    - Calibrating with image sizes 0.3 then 0.1 records near 0.30 and far 0.10, and those sizes then sit at the
+      gauge's ends.
+    - A hand near the webcam is 28.0 from the camera in mirror mode and 53.7 in reach-in, and the setting is saved.
+    - The gauge shows the hand below the tower band when in front of it, and inside the band when level with its
+      middle.
+  - The review's playtests (time to first touch, depth reversals, mirror vs. reach-in with 5+ people) need people.
+- The DEPTH button makes six in the bottom bar. M-5 (#12) owns that layout.

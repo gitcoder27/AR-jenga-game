@@ -16,7 +16,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
 - **Gesture Control**:
   - **Move**: Your virtual hand mimics your real hand's position in real-time.
   - **Grab**: Pinch your thumb and index finger together to grab and hold blocks.
-  - **Depth**: Works like a mirror. Bring your hand closer to the webcam and the virtual hand comes toward you; move it away and the virtual hand moves toward the tower.
+  - **Depth**: Works like a mirror by default. Bring your hand closer to the webcam and the virtual hand comes toward you; move it away and the virtual hand moves toward the tower. Prefer reaching in? Switch to **INTO THE SCENE** under **DEPTH**. A gauge on the right shows where your hand is against the tower.
   - **Camera**: Hold an open palm still, then move your hand to turn the view. You can also press **C**, use the TURN VIEW button, or drag with the mouse.
 - **Interactive Gameplay**: Carefully remove blocks from the tower and stack them on top without toppling the structure.
 - **Immersive Environment**: Features a 3D studio room environment, dynamic lighting, shadows, and high-quality block materials.
@@ -66,7 +66,10 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
 1. **Set up**: Use a well-lit room and keep your hand clearly visible to the webcam. The chip in the top bar shows the tracking state (loading, no hand, tracking).
 2. **Move**:
    - **Left, right, up, down**: Move your hand and the virtual hand follows, mirrored like a reflection.
-   - **Depth (mirror)**: Bring your hand **closer to the webcam** to bring the virtual hand **toward you**. Move your hand **away from the webcam** to reach **into the scene**, toward the tower.
+   - **Depth (mirror, the default)**: Bring your hand **closer to the webcam** to bring the virtual hand **toward you**. Move your hand **away from the webcam** to reach **into the scene**, toward the tower.
+   - **Depth (reach-in)**: Under **DEPTH**, choose **INTO THE SCENE** to flip it: a hand closer to the webcam reaches deeper into the scene.
+   - **Depth gauge**: The bar on the right edge runs from FAR (top) to NEAR (bottom). The orange band is the tower, and the cyan line is your hand.
+   - **Calibrate**: Under **DEPTH → CALIBRATE (5 S)**, hold your hand as near the webcam as is comfortable, then as far. That range then spans the whole scene, whatever your hand size or seating. The game remembers it, and the depth direction, in this browser.
 3. **Act**:
    - **Push**: Move the hand into a block to nudge it.
    - **Grab**: Open your hand near a block, then pinch your **thumb** and **index finger**. The block under the pinch turns cyan when it can be grabbed and green while you hold it. A pinch that closes on nothing shows a red ring; open your hand and try again.

@@ -11,8 +11,8 @@ import { _roots } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/gameStore';
 import { worldToLandmark } from '../tracking/mapping';
-import { palmSizeForDepth } from '../utils/depth';
-import { buildLandmarks, type Landmark, type PoseName } from './handPoses';
+import { handSizeForDepth } from '../utils/depth';
+import { buildLandmarks, poseHandSize, type Landmark, type PoseName } from './handPoses';
 
 export interface Vec3 {
     x: number;
@@ -45,12 +45,24 @@ let current: { pose: PoseName; at: Vec3 } | null = null;
 /** Landmarks that put `pose`'s thumb–index midpoint at world point `at`. */
 export function landmarksFor(pose: PoseName, at: Vec3): Landmark[] {
     const { x, y, depth } = worldToLandmark(at, rootState().camera as THREE.PerspectiveCamera);
-    return buildLandmarks(pose, palmSizeForDepth(depth), x, y, videoAspect());
+    // The same depth direction and calibration the app maps with (H-3, H-4)
+    const size = handSizeForDepth(depth, useGameStore.getState().depthSettings);
+    return buildLandmarks(pose, size / poseHandSize(pose), x, y, videoAspect());
 }
 
 export function setHand(pose: PoseName, at: Vec3): void {
     current = { pose, at: { ...at } };
     w.__e2eHand = landmarksFor(pose, at);
+}
+
+/**
+ * `pose` with a hand size of `size` (frame heights, see handSize) and its pinch
+ * point at image point (`x`, `y`): for depth calibration, which works on image
+ * sizes, not world positions.
+ */
+export function setHandInImage(pose: PoseName, size: number, x: number, y: number): void {
+    current = null;
+    w.__e2eHand = buildLandmarks(pose, size / poseHandSize(pose), x, y, videoAspect());
 }
 
 export function hideHand(): void {

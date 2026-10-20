@@ -122,7 +122,7 @@ describe('Hand Component', () => {
 
     it('grabs the block under the pinch when the pinch closes', () => {
         const open: HandGesture = { state: 'IDLE', isPinching: false, isOpenPalm: false, isClosing: false, confidence: 0 }
-        const handWith = (gesture: HandGesture): TrackedHand => ({ landmarks: Array(21).fill({ x: 0.5, y: 0.5, z: 0 }), gesture, depth: 0, timestamp: 0 })
+        const handWith = (gesture: HandGesture): TrackedHand => ({ landmarks: Array(21).fill({ x: 0.5, y: 0.5, z: 0 }), gesture, depth: 0, size: 0.18, timestamp: 0 })
         const useFrameMock = vi.mocked(useFrame)
         const runFrame = () => useFrameMock.mock.calls.at(-1)![0]({} as never, 1 / 60)
 

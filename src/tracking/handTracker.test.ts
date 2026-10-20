@@ -4,12 +4,12 @@ import { HandTracker, type Landmark } from './handTracker'
 import type { OneEuroParams } from './oneEuro'
 import { handToWorld } from './mapping'
 import { buildLandmarks, type PoseName } from '../test/handPoses'
-import { calculateDepth, palmSizeForDepth } from '../utils/depth'
+import { calculateDepth, handSizeForDepth } from '../utils/depth'
 import { createRng } from '../game/towerLayout'
 import { CAMERA_FOV, CAMERA_POSITION, CAMERA_TARGET } from '../game/config'
 
 const ASPECT = 16 / 9
-const PALM = palmSizeForDepth(0)
+const PALM = handSizeForDepth(0)
 const hand = (pose: PoseName, x = 0.5, y = 0.5, palm = PALM) => buildLandmarks(pose, palm, x, y, ASPECT)
 
 /** Feed `frames` copies of `pose` at `fps`, starting at `t0` ms. Returns the last result and the end time. */
@@ -79,7 +79,7 @@ describe('HandTracker filtering (H-6)', () => {
     const out: THREE.Vector3[] = []
 
     /** The pinch point in world units, as Hand maps it */
-    function pinchWorld(landmarks: Landmark[], depth = calculateDepth(landmarks as never)): THREE.Vector3 {
+    function pinchWorld(landmarks: Landmark[], depth = calculateDepth(landmarks, ASPECT)): THREE.Vector3 {
         const world = handToWorld(landmarks, depth, camera, out)
         return world[4].clone().add(world[8]).multiplyScalar(0.5)
     }

@@ -317,3 +317,84 @@
     margin: 0 0 12px;
     opacity: 0.85;
 }
+
+/* Depth settings (H-3, H-4) */
+.hud-depth-panel {
+    position: absolute;
+    bottom: 76px;
+    left: 20px;
+    max-width: calc(100vw - 40px);
+    box-sizing: border-box;
+    padding: 14px 40px 14px 16px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid #00e5ff;
+    color: #00e5ff;
+    pointer-events: auto;
+}
+
+.hud-depth-label {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.hud-depth-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.hud-depth-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #00e5ff;
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+.hud-calibration {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(520px, calc(100vw - 32px));
+    box-sizing: border-box;
+    padding: 16px 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00e5ff;
+    color: #00e5ff;
+    text-align: center;
+    letter-spacing: 1px;
+    pointer-events: auto;
+}
+
+.hud-calibration[data-status='no-hand'],
+.hud-calibration[data-status='too-similar'] {
+    border-color: #ff5252;
+    color: #ff5252;
+}
+
+.hud-calibration-step {
+    margin: 0 0 6px;
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.hud-calibration-bar {
+    height: 4px;
+    margin: 12px 0;
+    background: #00e5ff;
+    transform-origin: left;
+    animation-name: hud-calibration-fill;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+}
+
+@keyframes hud-calibration-fill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}

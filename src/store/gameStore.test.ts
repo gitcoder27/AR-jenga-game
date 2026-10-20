@@ -108,4 +108,26 @@ describe('useGameStore', () => {
     })
     expect(useGameStore.getState().isCameraMode).toBe(false)
   })
+
+  it('depth settings: direction, calibration, and only they are kept across visits (H-3, H-4)', () => {
+    const s = useGameStore.getState()
+    act(() => {
+      s.setHeldBlockId(null)
+      s.setReachIn(true)
+      s.startCalibration()
+    })
+    expect(useGameStore.getState().calibrationStatus).toBe('near')
+    act(() => useGameStore.getState().finishCalibration({ near: 0.3, far: 0.1 }))
+    expect(useGameStore.getState()).toMatchObject({
+      calibrationStatus: 'done',
+      depthSettings: { reachIn: true, calibration: { near: 0.3, far: 0.1 } },
+    })
+    const saved = JSON.parse(localStorage.getItem('ar-jenga-settings')!)
+    expect(Object.keys(saved.state)).toEqual(['depthSettings'])
+    act(() => {
+      useGameStore.getState().clearCalibration()
+      useGameStore.getState().setReachIn(false)
+    })
+    expect(useGameStore.getState().depthSettings).toEqual({ calibration: null, reachIn: false })
+  })
 })

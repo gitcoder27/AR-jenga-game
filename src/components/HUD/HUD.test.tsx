@@ -6,6 +6,8 @@ import type { MockSelector } from '../../test/mockProps';
 // Mock store
 const mockReturnToMenu = vi.fn();
 const mockToggleCameraMode = vi.fn();
+const mockSetReachIn = vi.fn();
+const mockStartCalibration = vi.fn();
 let overrides: Record<string, unknown> = {};
 
 vi.mock('../../store/gameStore', () => ({
@@ -23,6 +25,12 @@ vi.mock('../../store/gameStore', () => ({
       isCameraMode: false,
       heldBlockId: null,
       toggleCameraMode: mockToggleCameraMode,
+      depthSettings: { calibration: null, reachIn: false },
+      calibrationStatus: 'idle',
+      setReachIn: mockSetReachIn,
+      startCalibration: mockStartCalibration,
+      clearCalibration: vi.fn(),
+      setCalibrationStatus: vi.fn(),
       ...overrides,
     };
     return selector ? selector(state) : state;
@@ -75,6 +83,40 @@ describe('HUD', () => {
       overrides = { heldBlockId: '3-1' };
       render(<HUD />);
       expect(screen.getByRole('button', { name: /turn view/i })).toBeDisabled();
+      overrides = {};
+    });
+  });
+
+  describe('depth [H-3, H-4]', () => {
+    it('the DEPTH panel sets the direction and starts calibration', () => {
+      overrides = {};
+      render(<HUD />);
+      fireEvent.click(screen.getByRole('button', { name: 'DEPTH' }));
+      expect(screen.getByRole('dialog', { name: /depth settings/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'TOWARD YOU' })).toHaveAttribute('aria-pressed', 'true');
+      screen.getByRole('button', { name: 'INTO THE SCENE' }).click();
+      expect(mockSetReachIn).toHaveBeenCalledWith(true);
+      screen.getByRole('button', { name: /calibrate/i }).click();
+      expect(mockStartCalibration).toHaveBeenCalled();
+    });
+
+    it('the instructions follow the depth direction', () => {
+      overrides = { depthSettings: { calibration: null, reachIn: true } };
+      render(<HUD />);
+      expect(screen.getByText(/deeper into the scene/i)).toBeInTheDocument();
+      overrides = {};
+    });
+
+    it('prompts each calibration step, and says why one failed', () => {
+      overrides = { calibrationStatus: 'far' };
+      const { unmount } = render(<HUD />);
+      expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument();
+      expect(screen.getByText(/as far from the webcam/i)).toBeInTheDocument();
+      unmount();
+      overrides = { calibrationStatus: 'too-similar' };
+      render(<HUD />);
+      expect(screen.getByText(/too alike/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
       overrides = {};
     });
   });

@@ -12,7 +12,7 @@ async function settledScene(): Promise<Scene> {
 }
 
 const frame = (scene: Scene, at: Vec3, pinching: boolean, back: Vec3, camera: boolean) =>
-    scene.step(() => scene.hand.update({ ...handInput(at, pinching, back), camera }, PHYSICS_TIMESTEP));
+    scene.step(() => scene.hand.update({ ...handInput(at, pinching, back), inert: camera }, PHYSICS_TIMESTEP));
 
 // H-2: while the hand turns the view, it touches and grabs nothing.
 describe('camera mode [H-2]', () => {

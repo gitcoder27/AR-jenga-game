@@ -7,6 +7,8 @@
  * 0.9 palm apart, the relaxed hand's fingertips are ~1.5–1.8 palm from the wrist.
  */
 
+import { handSize } from '../utils/depth';
+
 export type PoseName = 'open' | 'relaxed' | 'claw' | 'fist' | 'pinch' | 'tuckedReady' | 'tuckedPinch';
 
 type P = [number, number];
@@ -113,4 +115,9 @@ export function buildLandmarks(pose: PoseName, palmSize: number, x: number, y: n
         y: y + (py - ay) * palmSize,
         z: 0,
     }));
+}
+
+/** handSize() of `pose` built with a palm length of 1: divide a wanted hand size by this to get the palm length. */
+export function poseHandSize(pose: PoseName): number {
+    return handSize(buildLandmarks(pose, 1, 0, 0, 1));
 }

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { FoulReason, MovePhase } from '../game/moves'
+import { DEFAULT_DEPTH_SETTINGS, type DepthCalibration, type DepthSettings } from '../utils/depth'
 
 export type GameState = 'PLAYING' | 'GAME_OVER'
 export type GameMode = 'MENU' | 'CLASSIC' | 'SANDBOX'
@@ -9,6 +11,11 @@ export type GameMode = 'MENU' | 'CLASSIC' | 'SANDBOX'
  */
 export type TrackingStatus = 'loading' | 'error' | 'no-hand' | 'ready'
 export type TrackingDelegate = 'GPU' | 'CPU'
+/**
+ * Depth calibration (H-4): in progress ('near', then 'far'), or how the last
+ * attempt ended ('done', or failed: no hand seen, or near and far too alike).
+ */
+export type CalibrationStatus = 'idle' | 'near' | 'far' | 'done' | 'no-hand' | 'too-similar'
 
 export interface GameStore {
     gameMode: GameMode
@@ -43,6 +50,9 @@ export interface GameStore {
      * holding an open palm still (CameraClutch), the HUD button or the C key.
      */
     isCameraMode: boolean
+    /** Depth direction and calibration (H-3, H-4); kept in this browser across visits */
+    depthSettings: DepthSettings
+    calibrationStatus: CalibrationStatus
     setGameState: (state: GameState) => void
     startGame: (mode: GameMode) => void
     returnToMenu: () => void
@@ -64,6 +74,13 @@ export interface GameStore {
     setCameraMode: (on: boolean) => void
     /** HUD button and C key; does nothing while a block is held */
     toggleCameraMode: () => void
+    setReachIn: (reachIn: boolean) => void
+    /** Begin the 5-second near/far calibration; does nothing while a block is held */
+    startCalibration: () => void
+    setCalibrationStatus: (status: CalibrationStatus) => void
+    finishCalibration: (calibration: DepthCalibration) => void
+    /** Back to the default range */
+    clearCalibration: () => void
 }
 
 const newTowerSeed = () => Math.floor(Math.random() * 2 ** 31)
@@ -79,10 +96,12 @@ const FRESH_GAME = {
     movePhase: 'IDLE',
     foulReason: null,
     isCameraMode: false,
+    calibrationStatus: 'idle',
 } satisfies Partial<GameStore>
 
-export const useGameStore = create<GameStore>((set) => ({
+export const useGameStore = create<GameStore>()(persist((set) => ({
     gameMode: 'MENU',
+    depthSettings: DEFAULT_DEPTH_SETTINGS,
     ...FRESH_GAME,
     gameId: 0,
     towerSeed: 1,
@@ -126,4 +145,17 @@ export const useGameStore = create<GameStore>((set) => ({
     resetView: () => set((state) => ({ viewResetId: state.viewResetId + 1 })),
     setCameraMode: (isCameraMode) => set({ isCameraMode }),
     toggleCameraMode: () => set((state) => (state.heldBlockId !== null ? {} : { isCameraMode: !state.isCameraMode })),
+    setReachIn: (reachIn) => set((state) => ({ depthSettings: { ...state.depthSettings, reachIn } })),
+    startCalibration: () => set((state) => (state.heldBlockId !== null ? {} : { calibrationStatus: 'near', isCameraMode: false })),
+    setCalibrationStatus: (calibrationStatus) => set({ calibrationStatus }),
+    finishCalibration: (calibration) => set((state) => ({
+        calibrationStatus: 'done',
+        depthSettings: { ...state.depthSettings, calibration },
+    })),
+    clearCalibration: () => set((state) => ({ depthSettings: { ...state.depthSettings, calibration: null } })),
+}), {
+    // Only the player's depth settings outlive the page
+    name: 'ar-jenga-settings',
+    version: 1,
+    partialize: (state) => ({ depthSettings: state.depthSettings }),
 }))

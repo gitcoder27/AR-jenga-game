@@ -25,13 +25,15 @@ test('a block from an odd level, let go over the top, snaps into the next slot t
   await page.waitForTimeout(1200)
   await expect.poll(async () => driver((d) => d.store().heldBlockId)).toBe(id)
 
-  // Out carefully along its length (a yank slips, G-1), up, over the top, then down a little off-centre
-  const out = { ...pinch, x: pinch.x + 8 }
+  // Out carefully along its length (a yank slips, G-1), up, over the top, then down a little off-centre.
+  // Out 10, so the lift clears the tower face by ~2 units: at 8, the 0.5 left (less the grab's lag) let the
+  // block rub up the face and knock the top off in slower runs.
+  const out = { ...pinch, x: pinch.x + 10 }
   await carryTo(page, driver, out, 2000, 600)
   const offset = { x: pinch.x - b.x, y: pinch.y - b.y, z: pinch.z - b.z }
   const handFor = (c: { x: number; y: number; z: number }) => ({ x: c.x + offset.x, y: c.y + offset.y, z: c.z + offset.z })
   // ~7 u/s, as in score.spec.ts: a faster lift lags past the carry slip distance at SwiftShader's ~12 FPS
-  await carryTo(page, driver, handFor({ x: b.x + 8, y: TOP_FACE + 4, z: b.z }), 3000, 600)
+  await carryTo(page, driver, handFor({ x: b.x + 10, y: TOP_FACE + 4, z: b.z }), 3000, 600)
   await carryTo(page, driver, handFor({ x: 0.8, y: TOP_FACE + 2, z: 0.5 }), 1500, 1000)
   await expect.poll(async () => driver((d) => d.store().placementTarget)).not.toBeNull()
 

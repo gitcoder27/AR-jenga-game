@@ -1,0 +1,48 @@
+/* Depth gauge (H-3): right edge, between the score and the camera preview */
+.depth-gauge {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+    font-family: 'Courier New', Courier, monospace;
+    color: #00e5ff;
+    z-index: 5;
+}
+
+.depth-gauge-label {
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    text-shadow: 0 0 4px #000;
+}
+
+.depth-gauge-track {
+    position: relative;
+    width: 10px;
+    height: 34vh;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(0, 229, 255, 0.6);
+}
+
+/* Where the tower is */
+.depth-gauge-band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: rgba(255, 183, 77, 0.55);
+}
+
+/* Where the hand is */
+.depth-gauge-hand {
+    position: absolute;
+    left: -5px;
+    right: -5px;
+    height: 4px;
+    margin-top: -2px;
+    background: #00e5ff;
+    box-shadow: 0 0 6px #00e5ff;
+}

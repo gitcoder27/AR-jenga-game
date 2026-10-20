@@ -138,8 +138,9 @@ function UpdateLogic({ handRef, refs, clutch }: { handRef: React.RefObject<Track
         // Already filtered (HandTracker): the joints go exactly where the hand is
         const joints = handToWorld(hand.landmarks, hand.depth, camera, worldRef.current)
         const { isPinching, isClosing, isOpenPalm } = hand.gesture
-        const cameraMode = useGameStore.getState().isCameraMode
-        handPhysics.update({ joints, pinching: isPinching, closing: isClosing, openPalm: isOpenPalm, camera: cameraMode }, delta)
+        const { isCameraMode, calibrationStatus } = useGameStore.getState()
+        const inert = isCameraMode || calibrationStatus === 'near' || calibrationStatus === 'far'
+        handPhysics.update({ joints, pinching: isPinching, closing: isClosing, openPalm: isOpenPalm, inert }, delta)
         assist.update(handPhysics.heldBody, delta)
     })
     return (

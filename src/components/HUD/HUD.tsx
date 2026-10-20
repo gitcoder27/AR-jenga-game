@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore, type TrackingStatus } from '../../store/gameStore';
 import type { FoulReason, MovePhase } from '../../game/moves';
+import { CalibrationOverlay, DepthPanel } from './DepthControls';
+import { depthHint } from './depthHint';
 import './HUD.css';
 
 const TRACKING_LABELS: Record<TrackingStatus, string> = {
@@ -45,7 +47,9 @@ export const HUD: React.FC = () => {
         isCameraMode,
         toggleCameraMode,
         heldBlockId,
+        depthSettings,
     } = useGameStore();
+    const [depthOpen, setDepthOpen] = useState(false);
     const moveHint = placementTarget !== null && movePhase === 'HOLDING' ? 'LET GO TO PLACE IT' : MOVE_HINTS[movePhase];
 
     // Keyboard fallback for camera mode (H-2)
@@ -105,7 +109,7 @@ export const HUD: React.FC = () => {
                 <div className="hud-instructions fade-out">
                     <p>PINCH THUMB + INDEX TO GRAB</p>
                     <p>OPEN YOUR FINGERS TO RELEASE</p>
-                    <p>HAND NEARER THE CAMERA = NEARER TO YOU</p>
+                    <p>{depthHint(depthSettings.reachIn)}</p>
                     <p>HOLD AN OPEN PALM STILL (OR PRESS C) TO TURN THE VIEW</p>
                 </div>
             )}
@@ -135,6 +139,14 @@ export const HUD: React.FC = () => {
                     TURN VIEW (C)
                 </button>
 
+                <button
+                    className={`hud-button ${depthOpen ? 'active' : ''}`}
+                    onClick={() => setDepthOpen(!depthOpen)}
+                    aria-expanded={depthOpen}
+                >
+                    DEPTH
+                </button>
+
                 <button className="hud-button" onClick={resetView}>
                     RESET VIEW
                 </button>
@@ -143,6 +155,9 @@ export const HUD: React.FC = () => {
                     EXIT GAME
                 </button>
             </div>
+
+            {depthOpen && <DepthPanel onClose={() => setDepthOpen(false)} />}
+            <CalibrationOverlay />
 
             {/* Hand tracking failed to start (H-9) */}
             {trackingStatus === 'error' && (
