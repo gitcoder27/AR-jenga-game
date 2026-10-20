@@ -3,6 +3,7 @@ import type { ImpulseJoint, RigidBody, World } from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { Collider } from '@dimforge/rapier3d-compat';
 import {
+    GRAB_ONSET_WINDOW_S,
     GRAB_RADIUS,
     HAND_PARKING_POSITION,
     HELD_BLOCK_DAMPING,
@@ -92,6 +93,12 @@ export interface HandInput {
     joints: Vec3[];
     pinching: boolean;
     openPalm: boolean;
+    /**
+     * A pinch is forming but not yet confirmed (gesture debounce). Counts as
+     * neither open nor pinching, so a hand that reappears already pinched
+     * doesn't look like it opened and closed again (G-4).
+     */
+    closing?: boolean;
 }
 
 /*
@@ -127,6 +134,10 @@ export class HandPhysics {
     private previousDamping = { linear: 0, angular: 0 };
     private parked = true;
     private lostFor = 0;
+    /** Seconds the current pinch has been closed while tracked */
+    private pinchTime = 0;
+    /** An open hand has been seen since tracking (re)started, so the next pinch is a real onset */
+    private armed = false;
     private readonly world: World;
     private readonly rapier: Rapier;
     private readonly getBodies: () => (RigidBody | null)[];
@@ -162,6 +173,11 @@ export class HandPhysics {
     /** Midpoint of the thumb and index tips, where a pinch grabs; null while parked. */
     get pinchPoint(): Readonly<Vec3> | null {
         return this.parked ? null : this.pinch;
+    }
+
+    /** Pinching but not holding: the pinch closed on nothing and won't grab until reopened (G-4). */
+    get pinchMissed(): boolean {
+        return !this.parked && !this.joint && this.pinchTime > 0 && (!this.armed || this.pinchTime > GRAB_ONSET_WINDOW_S);
     }
 
     /** Hover feedback at the pinch point this frame. Empty while holding or parked. */
@@ -206,9 +222,15 @@ export class HandPhysics {
         }
 
         if (input.pinching && !input.openPalm) {
-            if (!this.joint && feedback.candidate && thumbTip) this.grab(thumbTip, feedback.candidate.body);
+            // Grab only as the pinch closes (G-4): a pinch made in the air, or one the
+            // hand was already making when tracking (re)started, never grabs later.
+            const onset = this.armed && this.pinchTime <= GRAB_ONSET_WINDOW_S;
+            if (!this.joint && onset && feedback.candidate && thumbTip) this.grab(thumbTip, feedback.candidate.body);
+            this.pinchTime += dt;
         } else {
             this.release();
+            this.pinchTime = 0;
+            if (!input.closing) this.armed = true;
         }
         this.setHover(this.joint ? NO_FEEDBACK : feedback);
     }
@@ -251,6 +273,8 @@ export class HandPhysics {
 
         this.release();
         this.setHover(NO_FEEDBACK);
+        this.armed = false;
+        this.pinchTime = 0;
         const [x, y, z] = HAND_PARKING_POSITION;
         for (const body of bodies) {
             if (!body) continue;

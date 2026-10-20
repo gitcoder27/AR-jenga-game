@@ -28,7 +28,7 @@ const CONNECTIONS = [
 
 export default function Hand({ result }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const { isPinching, isClosedFist, confidence } = useGesture(result?.landmarks?.[0])
+    const { isPinching, isClosedFist, confidence, gestureState } = useGesture(result?.landmarks?.[0])
 
     // We keep the component mounted to avoid "pop-in" at [0,0,0]
     // but we hide the visuals if no result
@@ -80,12 +80,12 @@ export default function Hand({ result }: HandProps) {
                 />
             ))}
 
-            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isClosedFist={isClosedFist} confidence={confidence} />
+            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isPinchForming={gestureState === 'PINCH_READY'} isClosedFist={isClosedFist} confidence={confidence} />
         </group>
     )
 }
 
-function UpdateLogic({ result, refs, isPinching, isClosedFist, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isClosedFist: boolean, confidence: number }) {
+function UpdateLogic({ result, refs, isPinching, isPinchForming, isClosedFist, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isPinchForming: boolean, isClosedFist: boolean, confidence: number }) {
     const { world, rapier } = useRapier()
     const { camera } = useThree()
     // Mirror the grab (C-2) and the hover target (F-1) into the store
@@ -142,7 +142,7 @@ function UpdateLogic({ result, refs, isPinching, isClosedFist, confidence }: { r
             return next
         })
 
-        handPhysics.update({ joints, pinching: isPinching, openPalm: isClosedFist }, delta)
+        handPhysics.update({ joints, pinching: isPinching, closing: isPinchForming, openPalm: isClosedFist }, delta)
     })
     return <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isClosedFist={isClosedFist} confidence={confidence} />
 }

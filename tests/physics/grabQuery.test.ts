@@ -1,11 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { knownBug } from './knownBug';
 import { BLOCK_HALF_EXTENTS, GRAB_RADIUS, HAND_PARKING_POSITION, INDEX_TIP, PHYSICS_TIMESTEP, TABLE_HALF_EXTENTS, THUMB_TIP } from '../../src/game/config';
 import { createRng } from '../../src/game/towerLayout';
 import { findGrabCandidate, queryCursorFeedback, type Vec3 } from '../../src/game/grab';
 import { createScene, handInput, maxShift, type Scene, type SceneBlock } from './scene';
 import { nearestBlock } from './geometry';
-import { add, blockAxis, frontPinchPoint, rebaseline } from './scenarios';
+import { add, blockAxis, frontPinchPoint, grabAt, rebaseline } from './scenarios';
 
 const SAMPLES = 1000;
 /** Points this close to the grab radius boundary are ambiguous and skipped. */
@@ -97,7 +96,7 @@ describe('cursor feedback matches what a pinch would grab [F-1, F-2]', () => {
 });
 
 describe('sticky pinch [G-4]', () => {
-    knownBug('pinching in empty air and then sweeping into a block does not grab it', async () => {
+    it('pinching in empty air and then sweeping into a block does not grab it', async () => {
         const s = await createScene({ seed: 2 });
         s.stepFor(1);
         const block = s.block('5-0');
@@ -112,6 +111,53 @@ describe('sticky pinch [G-4]', () => {
         }
         s.stepFor(0.5, () => s.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
         expect(s.hand.heldBody).toBeNull();
+        expect(s.hand.pinchMissed).toBe(true);
+        // Reopening and pinching again grabs.
+        expect(grabAt(s, pinch, axis)).toBe(true);
+        s.free();
+    });
+
+    it('a hand that appears already pinching next to a block does not grab until it reopens', async () => {
+        const s = await createScene({ seed: 2 });
+        s.stepFor(1);
+        const block = s.block('5-0');
+        const axis = blockAxis(block);
+        const pinch = frontPinchPoint(block);
+        s.stepFor(0.5, () => s.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
+        expect(s.hand.heldBody).toBeNull();
+        expect(grabAt(s, pinch, axis)).toBe(true);
+        s.free();
+    });
+
+    it('a hand that reappears pinched does not grab, even through the gesture debounce', async () => {
+        const s = await createScene({ seed: 2 });
+        s.stepFor(1);
+        const block = s.block('5-0');
+        const axis = blockAxis(block);
+        const pinch = frontPinchPoint(block);
+        // Open hand next to the block, then tracking is lost for a second (parks the hand).
+        s.stepFor(0.3, () => s.hand.update(handInput(pinch, false, axis), PHYSICS_TIMESTEP));
+        s.stepFor(1, () => s.hand.update(null, PHYSICS_TIMESTEP));
+        expect(s.hand.isParked).toBe(true);
+        // It comes back pinched: the gesture goes PINCH_READY (closing) and then PINCHING.
+        const closing = { ...handInput(pinch, false, axis), closing: true };
+        s.stepFor(0.1, () => s.hand.update(closing, PHYSICS_TIMESTEP));
+        s.stepFor(0.5, () => s.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
+        expect(s.hand.heldBody).toBeNull();
+        s.free();
+    });
+
+    it('a pinch closing on a block grabs it (open → closing → pinching)', async () => {
+        const s = await createScene({ seed: 2 });
+        s.stepFor(1);
+        const block = s.block('5-0');
+        const axis = blockAxis(block);
+        const pinch = frontPinchPoint(block);
+        s.stepFor(0.2, () => s.hand.update(handInput(pinch, false, axis), PHYSICS_TIMESTEP));
+        s.stepFor(0.1, () => s.hand.update({ ...handInput(pinch, false, axis), closing: true }, PHYSICS_TIMESTEP));
+        s.step(() => s.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
+        expect(s.hand.heldBody).toBe(block.body);
+        expect(s.hand.pinchMissed).toBe(false);
         s.free();
     });
 });

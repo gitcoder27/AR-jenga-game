@@ -87,23 +87,25 @@ describe('Hand Component', () => {
         mockRapier.JointData.fixed.mockClear()
     })
 
-    // ...
 
-    it('attempts to find a block when pinching starts', () => {
-        vi.mocked(useGestureHook.default).mockReturnValue({
-            isPinching: true,
+
+    it('grabs the block under the pinch when the pinch closes', () => {
+        const openHand = {
+            isPinching: false,
             isOpenPalm: false,
             isClosedFist: false,
-            gestureState: 'PINCHING',
-            confidence: 0.9,
-            pinchPoint: { x: 0, y: 0, z: 0 },
-            metrics: { pinchDistance: 0.03, avgFingerExtension: 0.3, fingerSpread: 0.1, allFingersExtended: false, thumbExtended: false },
-        })
-
+            gestureState: 'IDLE' as const,
+            confidence: 0,
+            pinchPoint: null,
+            metrics: null,
+        }
         const result = { landmarks: [Array(21).fill({ x: 0, y: 0, z: 0 })] } as any
-        render(<Hand result={result} />)
-
         const useFrameMock = vi.mocked(useFrame)
+        const runFrame = () => useFrameMock.mock.calls.at(-1)![0]({} as any, 1 / 60)
+
+        // Open hand first: a pinch only grabs as it closes (G-4)
+        vi.mocked(useGestureHook.default).mockReturnValue(openHand)
+        const { rerender } = render(<Hand result={result} />)
 
         // Mock intersection to return a hit
         const mockBody = {
@@ -124,11 +126,17 @@ describe('Hand Component', () => {
 
         mockWorld.intersectionsWithShape.mockImplementation((_pos, _rot, _shape, callback) => callback(mockCollider))
 
-        // Execute all frame callbacks (from HandBones and UpdateLogic)
-        useFrameMock.mock.calls.forEach(call => {
-            const callback = call[0]
-            callback({} as any, 0)
+        runFrame()
+        expect(mockWorld.createImpulseJoint).not.toHaveBeenCalled()
+
+        vi.mocked(useGestureHook.default).mockReturnValue({
+            ...openHand,
+            isPinching: true,
+            gestureState: 'PINCHING',
+            confidence: 0.9,
         })
+        rerender(<Hand result={result} />)
+        runFrame()
 
         expect(mockWorld.intersectionsWithShape).toHaveBeenCalled()
         expect(mockWorld.createImpulseJoint).toHaveBeenCalled()

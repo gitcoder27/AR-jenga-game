@@ -23,6 +23,7 @@ export interface Vec3 {
 interface E2EWindow {
     __e2eHand: Landmark[] | null;
     __e2eDrop: number;
+    __e2eDropUntil: number;
     __e2eDetectCalls: number;
 }
 
@@ -60,6 +61,11 @@ export function hideHand(): void {
 /** The next `frames` detection calls report no hand. */
 export function dropFrames(frames: number): void {
     w.__e2eDrop = frames;
+}
+
+/** Detection reports no hand for the next `ms` milliseconds, however many frames that is. */
+export function dropFor(ms: number): void {
+    w.__e2eDropUntil = performance.now() + ms;
 }
 
 export function detectCalls(): number {

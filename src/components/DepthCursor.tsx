@@ -19,6 +19,7 @@ const COLORS = {
   inRange: '#00e5ff',   // Cyan: target can be grabbed
   grabbing: '#00ff00',  // Green: actively holding
   palm: '#ff9800',      // Orange: open palm mode (camera control)
+  missed: '#ff5252',    // Red: pinched on nothing; reopen to try again (G-4)
 };
 
 /**
@@ -29,6 +30,7 @@ const COLORS = {
 export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinching, isClosedFist, confidence }) => {
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
+  const missedRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
   const isInRange = useGameStore((state) => state.hoveredBlockId !== null);
 
@@ -44,6 +46,7 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinchin
     // Ring grows as the pinch point nears a block
     const ringScale = 1 + handPhysics.feedback.proximity * 0.3;
     ringRef.current?.scale.set(ringScale, ringScale, 1);
+    if (missedRef.current) missedRef.current.visible = handPhysics.pinchMissed;
   });
 
   // Determine cursor color based on state
@@ -102,6 +105,12 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinchin
       <mesh rotation={[0, 0, Math.PI / 2]}>
         <planeGeometry args={[0.02, 0.6]} />
         <meshBasicMaterial color={cursorColor} transparent opacity={cursorOpacity * 0.7} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Missed pinch - closed on nothing, won't grab until the hand reopens */}
+      <mesh ref={missedRef} visible={false} scale={[1.3, 1.3, 1]}>
+        <ringGeometry args={[0.45, 0.5, 32]} />
+        <meshBasicMaterial color={COLORS.missed} transparent opacity={0.8} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Grab sphere visualization - shows when pinching and in range */}

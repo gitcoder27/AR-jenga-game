@@ -86,6 +86,23 @@ export async function release(page: Page, driver: Driver, at: Vec3): Promise<voi
   await page.waitForTimeout(1000)
 }
 
+/**
+ * Wait until no block moves more than `threshold` over `windowMs`, then return
+ * the positions. Throws if the tower is still moving after `timeoutMs`.
+ */
+export async function waitForRest(page: Page, driver: Driver, { threshold = 0.05, windowMs = 500, timeoutMs = 15_000 } = {}): Promise<Positions> {
+  const deadline = Date.now() + timeoutMs
+  let previous = await driver((d) => d.blockPositions())
+  for (;;) {
+    await page.waitForTimeout(windowMs)
+    const current = await driver((d) => d.blockPositions())
+    const moving = movedBlocks(previous, current, [], threshold)
+    if (moving.length === 0) return current
+    if (Date.now() > deadline) throw new Error(`tower still moving after ${timeoutMs} ms: ${moving.join(', ')}`)
+    previous = current
+  }
+}
+
 export async function storeState(driver: Driver) {
   return driver((d) => {
     const s = d.store()

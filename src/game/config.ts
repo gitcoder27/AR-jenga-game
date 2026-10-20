@@ -39,6 +39,8 @@ export const HAND_JOINT_RADIUS = 0.05;
 export const HAND_PARKING_POSITION: Vec3Tuple = [0, -100, 0];
 export const GRAB_RADIUS = 0.5;
 export const HELD_BLOCK_DAMPING = 2;
+/** A pinch only grabs within this long of closing; pinching in the air never grabs later (G-4). */
+export const GRAB_ONSET_WINDOW_S = 0.15;
 /** Hold the hand still this long after tracking drops out before letting go (H-5). */
 export const TRACKING_LOSS_GRACE_S = 0.25;
 
