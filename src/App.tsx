@@ -9,6 +9,7 @@ import Table from './components/Table'
 import Tower from './components/Tower'
 import useHandTracking from './hooks/useHandTracking'
 import { HandTracker, type TrackedHand } from './tracking/handTracker'
+import { onVideoFrames } from './tracking/videoFrames'
 import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
@@ -42,7 +43,6 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   // Filtering, outlier rejection and gestures, once per detection (H-6, H-7)
   const [tracker] = useState(() => new HandTracker())
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
-  const requestRef = useRef<number>(0)
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
   const gameId = useGameStore((state) => state.gameId)
@@ -56,8 +56,8 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   useEffect(() => {
     if (isReady && videoElement && cameraActive) {
       const { setTrackingStatus } = useGameStore.getState()
-      const loop = () => {
-        const now = performance.now()
+      // Once per camera frame, not per display frame (H-8)
+      return onVideoFrames(videoElement, (now) => {
         const res = detect(videoElement, now)
         if (res) {
           // MediaPipe landmarks are normalized per axis; gestures and filtering need the frame's aspect
@@ -66,10 +66,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
           const status = res.landmarks.length > 0 ? 'ready' : 'no-hand'
           if (useGameStore.getState().trackingStatus !== status) setTrackingStatus(status)
         }
-        requestRef.current = requestAnimationFrame(loop)
-      }
-      loop()
-      return () => cancelAnimationFrame(requestRef.current)
+      })
     }
   }, [isReady, videoElement, cameraActive, detect, tracker])
 

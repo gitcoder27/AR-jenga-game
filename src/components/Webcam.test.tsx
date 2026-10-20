@@ -37,8 +37,8 @@ describe('Webcam Component', () => {
     expect(getUserMediaMock).toHaveBeenCalledWith({
       video: {
         facingMode: 'user',
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: 640 },
+        height: { ideal: 480 },
       },
       audio: false,
     })

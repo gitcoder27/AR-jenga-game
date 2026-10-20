@@ -18,8 +18,11 @@ export const HandLandmarker = {
     if (window.__e2eGpuFail && options.baseOptions.delegate === 'GPU') throw new Error('e2e: GPU delegate unavailable');
     window.__e2eDelegate = options.baseOptions.delegate;
     return {
-      detectForVideo: () => {
+      detectForVideo: (video) => {
         window.__e2eDetectCalls = (window.__e2eDetectCalls || 0) + 1;
+        // Inference on a camera frame that was already processed (H-8)
+        if (video.currentTime === window.__e2eLastVideoTime) window.__e2eDuplicateDetects = (window.__e2eDuplicateDetects || 0) + 1;
+        window.__e2eLastVideoTime = video.currentTime;
         const dropping = window.__e2eDrop > 0 || performance.now() < window.__e2eDropUntil;
         if (window.__e2eDrop > 0) window.__e2eDrop--;
         if (dropping) return { landmarks: [], worldLandmarks: [], handedness: [], handednesses: [] };

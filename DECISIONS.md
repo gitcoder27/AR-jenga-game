@@ -309,3 +309,19 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   | 2.5 s moving       | 50     | 0     |
 
   Frame-time p95 on a mid-range phone was not measured; there is no device here.
+
+### Inference per camera frame (H-8)
+
+- **Detection is driven by the video, not the display.** `onVideoFrames()` (`src/tracking/videoFrames.ts`) uses
+  `requestVideoFrameCallback`. Where that is missing, it polls animation frames and skips any whose
+  `video.currentTime` hasn't changed.
+- **Capture at 640×480** (was 1280×720); the landmark model downscales anyway.
+- **The Web Worker is not done here.** The roadmap puts it in Phase 3 (#5). It is not in this run's Phase 3 scope,
+  which is mirror AR only, so it stays undone.
+- **Validation** (`e2e/inference.spec.ts`): the stub counts detections on a video frame that was already processed.
+  - HEAD: 2 in 3 s, with a 1280×720 capture.
+  - Now: 0, with a 640×480 capture.
+
+  HEAD's count is low only because this environment renders at about 12 FPS, slower than the fake camera. On
+  a 60–120 Hz display the old rAF loop ran 2–4 detections per camera frame. Main-thread long tasks on a phone
+  were not measured.

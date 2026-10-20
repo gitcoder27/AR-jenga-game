@@ -27,8 +27,9 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
     navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: 'user',
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        // The landmark model downscales anyway; a smaller capture is cheaper to grab and decode (H-8)
+        width: { ideal: 640 },
+        height: { ideal: 480 },
       },
       audio: false,
     }).then((s) => {
