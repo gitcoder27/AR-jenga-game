@@ -27,7 +27,7 @@ import {
     THUMB_TIP,
 } from '../../src/game/config';
 import { createRng, generateTowerLayout, type BlockLayout } from '../../src/game/towerLayout';
-import { HandPhysics, type HandInput, type Vec3 } from '../../src/game/grab';
+import { HandPhysics, type BlockUserData, type HandInput, type Vec3 } from '../../src/game/grab';
 
 let ready: Promise<void> | null = null;
 export function initRapier(): Promise<void> {
@@ -90,6 +90,8 @@ function createBlock(world: World, layout: BlockLayout): RigidBody {
     const body = world.createRigidBody(
         RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setRotation(q).setCanSleep(true),
     );
+    // Same as <Block userData={{ blockId }}> in the app.
+    body.userData = { blockId: layout.id } satisfies BlockUserData;
     const desc = RAPIER.ColliderDesc.cuboid(...BLOCK_HALF_EXTENTS)
         .setFriction(BLOCK_FRICTION)
         .setRestitution(RESTITUTION)

@@ -24,7 +24,7 @@ test.describe('grab → carry → release', () => {
     expect(pageErrors).toEqual([])
   })
 
-  knownBug('heldBlockId is set during a carry and cleared after release [C-2]', async ({ page, driver, startGame }) => {
+  test('heldBlockId is set during a carry and cleared after release [C-2]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
     const { hand } = await grabBlock(page, driver, ID)
     const out = { ...hand, z: hand.z + 5 }

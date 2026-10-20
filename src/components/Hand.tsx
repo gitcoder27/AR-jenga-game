@@ -87,10 +87,19 @@ export default function Hand({ result }: HandProps) {
 function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isClosedFist: boolean }) {
     const { world, rapier } = useRapier()
     const { camera } = useThree()
-    const handPhysics = useMemo(() => new HandPhysics(world, rapier, () => refs.current), [world, rapier, refs])
+    // Mirror the grab into the store (C-2)
+    const handPhysics = useMemo(
+        () => new HandPhysics(world, rapier, () => refs.current, (id) => useGameStore.getState().setHeldBlockId(id)),
+        [world, rapier, refs],
+    )
     const gameId = useGameStore((state) => state.gameId)
     // A reset remounts the tower, removing the held block and its joint (G-8).
     useEffect(() => handPhysics.forget(), [gameId, handPhysics])
+    // Unmount: the Physics world may already be gone, so drop the grab without touching Rapier.
+    useEffect(() => () => {
+        handPhysics.forget()
+        useGameStore.getState().setHeldBlockId(null)
+    }, [handPhysics])
     // Velocity tracking for adaptive smoothing
     const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
 

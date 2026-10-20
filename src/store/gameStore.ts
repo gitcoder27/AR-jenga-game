@@ -8,6 +8,12 @@ interface GameStore {
     gameState: GameState
     score: number
     heldBlockId: string | null
+    /**
+     * The block being moved this turn: set when a block is grabbed and kept after
+     * release until another block is grabbed or the game resets. It is exempt
+     * from the floor rule, so dropping it isn't an instant game over (C-2).
+     */
+    movingBlockId: string | null
     hoveredBlockId: string | null  // Block currently under the pointer
     gameId: number
     isWebcamVisible: boolean
@@ -28,6 +34,7 @@ export const useGameStore = create<GameStore>((set) => ({
     gameState: 'PLAYING',
     score: 0,
     heldBlockId: null,
+    movingBlockId: null,
     hoveredBlockId: null,
     gameId: 0,
     isWebcamVisible: false,
@@ -38,12 +45,16 @@ export const useGameStore = create<GameStore>((set) => ({
         gameState: 'PLAYING',
         score: 0,
         heldBlockId: null,
+        movingBlockId: null,
         hoveredBlockId: null,
         isInstructionsVisible: true
     }),
-    returnToMenu: () => set({ gameMode: 'MENU', gameState: 'PLAYING', hoveredBlockId: null }),
+    returnToMenu: () => set({ gameMode: 'MENU', gameState: 'PLAYING', heldBlockId: null, movingBlockId: null, hoveredBlockId: null }),
     incrementScore: () => set((state) => ({ score: state.score + 1 })),
-    setHeldBlockId: (heldBlockId) => set({ heldBlockId }),
+    setHeldBlockId: (heldBlockId) => set((state) => ({
+        heldBlockId,
+        movingBlockId: heldBlockId ?? state.movingBlockId,
+    })),
     setHoveredBlockId: (hoveredBlockId) => set({ hoveredBlockId }),
     setWebcamVisible: (isWebcamVisible) => set({ isWebcamVisible }),
     setInstructionsVisible: (isInstructionsVisible) => set({ isInstructionsVisible }),
@@ -51,6 +62,7 @@ export const useGameStore = create<GameStore>((set) => ({
         gameState: 'PLAYING',
         score: 0,
         heldBlockId: null,
+        movingBlockId: null,
         hoveredBlockId: null,
         gameId: state.gameId + 1,
         isInstructionsVisible: state.gameMode === 'CLASSIC'

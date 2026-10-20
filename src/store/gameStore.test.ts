@@ -75,4 +75,16 @@ describe('useGameStore', () => {
     expect(state.score).toBe(0)
     expect(state.heldBlockId).toBeNull()
   })
+
+  it('remembers the block moved this turn after release, until reset (C-2)', () => {
+    const { setHeldBlockId } = useGameStore.getState()
+    act(() => setHeldBlockId('2-0'))
+    expect(useGameStore.getState()).toMatchObject({ heldBlockId: '2-0', movingBlockId: '2-0' })
+    act(() => setHeldBlockId(null))
+    expect(useGameStore.getState()).toMatchObject({ heldBlockId: null, movingBlockId: '2-0' })
+    act(() => setHeldBlockId('3-1'))
+    expect(useGameStore.getState().movingBlockId).toBe('3-1')
+    act(() => useGameStore.getState().resetGame())
+    expect(useGameStore.getState()).toMatchObject({ heldBlockId: null, movingBlockId: null })
+  })
 })

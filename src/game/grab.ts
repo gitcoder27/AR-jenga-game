@@ -21,6 +21,17 @@ export interface Vec3 {
 
 const IDENTITY_ROTATION = { x: 0, y: 0, z: 0, w: 1 };
 
+/** `userData` every block body carries, so physics queries can map a body back to its block. */
+export interface BlockUserData {
+    blockId: string;
+}
+
+/** The block id of a block body, or null for anything else (hand, table, floor). */
+export function blockIdOf(body: RigidBody | null | undefined): string | null {
+    const data = body?.userData as Partial<BlockUserData> | undefined;
+    return typeof data?.blockId === 'string' ? data.blockId : null;
+}
+
 /**
  * Returns the body a pinch at `point` would grab, or null.
  */
@@ -103,11 +114,19 @@ export class HandPhysics {
     private readonly world: World;
     private readonly rapier: Rapier;
     private readonly getBodies: () => (RigidBody | null)[];
+    /** Called with the block id on grab and null when the grab ends for any reason (C-2). */
+    onHeldChange: ((blockId: string | null) => void) | null = null;
 
-    constructor(world: World, rapier: Rapier, getBodies: () => (RigidBody | null)[]) {
+    constructor(
+        world: World,
+        rapier: Rapier,
+        getBodies: () => (RigidBody | null)[],
+        onHeldChange: ((blockId: string | null) => void) | null = null,
+    ) {
         this.world = world;
         this.rapier = rapier;
         this.getBodies = getBodies;
+        this.onHeldChange = onHeldChange;
     }
 
     get heldBody(): RigidBody | null {
@@ -167,8 +186,10 @@ export class HandPhysics {
 
     /** Drop the grab without touching Rapier. Call when the world's blocks were replaced. */
     forget(): void {
+        const wasHolding = this.grabbed !== null;
         this.joint = null;
         this.grabbed = null;
+        if (wasHolding) this.onHeldChange?.(null);
     }
 
     private onTrackingLost(bodies: (RigidBody | null)[], dt: number): void {
@@ -241,5 +262,6 @@ export class HandPhysics {
         this.joint = this.world.createImpulseJoint(params, thumbTip, body, true);
         this.grabbed = body;
         body.wakeUp();
+        this.onHeldChange?.(blockIdOf(body));
     }
 }
