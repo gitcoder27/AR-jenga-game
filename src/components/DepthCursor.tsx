@@ -3,6 +3,9 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useRapier } from '@react-three/rapier';
 import { calculateDepth } from '../utils/depth';
 import { ema } from '../utils/smoothing';
+import { landmarkToWorld } from '../tracking/mapping';
+import { queryCursorFeedback } from '../game/grab';
+import { GRAB_RADIUS } from '../game/config';
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
 import useGesture from '../hooks/useGesture';
@@ -13,7 +16,6 @@ interface DepthCursorProps {
 }
 
 const PARKING_POSITION = new THREE.Vector3(0, -100, 0);
-const GRAB_RADIUS = 0.5; // Same radius used in Hand.tsx for pinch detection
 
 // Color states for visual feedback
 const COLORS = {
@@ -60,19 +62,8 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
     const midZRaw = (thumb.z + index.z) / 2;
     const handZ = calculateDepth(landmarks);
 
-    // Viewport parameters matching Hand.tsx
-    const VIEW_WIDTH = 45;
-    const VIEW_HEIGHT = 25;
-    const BASE_DIST = 20;
-
-    // Use same explicit local-to-camera transform as Hand.tsx
-    const lx = (midX - 0.5) * VIEW_WIDTH * -1;
-    const ly = (0.5 - midY) * VIEW_HEIGHT;
-    const lz = -(BASE_DIST - handZ) - (midZRaw * 10);
-
-    // Transform to camera-relative world position
-    const localPos = new THREE.Vector3(lx, ly, lz);
-    const worldPos = localPos.applyQuaternion(camera.quaternion).add(camera.position);
+    // Same landmark -> world mapping as Hand.tsx
+    const worldPos = landmarkToWorld({ x: midX, y: midY, z: midZRaw }, handZ, camera);
 
     if (isFirstFrameRef.current) {
       positionRef.current.copy(worldPos);
@@ -88,59 +79,13 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
 
     // Proximity detection: check if we're near any grabbable block
     try {
-      const shape = new rapier.Ball(GRAB_RADIUS * 2); // Slightly larger for proximity detection
-      const hit = world.intersectionWithShape(
-        { x: positionRef.current.x, y: positionRef.current.y, z: positionRef.current.z },
-        { x: 0, y: 0, z: 0, w: 1 },
-        shape
-      );
-
-      if (hit) {
-        const body = hit.parent();
-        if (body && body.isDynamic()) {
-          // Get the block name for highlighting
-          const rigidBody = body as any;
-          const blockName = rigidBody.userData?.name || '';
-
-          // Set hovered block if it's a block
-          if (blockName.startsWith('block-')) {
-            if (hoveredBlockIdRef.current !== blockName) {
-              hoveredBlockIdRef.current = blockName;
-              setHoveredBlockId(blockName);
-            }
-          } else {
-            if (hoveredBlockIdRef.current !== null) {
-              hoveredBlockIdRef.current = null;
-              setHoveredBlockId(null);
-            }
-          }
-
-          // Calculate proximity based on distance
-          const bodyPos = body.translation();
-          const dist = Math.sqrt(
-            Math.pow(positionRef.current.x - bodyPos.x, 2) +
-            Math.pow(positionRef.current.y - bodyPos.y, 2) +
-            Math.pow(positionRef.current.z - bodyPos.z, 2)
-          );
-          // Normalize to 0-1 (1 = very close, 0 = at edge of detection)
-          proximityRef.current = Math.max(0, 1 - dist / (GRAB_RADIUS * 2));
-          isInRangeRef.current = dist < GRAB_RADIUS;
-        } else {
-          if (hoveredBlockIdRef.current !== null) {
-            hoveredBlockIdRef.current = null;
-            setHoveredBlockId(null);
-          }
-          proximityRef.current = 0;
-          isInRangeRef.current = false;
-        }
-      } else {
-        if (hoveredBlockIdRef.current !== null) {
-          hoveredBlockIdRef.current = null;
-          setHoveredBlockId(null);
-        }
-        proximityRef.current = ema(proximityRef.current, 0, 0.1);
-        isInRangeRef.current = false;
+      const feedback = queryCursorFeedback(world, rapier, positionRef.current, proximityRef.current);
+      if (hoveredBlockIdRef.current !== feedback.blockName) {
+        hoveredBlockIdRef.current = feedback.blockName;
+        setHoveredBlockId(feedback.blockName);
       }
+      proximityRef.current = feedback.proximity;
+      isInRangeRef.current = feedback.inRange;
     } catch {
       // Rapier may error during initialization
       proximityRef.current = 0;

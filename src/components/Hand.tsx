@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, type RapierRigidBody, useRapier } from '@react-three/rapier'
@@ -6,7 +6,9 @@ import { calculateDepth } from '../utils/depth'
 import { adaptiveLerp, calculateVelocity } from '../utils/smoothing'
 import useGesture from '../hooks/useGesture'
 import { HandBone } from './HandBone'
-import * as THREE from 'three'
+import { HandPhysics } from '../game/grab'
+import { HAND_PARKING_POSITION } from '../game/config'
+import { landmarkToWorld } from '../tracking/mapping'
 
 interface HandProps {
     result: HandLandmarkerResult | null
@@ -21,7 +23,6 @@ const CONNECTIONS = [
     [5, 9], [9, 13], [13, 17] // Palm
 ];
 
-const PARKING_POSITION: [number, number, number] = [0, -100, 0];
 
 export default function Hand({ result }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
@@ -53,7 +54,7 @@ export default function Hand({ result }: HandProps) {
                     ref={(el: RapierRigidBody | null) => { refs.current[i] = el }}
                     type="kinematicPosition"
                     colliders="ball"
-                    position={PARKING_POSITION} // Start far away
+                    position={HAND_PARKING_POSITION} // Start far away
                 >
                     <mesh>
                         <sphereGeometry args={[0.05, 12, 12]} />
@@ -85,157 +86,45 @@ export default function Hand({ result }: HandProps) {
 function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isClosedFist: boolean }) {
     const { world, rapier } = useRapier()
     const { camera } = useThree()
-    const jointRef = useRef<any>(null)
-    const grabbedBodyRef = useRef<RapierRigidBody | null>(null)
-    const previousDampingRef = useRef<{ linear: number, angular: number }>({ linear: 0, angular: 0 })
-    const isFirstFrameRef = useRef(true)
+    const handPhysics = useMemo(() => new HandPhysics(world, rapier, () => refs.current), [world, rapier, refs])
     // Velocity tracking for adaptive smoothing
     const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
 
     useFrame(() => {
         if (!result || !result.landmarks || result.landmarks.length === 0) {
-            if (!isFirstFrameRef.current) {
-                // Parking the hand if lost
-                refs.current.forEach(rb => {
-                    if (rb) rb.setNextKinematicTranslation({ x: 0, y: -100, z: 0 });
-                });
-                isFirstFrameRef.current = true;
-            }
+            handPhysics.update(null)
             return
         }
 
         const landmarks = result.landmarks[0]
         const handZ = calculateDepth(landmarks)
+        const isFirstFrame = handPhysics.isParked
 
-        // Viewport parameters defining the interaction volume in front of camera
-        const VIEW_WIDTH = 45;
-        const VIEW_HEIGHT = 25;
-        const BASE_DIST = 20;
-
-        landmarks.forEach((landmark, index) => {
+        const joints = landmarks.map((landmark, index) => {
+            const worldPos = landmarkToWorld(landmark, handZ, camera)
             const rb = refs.current[index]
-            if (rb) {
-                // Determine local position relative to camera view
-                // X: centered at 0.5, scaled to width
-                // Y: centered at 0.5, scaled to height (flipped, top is +Y in 3D but 0 in screen)
-                // Actually in 3D +Y also up. In screen Y=0 is top.
-                // So (landmark.y - 0.5) is -0.5 at top, +0.5 at bottom.
-                // We want Top (+Y) to Bottom (-Y).
-                // So -(landmark.y - 0.5) = (0.5 - y).
-
-                const lx = (landmark.x - 0.5) * VIEW_WIDTH * -1; // Flip X to match webcam mirror
-                const ly = (0.5 - landmark.y) * VIEW_HEIGHT;
-
-                // Depth: Base distance + dynamic Z
-                // We project out from camera by (BASE_DIST - handZ)
-                // Since camera looks down -Z local axis, we use negative Z.
-                const lz = -(BASE_DIST - handZ) - (landmark.z * 10);
-
-                const localPos = new THREE.Vector3(lx, ly, lz);
-                const worldPos = localPos.applyQuaternion(camera.quaternion).add(camera.position);
-
-                if (isFirstFrameRef.current) {
-                    // Teleport instantly on first frame to avoid knocking tower from center
-                    rb.setNextKinematicTranslation({ x: worldPos.x, y: worldPos.y, z: worldPos.z })
-                    prevPositionsRef.current.set(index, { x: worldPos.x, y: worldPos.y, z: worldPos.z });
-                } else {
-                    const currentPos = rb.translation()
-                    const prevPos = prevPositionsRef.current.get(index) || currentPos;
-
-                    // Calculate velocity for adaptive smoothing
-                    const velocity = calculateVelocity(prevPos, worldPos);
-
-                    // Adaptive smoothing: fast movements = responsive, slow = stable
-                    const newX = adaptiveLerp(currentPos.x, worldPos.x, velocity)
-                    const newY = adaptiveLerp(currentPos.y, worldPos.y, velocity)
-                    const newZ = adaptiveLerp(currentPos.z, worldPos.z, velocity)
-
-                    rb.setNextKinematicTranslation({ x: newX, y: newY, z: newZ })
-                    prevPositionsRef.current.set(index, { x: newX, y: newY, z: newZ });
-                }
+            if (isFirstFrame || !rb) {
+                // Teleport instantly on first frame to avoid knocking tower from center
+                prevPositionsRef.current.set(index, { x: worldPos.x, y: worldPos.y, z: worldPos.z });
+                return { x: worldPos.x, y: worldPos.y, z: worldPos.z }
             }
+            const currentPos = rb.translation()
+            const prevPos = prevPositionsRef.current.get(index) || currentPos;
+
+            // Calculate velocity for adaptive smoothing
+            const velocity = calculateVelocity(prevPos, worldPos);
+
+            // Adaptive smoothing: fast movements = responsive, slow = stable
+            const next = {
+                x: adaptiveLerp(currentPos.x, worldPos.x, velocity),
+                y: adaptiveLerp(currentPos.y, worldPos.y, velocity),
+                z: adaptiveLerp(currentPos.z, worldPos.z, velocity),
+            }
+            prevPositionsRef.current.set(index, next);
+            return next
         })
 
-
-        isFirstFrameRef.current = false
-
-        // Only grab if pinching AND not in fist state (mutual exclusion)
-        if (isPinching && !isClosedFist) {
-            if (!jointRef.current) {
-                const thumbTip = refs.current[4]
-                const indexTip = refs.current[8]
-
-                if (thumbTip && indexTip) {
-                    const thumbPos = thumbTip.translation()
-                    const indexPos = indexTip.translation()
-
-                    const midX = (thumbPos.x + indexPos.x) / 2
-                    const midY = (thumbPos.y + indexPos.y) / 2
-                    const midZ = (thumbPos.z + indexPos.z) / 2
-
-                    const shape = new rapier.Ball(0.5)
-
-                    const hit = world.intersectionWithShape(
-                        { x: midX, y: midY, z: midZ },
-                        { x: 0, y: 0, z: 0, w: 1 },
-                        shape
-                    )
-
-                    if (hit) {
-                        const body = hit.parent()
-                        if (body && body.isDynamic()) {
-                            previousDampingRef.current = {
-                                linear: body.linearDamping(),
-                                angular: body.angularDamping()
-                            }
-
-                            body.setLinearDamping(2.0)
-                            body.setAngularDamping(2.0)
-
-                            const thumbTrans = thumbTip.translation()
-                            const thumbRot = thumbTip.rotation()
-                            const bodyTrans = body.translation()
-                            const bodyRot = body.rotation()
-
-                            const tPos = new THREE.Vector3(thumbTrans.x, thumbTrans.y, thumbTrans.z)
-                            const tQuat = new THREE.Quaternion(thumbRot.x, thumbRot.y, thumbRot.z, thumbRot.w)
-                            const bPos = new THREE.Vector3(bodyTrans.x, bodyTrans.y, bodyTrans.z)
-                            const bQuat = new THREE.Quaternion(bodyRot.x, bodyRot.y, bodyRot.z, bodyRot.w)
-
-                            const invTQuat = tQuat.clone().invert()
-                            const relativePos = bPos.clone().sub(tPos).applyQuaternion(invTQuat)
-                            const relativeRot = invTQuat.clone().multiply(bQuat)
-
-                            const params = rapier.JointData.fixed(
-                                { x: relativePos.x, y: relativePos.y, z: relativePos.z },
-                                { x: relativeRot.x, y: relativeRot.y, z: relativeRot.z, w: relativeRot.w },
-                                { x: 0, y: 0, z: 0 },
-                                { x: 0, y: 0, z: 0, w: 1 }
-                            )
-
-                                ; (params as any).collideConnected = false
-
-                            const joint = world.createImpulseJoint(params, thumbTip, body, true)
-                            jointRef.current = joint
-                            grabbedBodyRef.current = body
-                            body.wakeUp()
-                        }
-                    }
-                }
-            }
-        } else {
-            if (jointRef.current) {
-                world.removeImpulseJoint(jointRef.current, true)
-                jointRef.current = null
-
-                if (grabbedBodyRef.current) {
-                    grabbedBodyRef.current.setLinearDamping(previousDampingRef.current.linear)
-                    grabbedBodyRef.current.setAngularDamping(previousDampingRef.current.angular)
-                    grabbedBodyRef.current.wakeUp()
-                    grabbedBodyRef.current = null
-                }
-            }
-        }
+        handPhysics.update({ joints, pinching: isPinching, openPalm: isClosedFist })
     })
     return null
 }

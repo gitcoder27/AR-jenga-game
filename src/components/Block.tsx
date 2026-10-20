@@ -4,6 +4,7 @@ import { Instance } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../store/gameStore'
+import { BLOCK_FRICTION, BLOCK_HALF_EXTENTS, RESTITUTION } from '../game/config'
 
 interface BlockProps {
     id: string
@@ -85,14 +86,14 @@ export default function Block({ id, position, rotation }: BlockProps) {
             rotation={rotation}
             type="dynamic"
             mass={2}
-            friction={1}
-            restitution={0}
+            friction={BLOCK_FRICTION}
+            restitution={RESTITUTION}
             name={`block-${id}`}
             onCollisionEnter={handleCollision}
             canSleep={true}
             colliders={false}
         >
-            <CuboidCollider args={[1.25, 0.75, 3.75]} />
+            <CuboidCollider args={BLOCK_HALF_EXTENTS} />
             <group ref={meshRef}>
                 <Instance color={currentColor} />
             </group>
