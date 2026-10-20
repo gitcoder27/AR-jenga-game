@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import Hand from './Hand'
 import type { HandGesture, TrackedHand } from '../tracking/handTracker'
 import type { ReactNode } from 'react'
+import { CameraClutch } from '../tracking/cameraClutch'
 
 vi.mock('@react-three/fiber', async () => {
     const { PerspectiveCamera } = await import('three')
@@ -127,7 +128,7 @@ describe('Hand Component', () => {
 
         // Open hand first: a pinch only grabs as it closes (G-4)
         const handRef: { current: TrackedHand | null } = { current: handWith(open) }
-        render(<Hand handRef={handRef} />)
+        render(<Hand handRef={handRef} clutch={new CameraClutch()} />)
 
         // Mock intersection to return a hit
         const mockBody = {

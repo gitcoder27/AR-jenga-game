@@ -17,7 +17,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
   - **Move**: Your virtual hand mimics your real hand's position in real-time.
   - **Grab**: Pinch your thumb and index finger together to grab and hold blocks.
   - **Depth**: Works like a mirror. Bring your hand closer to the webcam and the virtual hand comes toward you; move it away and the virtual hand moves toward the tower.
-  - **Camera**: Sweep an open palm to orbit the view, or drag with the mouse.
+  - **Camera**: Hold an open palm still, then move your hand to turn the view. You can also press **C**, use the TURN VIEW button, or drag with the mouse.
 - **Interactive Gameplay**: Carefully remove blocks from the tower and stack them on top without toppling the structure.
 - **Immersive Environment**: Features a 3D studio room environment, dynamic lighting, shadows, and high-quality block materials.
 - **HUD**: Heads-Up Display showing your score and current game status.
@@ -72,7 +72,10 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
    - **Grab**: Open your hand near a block, then pinch your **thumb** and **index finger**. The block under the pinch turns cyan when it can be grabbed and green while you hold it. A pinch that closes on nothing shows a red ring; open your hand and try again.
    - **Release**: Open your fingers. A marker on the surface below shows where a held block will land.
 4. **Camera**:
-   - Sweep an **open palm** (all fingers spread) to orbit the view.
+   - Hold an **open palm** (all fingers spread) **still** for about half a second. The cursor fills up, then the view-turning mode starts and a violet banner says so.
+   - Then move your hand to turn the view. Meanwhile the hand can't touch or grab blocks.
+   - Pinch or close your hand to stop. Losing the hand also stops it.
+   - Press **C**, or use the **TURN VIEW** button, to switch it on or off without the gesture. It is unavailable while you hold a block.
    - Drag with the mouse to orbit, or scroll to zoom. The view can't go under the table or zoom out of reach.
    - **RESET VIEW** restores the default framing.
 5. **Rules**:
@@ -93,13 +96,14 @@ src/
 │   └── ...           # Webcam, camera controls, environment (Table, Floor, StudioRoom)
 ├── game/             # Game logic shared by components and tests
 │   ├── config.ts     # Physics, camera and grab constants
-│   ├── grab.ts       # Grab candidate query and hand physics (grab, release, tracking loss)
+│   ├── grab.ts       # Grab candidate query and hand physics (soft grab, release, tracking loss)
+│   ├── fingertip.ts  # The hand's one collider: a speed- and force-capped fingertip
 │   ├── rules.ts      # Win and loss rules
 │   └── towerLayout.ts # Seeded block layout
-├── hooks/            # useHandTracking (MediaPipe), useGesture (gesture state)
+├── hooks/            # useHandTracking (MediaPipe)
 ├── store/            # gameStore.ts: game, tracking and view state (Zustand)
-├── tracking/         # Landmark → world mapping; self-hosted asset paths
-├── utils/            # Depth, gesture classification, smoothing
+├── tracking/         # HandTracker (filtering, gestures), camera-mode clutch, landmark → world mapping, asset paths
+├── utils/            # Depth, gesture classification
 ├── test/             # Test helpers: hand poses, e2e driver, store mocks
 └── App.tsx           # Application root
 tests/physics/        # Headless Rapier physics tests

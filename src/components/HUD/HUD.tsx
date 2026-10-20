@@ -42,8 +42,22 @@ export const HUD: React.FC = () => {
         movePhase,
         placementTarget,
         foulReason,
+        isCameraMode,
+        toggleCameraMode,
+        heldBlockId,
     } = useGameStore();
     const moveHint = placementTarget !== null && movePhase === 'HOLDING' ? 'LET GO TO PLACE IT' : MOVE_HINTS[movePhase];
+
+    // Keyboard fallback for camera mode (H-2)
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.key.toLowerCase() !== 'c') return;
+            if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable]')) return;
+            toggleCameraMode();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [toggleCameraMode]);
 
     useEffect(() => {
         if (isInstructionsVisible) {
@@ -77,7 +91,12 @@ export const HUD: React.FC = () => {
                 </div>
             </div>
 
-            {gameMode === 'CLASSIC' && gameState === 'PLAYING' && moveHint && (
+            {/* Camera mode (H-2) takes the hint slot: it is what the hand does right now */}
+            {isCameraMode && gameState === 'PLAYING' ? (
+                <div className="hud-move-hint" role="status" data-phase="CAMERA">
+                    TURNING THE VIEW: MOVE YOUR HAND · PINCH OR PRESS C TO STOP
+                </div>
+            ) : gameMode === 'CLASSIC' && gameState === 'PLAYING' && moveHint && (
                 <div className="hud-move-hint" role="status" data-phase={movePhase}>{moveHint}</div>
             )}
 
@@ -87,7 +106,7 @@ export const HUD: React.FC = () => {
                     <p>PINCH THUMB + INDEX TO GRAB</p>
                     <p>OPEN YOUR FINGERS TO RELEASE</p>
                     <p>HAND NEARER THE CAMERA = NEARER TO YOU</p>
-                    <p>SWEEP AN OPEN PALM TO TURN THE VIEW</p>
+                    <p>HOLD AN OPEN PALM STILL (OR PRESS C) TO TURN THE VIEW</p>
                 </div>
             )}
 
@@ -105,6 +124,16 @@ export const HUD: React.FC = () => {
                         RESET TOWER
                     </button>
                 )}
+
+                <button
+                    className={`hud-button ${isCameraMode ? 'active' : ''}`}
+                    onClick={toggleCameraMode}
+                    disabled={heldBlockId !== null}
+                    aria-pressed={isCameraMode}
+                    title="Turn the view with your hand (C)"
+                >
+                    TURN VIEW (C)
+                </button>
 
                 <button className="hud-button" onClick={resetView}>
                     RESET VIEW

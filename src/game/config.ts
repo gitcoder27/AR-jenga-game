@@ -56,6 +56,22 @@ export const CAMERA_MAX_DISTANCE = 48;
 export const CAMERA_MIN_POLAR_ANGLE = (15 * Math.PI) / 180;
 export const CAMERA_MAX_POLAR_ANGLE = (80 * Math.PI) / 180;
 
+// Camera mode (H-2): deliberate and clutched
+/**
+ * An open palm held this still (normalized image units, palm centre) ...
+ * A palm moving faster than about STILL / HOLD (0.04 frames/s) never arms;
+ * filtered landmark jitter at rest is ~0.002. Unplaytested: real hands may need more.
+ */
+export const CAMERA_CLUTCH_STILL = 0.015;
+/** ... for this long (ms) enters camera mode */
+export const CAMERA_CLUTCH_HOLD_MS = 400;
+/** Orbit radians per frame width of palm motion (was 15) */
+export const CAMERA_ORBIT_SENSITIVITY = 5;
+/** Palm motion within this band (normalized image units) doesn't turn the view */
+export const CAMERA_ORBIT_DEADZONE = 0.01;
+/** Time constant (s) of the orbit's smoothing */
+export const CAMERA_ORBIT_SMOOTHING_S = 0.08;
+
 // Hand / grab
 export const HAND_JOINT_COUNT = 21;
 export const HAND_PARKING_POSITION: Vec3Tuple = [0, -100, 0];

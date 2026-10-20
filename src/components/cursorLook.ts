@@ -8,6 +8,7 @@ export const CURSOR_COLORS = {
   grabbing: '#00ff00',  // Green: actively holding
   palm: '#ff9800',      // Orange: open palm mode (camera control)
   missed: '#ff5252',    // Red: pinched on nothing; reopen to try again (G-4)
+  camera: '#b388ff',    // Violet: camera mode, the hand turns the view (H-2)
 };
 
 export interface CursorLook {
@@ -21,8 +22,9 @@ export interface CursorLook {
   dotScale: number;
 }
 
-/** What the cursor looks like for a gesture, and whether a block is in grab range. */
-export function cursorLook(gesture: Pick<HandGesture, 'isPinching' | 'isOpenPalm' | 'confidence'> | null, inRange: boolean): CursorLook {
+/** What the cursor looks like for a gesture, whether a block is in grab range, and whether camera mode is on. */
+export function cursorLook(gesture: Pick<HandGesture, 'isPinching' | 'isOpenPalm' | 'confidence'> | null, inRange: boolean, camera = false): CursorLook {
+  if (camera) return { color: CURSOR_COLORS.camera, opacity: 0.85, inRange: false, grabSphere: false, dotScale: 1 };
   const isPinching = gesture?.isPinching ?? false;
   const isOpenPalm = gesture?.isOpenPalm ?? false;
   const color = isOpenPalm ? CURSOR_COLORS.palm : isPinching ? CURSOR_COLORS.grabbing : inRange ? CURSOR_COLORS.inRange : CURSOR_COLORS.idle;

@@ -95,4 +95,17 @@ describe('useGameStore', () => {
     act(() => useGameStore.getState().resetGame())
     expect(useGameStore.getState()).toMatchObject({ gameState: 'PLAYING', foulReason: null })
   })
+
+  it('camera mode toggles, never while a block is held, and a reset turns it off (H-2)', () => {
+    const { toggleCameraMode, setHeldBlockId } = useGameStore.getState()
+    act(() => toggleCameraMode())
+    expect(useGameStore.getState().isCameraMode).toBe(true)
+    act(() => useGameStore.getState().resetGame())
+    expect(useGameStore.getState().isCameraMode).toBe(false)
+    act(() => {
+      setHeldBlockId('2-0')
+      toggleCameraMode()
+    })
+    expect(useGameStore.getState().isCameraMode).toBe(false)
+  })
 })

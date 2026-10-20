@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { GRAB_RADIUS } from '../game/config';
 import type { HandPhysics } from '../game/grab';
 import type { TrackedHand } from '../tracking/handTracker';
+import type { CameraClutch } from '../tracking/cameraClutch';
+import { useGameStore } from '../store/gameStore';
 import { CURSOR_COLORS, CursorMaterials, cursorLook } from './cursorLook';
 
 interface DepthCursorProps {
@@ -11,6 +13,8 @@ interface DepthCursorProps {
   handPhysics: HandPhysics;
   /** The tracked hand, read every frame (M-1) */
   handRef: React.RefObject<TrackedHand | null>;
+  /** Camera-mode hold progress: a disc fills the ring as an open palm is held still (H-2) */
+  clutch: CameraClutch;
 }
 
 /**
@@ -19,13 +23,14 @@ interface DepthCursorProps {
  * tracked hand (H-7). Everything is applied imperatively in the frame loop,
  * so the cursor never re-renders (M-1, F-7).
  */
-export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, handRef }) => {
+export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, handRef, clutch }) => {
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
   const inRangeRef = useRef<THREE.Mesh>(null);
   const dotRef = useRef<THREE.Mesh>(null);
   const sphereRef = useRef<THREE.Mesh>(null);
   const missedRef = useRef<THREE.Mesh>(null);
+  const holdRef = useRef<THREE.Mesh>(null);
   const dropRef = useRef<THREE.Group>(null);
   const dropLineRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
@@ -60,7 +65,7 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, handRef }
     // Make the cursor face the camera
     group.lookAt(camera.position);
 
-    const look = cursorLook(handRef.current?.gesture ?? null, handPhysics.feedback.candidate !== null);
+    const look = cursorLook(handRef.current?.gesture ?? null, handPhysics.feedback.candidate !== null, useGameStore.getState().isCameraMode);
     materials.apply(look);
     // Ring grows as the pinch point nears a block
     const ringScale = 1 + handPhysics.feedback.proximity * 0.3;
@@ -69,6 +74,11 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, handRef }
     if (inRangeRef.current) inRangeRef.current.visible = look.inRange;
     if (sphereRef.current) sphereRef.current.visible = look.grabSphere;
     if (missedRef.current) missedRef.current.visible = handPhysics.pinchMissed;
+    const hold = holdRef.current;
+    if (hold) {
+      hold.visible = clutch.progress > 0;
+      hold.scale.setScalar(Math.max(clutch.progress, 0.001));
+    }
   });
 
   return (
@@ -112,6 +122,12 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, handRef }
       <mesh ref={missedRef} visible={false} scale={[1.3, 1.3, 1]}>
         <ringGeometry args={[0.45, 0.5, 32]} />
         <meshBasicMaterial color={CURSOR_COLORS.missed} transparent opacity={0.8} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Camera-mode hold - fills the ring while an open palm is held still (H-2) */}
+      <mesh ref={holdRef} visible={false}>
+        <circleGeometry args={[0.35, 32]} />
+        <meshBasicMaterial color={CURSOR_COLORS.camera} transparent opacity={0.6} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Grab sphere - shows when pinching and in range */}

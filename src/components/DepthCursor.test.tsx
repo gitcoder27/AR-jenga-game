@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { DepthCursor } from './DepthCursor';
 import { cursorLook } from './cursorLook';
 import { NO_FEEDBACK, type CursorFeedback, type HandPhysics, type Vec3 } from '../game/grab';
+import { CameraClutch } from '../tracking/cameraClutch';
 
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
@@ -21,14 +22,14 @@ const gesture = (isPinching: boolean, isOpenPalm = false, confidence = 0) => ({ 
 describe('DepthCursor', () => {
   it('registers a frame callback that tolerates unmounted refs', () => {
     vi.mocked(useFrame).mockClear();
-    render(<DepthCursor handPhysics={fakeHand(null)} handRef={{ current: null }} />);
+    render(<DepthCursor handPhysics={fakeHand(null)} handRef={{ current: null }} clutch={new CameraClutch()} />);
     const callback = vi.mocked(useFrame).mock.calls[0][0];
     expect(() => callback({} as never, 0)).not.toThrow();
   });
 
   it('never re-renders on its own: no store subscriptions (M-1)', () => {
     vi.mocked(useFrame).mockClear();
-    render(<DepthCursor handPhysics={fakeHand({ x: 0, y: 0, z: 0 })} handRef={{ current: null }} />);
+    render(<DepthCursor handPhysics={fakeHand({ x: 0, y: 0, z: 0 })} handRef={{ current: null }} clutch={new CameraClutch()} />);
     expect(vi.mocked(useFrame)).toHaveBeenCalledTimes(1);
   });
 });
@@ -38,6 +39,8 @@ describe('cursorLook', () => {
     expect(cursorLook(gesture(true), true).grabSphere).toBe(true);
     expect(cursorLook(gesture(true), false).grabSphere).toBe(false);
     expect(cursorLook(gesture(false), true).grabSphere).toBe(false);
+    // Camera mode (H-2): never in range, never the grab sphere
+    expect(cursorLook(gesture(true), true, true)).toMatchObject({ inRange: false, grabSphere: false });
   });
 
   it('colours: open palm, then pinching, then in range, then idle', () => {

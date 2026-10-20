@@ -10,6 +10,7 @@ import Tower from './components/Tower'
 import useHandTracking from './hooks/useHandTracking'
 import { HandTracker, type TrackedHand } from './tracking/handTracker'
 import { onVideoFrames } from './tracking/videoFrames'
+import { CameraClutch } from './tracking/cameraClutch'
 import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
@@ -42,6 +43,8 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const handRef = useRef<TrackedHand | null>(null)
   // Filtering, outlier rejection and gestures, once per detection (H-6, H-7)
   const [tracker] = useState(() => new HandTracker())
+  // When the hand enters and leaves camera mode, on the same detections (H-2)
+  const [clutch] = useState(() => new CameraClutch())
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
@@ -63,12 +66,15 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
           // MediaPipe landmarks are normalized per axis; gestures and filtering need the frame's aspect
           const aspect = videoElement.videoHeight ? videoElement.videoWidth / videoElement.videoHeight : 1
           handRef.current = tracker.update(res.landmarks[0], now, aspect)
+          const { isCameraMode, heldBlockId, setCameraMode } = useGameStore.getState()
+          const change = clutch.update(handRef.current, isCameraMode, heldBlockId !== null)
+          if (change) setCameraMode(change === 'enter')
           const status = res.landmarks.length > 0 ? 'ready' : 'no-hand'
           if (useGameStore.getState().trackingStatus !== status) setTrackingStatus(status)
         }
       })
     }
-  }, [isReady, videoElement, cameraActive, detect, tracker])
+  }, [isReady, videoElement, cameraActive, detect, tracker, clutch])
 
   return (
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
@@ -86,7 +92,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <Table />
             <Tower key={gameId} />
             <GameRules key={gameId} />
-            <Hand handRef={handRef} />
+            <Hand handRef={handRef} clutch={clutch} />
 
             <CameraControls controlsRef={orbitControlsRef} />
             <GestureOrbitController handRef={handRef} controlsRef={orbitControlsRef} />

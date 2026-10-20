@@ -108,7 +108,7 @@ export async function storeState(driver: Driver) {
     const s = d.store()
     return {
       heldBlockId: s.heldBlockId, hoveredBlockId: s.hoveredBlockId, score: s.score, gameState: s.gameState, gameMode: s.gameMode,
-      movePhase: s.movePhase, placementTarget: s.placementTarget, foulReason: s.foulReason,
+      movePhase: s.movePhase, placementTarget: s.placementTarget, foulReason: s.foulReason, isCameraMode: s.isCameraMode,
     }
   })
 }

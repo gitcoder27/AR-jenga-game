@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { dist, frontOf } from './helpers'
+import { carryTo, dist, frontOf, grabBlock, storeState } from './helpers'
 import type { PoseName } from '../src/test/handPoses'
 import { CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE, CAMERA_TARGET } from '../src/game/config'
 
@@ -23,16 +23,79 @@ test('approaching the tower with a relaxed or claw hand never moves the camera [
   }
 })
 
-// The counter-check: camera control still works with a deliberate open palm.
-test('sweeping a deliberate open palm still orbits the camera [H-1]', async ({ page, driver, startGame }) => {
+// H-2: camera control is deliberate and clutched. An open palm held still enters
+// camera mode, then the hand turns the view; a pinch ends it.
+test('an open palm held still enters camera mode, the hand then turns the view, and a pinch ends it [H-2]', async ({ page, driver, startGame }) => {
   await startGame('SANDBOX')
   const start = await driver((d) => d.cameraPosition())
   const at = await frontOf(driver, '6-0', 4)
-  await driver((d, a) => d.setHand('open', a), { ...at, x: at.x - 3 })
-  await page.waitForTimeout(1000)
-  await driver((d, a) => d.moveHand('open', a, 1500), { ...at, x: at.x + 3 })
+  const left = { ...at, x: at.x - 3 }, right = { ...at, x: at.x + 3 }
+  await driver((d, a) => d.setHand('open', a), left)
+  await expect.poll(async () => (await storeState(driver)).isCameraMode, { timeout: 5000 }).toBe(true)
+  await expect(page.getByText(/turning the view/i)).toBeVisible()
+  expect(dist(await driver((d) => d.cameraPosition()), start), 'holding still to enter turns nothing').toBeLessThan(0.01)
+
+  await driver((d, a) => d.moveHand('open', a, 1500), right)
   await page.waitForTimeout(800)
   expect(dist(await driver((d) => d.cameraPosition()), start)).toBeGreaterThan(0.5)
+
+  await driver((d, a) => d.setHand('pinch', a), right)
+  await expect.poll(async () => (await storeState(driver)).isCameraMode, { timeout: 5000 }).toBe(false)
+  await expect(page.getByText(/turning the view/i)).toBeHidden()
+  await page.waitForTimeout(500)
+  const turned = await driver((d) => d.cameraPosition())
+  await driver((d, a) => d.moveHand('pinch', a, 1500), left)
+  await page.waitForTimeout(800)
+  expect(dist(await driver((d) => d.cameraPosition()), turned), 'after the pinch').toBeLessThan(0.01)
+})
+
+// The review's H-2 check: letting go and moving the opened hand away must not turn the view.
+test('opening the hand to let go and moving it away never turns the view [H-2]', async ({ page, driver, startGame }) => {
+  await startGame('SANDBOX')
+  const { hand } = await grabBlock(page, driver, '2-0')
+  const out = { ...hand, z: hand.z + 5 }
+  await carryTo(page, driver, out, 1200)
+  expect((await storeState(driver)).heldBlockId).toBe('2-0')
+  const start = await driver((d) => d.cameraPosition())
+
+  // Wide open, then away at a moderate pace (about 0.07 frame widths/s in the image)
+  await driver((d, a) => d.setHand('open', a), out)
+  await page.waitForTimeout(150)
+  const away = { ...out, x: out.x + 6, y: out.y + 3 }
+  await driver((d, a) => d.moveHand('open', a, 1500), away)
+  const s = await storeState(driver)
+  expect(s.heldBlockId).toBeNull()
+  expect(s.isCameraMode).toBe(false)
+  // Then resting in the usual relaxed pose
+  await driver((d, a) => d.setHand('relaxed', a), away)
+  await page.waitForTimeout(1500)
+  expect((await storeState(driver)).isCameraMode).toBe(false)
+  expect(dist(await driver((d) => d.cameraPosition()), start)).toBeLessThan(0.01)
+  // (An open palm resting still for CAMERA_CLUTCH_HOLD_MS does enter camera mode, by design;
+  // the cursor fills up first and a banner shows it.)
+})
+
+test('the C key turns camera mode on and off without the gesture [H-2]', async ({ page, driver, startGame }) => {
+  await startGame('SANDBOX')
+  const start = await driver((d) => d.cameraPosition())
+  const at = await frontOf(driver, '6-0', 4)
+  const left = { ...at, x: at.x - 3 }, right = { ...at, x: at.x + 3 }
+  await driver((d, a) => d.setHand('relaxed', a), left)
+  await page.waitForTimeout(1000)
+  expect((await storeState(driver)).isCameraMode).toBe(false)
+
+  await page.keyboard.press('c')
+  await expect(page.getByText(/turning the view/i)).toBeVisible()
+  await driver((d, a) => d.moveHand('relaxed', a, 1500), right)
+  await page.waitForTimeout(800)
+  expect(dist(await driver((d) => d.cameraPosition()), start)).toBeGreaterThan(0.5)
+
+  await page.keyboard.press('c')
+  await expect(page.getByText(/turning the view/i)).toBeHidden()
+  const turned = await driver((d) => d.cameraPosition())
+  await driver((d, a) => d.moveHand('relaxed', a, 1500), left)
+  await page.waitForTimeout(800)
+  expect(dist(await driver((d) => d.cameraPosition()), turned)).toBeLessThan(0.01)
 })
 
 // V-2: the camera can't go under the table, zoom out of reach or pan away, and RESET VIEW restores it.

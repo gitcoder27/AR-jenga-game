@@ -298,6 +298,16 @@
     pointer-events: none;
 }
 
+.hud-move-hint[data-phase='CAMERA'] {
+    border-color: #b388ff;
+    color: #b388ff;
+}
+
+.hud-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .hud-move-hint[data-phase='SETTLING'] {
     border-color: #76ff03;
     color: #76ff03;

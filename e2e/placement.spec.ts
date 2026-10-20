@@ -40,7 +40,8 @@ test('a block from an odd level, let go over the top, snaps into the next slot t
   await page.waitForTimeout(2000)
 
   const placed = (await driver((d) => d.blockPositions()))[id]
-  expect(Math.abs(placed.y - NEW_LEVEL_Y)).toBeLessThan(0.15)
+  const held = await driver((d) => d.store().heldBlockId)
+  expect(Math.abs(placed.y - NEW_LEVEL_Y), `placed at ${JSON.stringify(placed)}, held ${held}`).toBeLessThan(0.15)
   expect(Math.hypot(placed.x, placed.z)).toBeLessThan(0.3)
   // Level 18 runs along Z: the block's long axis is now ±Z
   const axis = (await driver((d) => d.blockAxes()))[id]

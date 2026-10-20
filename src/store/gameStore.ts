@@ -38,6 +38,11 @@ export interface GameStore {
     trackingAttempt: number
     /** Bumped by resetView() to put the camera back at its default framing */
     viewResetId: number
+    /**
+     * Camera mode (H-2): the hand turns the view and touches nothing. Entered by
+     * holding an open palm still (CameraClutch), the HUD button or the C key.
+     */
+    isCameraMode: boolean
     setGameState: (state: GameState) => void
     startGame: (mode: GameMode) => void
     returnToMenu: () => void
@@ -56,6 +61,9 @@ export interface GameStore {
     setTrackingDelegate: (delegate: TrackingDelegate | null) => void
     retryTracking: () => void
     resetView: () => void
+    setCameraMode: (on: boolean) => void
+    /** HUD button and C key; does nothing while a block is held */
+    toggleCameraMode: () => void
 }
 
 const newTowerSeed = () => Math.floor(Math.random() * 2 ** 31)
@@ -70,6 +78,7 @@ const FRESH_GAME = {
     placementTarget: null,
     movePhase: 'IDLE',
     foulReason: null,
+    isCameraMode: false,
 } satisfies Partial<GameStore>
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -115,4 +124,6 @@ export const useGameStore = create<GameStore>((set) => ({
         trackingAttempt: state.trackingAttempt + 1,
     })),
     resetView: () => set((state) => ({ viewResetId: state.viewResetId + 1 })),
+    setCameraMode: (isCameraMode) => set({ isCameraMode }),
+    toggleCameraMode: () => set((state) => (state.heldBlockId !== null ? {} : { isCameraMode: !state.isCameraMode })),
 }))

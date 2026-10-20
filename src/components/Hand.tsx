@@ -6,8 +6,10 @@ import { HandPhysics } from '../game/grab'
 import { HAND_PARKING_POSITION } from '../game/config'
 import { handToWorld } from '../tracking/mapping'
 import type { TrackedHand } from '../tracking/handTracker'
+import type { CameraClutch } from '../tracking/cameraClutch'
 import * as THREE from 'three'
 import { DepthCursor } from './DepthCursor'
+import { CURSOR_COLORS } from './cursorLook'
 import { PlacementGhost } from './PlacementGhost'
 import { PlacementAssist } from '../game/placement'
 import { useGameStore } from '../store/gameStore'
@@ -19,11 +21,13 @@ interface HandProps {
      * doesn't re-render anything (M-1).
      */
     handRef: React.RefObject<TrackedHand | null>
+    /** Camera-mode hold progress, shown on the cursor (H-2) */
+    clutch: CameraClutch
 }
 
 const HAND_COLORS = {
-    joint: { idle: '#cccccc', pinch: '#00e5ff', palm: '#ff9800' },
-    bone: { idle: '#888888', pinch: '#00e5ff', palm: '#ff9800' },
+    joint: { idle: '#cccccc', pinch: '#00e5ff', palm: '#ff9800', camera: CURSOR_COLORS.camera },
+    bone: { idle: '#888888', pinch: '#00e5ff', palm: '#ff9800', camera: CURSOR_COLORS.camera },
 }
 
 const CONNECTIONS = [
@@ -36,7 +40,7 @@ const CONNECTIONS = [
 ];
 
 
-export default function Hand({ handRef }: HandProps) {
+export default function Hand({ handRef, clutch }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
     const groupRef = useRef<THREE.Group>(null)
     // Shared by all joints / all bones; recoloured in the frame loop (F-7)
@@ -53,7 +57,8 @@ export default function Hand({ handRef }: HandProps) {
         const hand = handRef.current
         // Kept mounted to avoid "pop-in" at [0,0,0]; hidden while there is no hand
         if (groupRef.current) groupRef.current.visible = hand !== null
-        const state = hand?.gesture.isPinching ? 'pinch' : hand?.gesture.isOpenPalm ? 'palm' : 'idle'
+        const state = useGameStore.getState().isCameraMode ? 'camera'
+            : hand?.gesture.isPinching ? 'pinch' : hand?.gesture.isOpenPalm ? 'palm' : 'idle'
         materials.joint.color.set(HAND_COLORS.joint[state])
         materials.bone.color.set(HAND_COLORS.bone[state])
     })
@@ -87,12 +92,12 @@ export default function Hand({ handRef }: HandProps) {
                 />
             ))}
 
-            <UpdateLogic handRef={handRef} refs={refs} />
+            <UpdateLogic handRef={handRef} refs={refs} clutch={clutch} />
         </group>
     )
 }
 
-function UpdateLogic({ handRef, refs }: { handRef: React.RefObject<TrackedHand | null>, refs: React.MutableRefObject<(RapierRigidBody | null)[]> }) {
+function UpdateLogic({ handRef, refs, clutch }: { handRef: React.RefObject<TrackedHand | null>, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, clutch: CameraClutch }) {
     const { world, rapier } = useRapier()
     const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera
     const worldRef = useRef<THREE.Vector3[]>([])
@@ -133,12 +138,13 @@ function UpdateLogic({ handRef, refs }: { handRef: React.RefObject<TrackedHand |
         // Already filtered (HandTracker): the joints go exactly where the hand is
         const joints = handToWorld(hand.landmarks, hand.depth, camera, worldRef.current)
         const { isPinching, isClosing, isOpenPalm } = hand.gesture
-        handPhysics.update({ joints, pinching: isPinching, closing: isClosing, openPalm: isOpenPalm }, delta)
+        const cameraMode = useGameStore.getState().isCameraMode
+        handPhysics.update({ joints, pinching: isPinching, closing: isClosing, openPalm: isOpenPalm, camera: cameraMode }, delta)
         assist.update(handPhysics.heldBody, delta)
     })
     return (
         <>
-            <DepthCursor handPhysics={handPhysics} handRef={handRef} />
+            <DepthCursor handPhysics={handPhysics} handRef={handRef} clutch={clutch} />
             <PlacementGhost assist={assist} />
         </>
     )

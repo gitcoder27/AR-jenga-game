@@ -350,3 +350,53 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
     absorb the stutter. What remained was the 30 FPS stutter itself, which is now gone.
   - The review's live check, a throttled-rAF run of the landmark harness, was not done. The sim covers the same
     frame/step interleaving.
+
+### Camera mode (H-2)
+
+- **Clutched, as decided: an open palm held still for 400 ms.** `CameraClutch` (`src/tracking/cameraClutch.ts`) runs once
+  per detection, after `HandTracker`, using detection timestamps.
+  - It arms only on an `OPEN_PALM` whose palm centre (the wrist and finger bases) stays within `CAMERA_CLUTCH_STILL`
+    (0.015 normalized image units) of where the hold began. Moving restarts the hold.
+  - It never arms while a block is held.
+  - It leaves camera mode on a pinch, a closing hand (a fist reads as one; there is no separate fist state) or a lost
+    hand.
+  - The band started at 0.03. The release E2E caught a moderate open-hand move (0.07 frame widths/s, 0.028 per 400 ms)
+    arming mid-move. At 0.015, a palm faster than about 0.04 frame widths/s never arms.
+  - Whether real hands hold still enough to arm reliably was not playtested; it is on the playtest checklist.
+- **One flag for the mode:** the store's `isCameraMode`. The clutch, the **TURN VIEW (C)** HUD button and the **C**
+  key all set it. The button and key are refused while a block is held, and a reset turns the mode off.
+  - Turned on with no hand in view, it waits for a hand rather than ending at once.
+- **The hand touches nothing in camera mode.** `HandInput.camera`:
+  - turns off the fingertip (its solver groups, as with an open palm);
+  - turns off hover and grab;
+  - disarms the grab onset, so the pinch or fist that ends camera mode never grabs; the hand must reopen first.
+- **Indicators:**
+  - A violet disc fills the cursor ring during the hold.
+  - In camera mode the hand and the cursor turn violet, and a banner takes the move-hint slot:
+    "TURNING THE VIEW: MOVE YOUR HAND · PINCH OR PRESS C TO STOP".
+  - The UI says "turn view" rather than "camera mode", because "SHOW CAMERA" already means the webcam preview.
+- **Orbit** (`OrbitDrive`):
+  - 5 rad per frame width (was 15).
+  - A backlash dead band of 0.01 instead of a speed deadzone. Jitter inside the band never turns the view, and a
+    deliberate sweep turns its full length less the band; a speed deadzone also ate slow, deliberate turns.
+  - 80 ms smoothing.
+  - The existing OrbitControls polar and distance limits still apply (V-2).
+- **Found on the way: the old orbit never applied its own sensitivity.** drei's `OrbitControls` has damping on, so
+  `setAzimuthalAngle` applied 5% per update and coasted for seconds after the hand stopped. The gesture's angles are
+  now applied with damping bypassed for that call. Mouse orbit keeps its damping.
+- `isClosedFist` no longer exists (renamed in H-7), so the review's rename is already done.
+- **Validation:**
+  - Unit: `cameraClutch.test.ts` (hold time, moving palms at 0.07 and 0.25 frame widths/s, holding, interruptions,
+    exits, jitter vs. sweep), the HUD and store tests.
+  - Physics: `tests/physics/cameraMode.test.ts`. The poke that moves 17-1 by 2.9 moves nothing in camera mode, and
+    the pinch that ends camera mode doesn't grab.
+  - E2E (`e2e/camera.spec.ts`):
+    - Hold → turn → pinch ends it.
+    - Release, then move the open hand away: the camera moves 0, and camera mode stays off, including through a
+      1.5 s relaxed rest afterwards.
+    - C toggles the mode.
+  - An open palm left resting still for 400 ms does enter camera mode, by design. The fill and the banner make it
+    visible.
+  - The playtest metric (unintended camera moves per minute ≈ 0) needs people.
+- The 390 px bottom bar already clipped EXIT GAME before H-2, and the fifth button adds to it. M-5 (#12) owns that
+  layout.

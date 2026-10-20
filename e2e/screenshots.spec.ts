@@ -62,6 +62,17 @@ test.describe('screenshots', () => {
       await page.waitForTimeout(2000)
       await shot('5c-held')
 
+      // Camera mode (H-2): an open palm held still fills the cursor, then the banner shows
+      await driver((d, a) => d.setHand('relaxed', a), front)
+      await page.waitForTimeout(1500)
+      const palm = { ...front, z: front.z + 3 }
+      await driver((d, a) => d.moveHand('open', a, 800), palm)
+      await page.waitForTimeout(250)
+      await shot('5d-camera-hold')
+      await expect(page.getByText(/turning the view/i)).toBeVisible({ timeout: 5000 })
+      await page.waitForTimeout(500)
+      await shot('5e-camera-mode')
+
       await driver((d) => d.store().setGameState('GAME_OVER'))
       await expect(page.getByText(/collapsed/i)).toBeVisible()
       await shot('6-game-over')

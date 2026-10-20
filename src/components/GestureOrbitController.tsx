@@ -1,7 +1,9 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { TrackedHand } from '../tracking/handTracker';
+import { OrbitDrive, palmCentre } from '../tracking/cameraClutch';
+import { useGameStore } from '../store/gameStore';
 
 interface GestureOrbitControllerProps {
     /** The filtered hand and its gesture, shared with Hand (H-7), read every frame (M-1) */
@@ -9,44 +11,32 @@ interface GestureOrbitControllerProps {
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
 }
 
-const SENSITIVITY = 15; // Adjustment factor for orbit speed
-
+/**
+ * Turns the view with the hand, only in camera mode (H-2). Entering and leaving
+ * it is CameraClutch's job (or the HUD's); this only follows the palm while it
+ * is on. The OrbitControls' polar and distance limits apply (V-2).
+ */
 export default function GestureOrbitController({ handRef, controlsRef }: GestureOrbitControllerProps) {
-    const previousPalmPos = useRef<{ x: number; y: number } | null>(null);
+    const [orbit] = useState(() => new OrbitDrive());
 
-    useFrame(() => {
-        if (!controlsRef.current) return;
+    useFrame((_, delta) => {
+        const controls = controlsRef.current;
+        if (!controls) return;
         const hand = handRef.current;
-
-        if (hand?.gesture.isOpenPalm) {
-            const currentPalm = hand.landmarks[0]; // Wrist position (landmark 0)
-
-            if (previousPalmPos.current) {
-                // Calculate delta (inverted X for natural feel in mirror view)
-                const deltaX = currentPalm.x - previousPalmPos.current.x;
-                const deltaY = currentPalm.y - previousPalmPos.current.y;
-
-                // Apply to orbit controls
-                // getAzimuthalAngle: horizontal rotation
-                // getPolarAngle: vertical rotation
-
-                const currentAzimuth = controlsRef.current.getAzimuthalAngle();
-                const currentPolar = controlsRef.current.getPolarAngle();
-
-                // Adjust angles based on delta
-                // Inverted for natural mirror-mode feel:
-                // Moving hand left (decreased x) rotates camera left
-                controlsRef.current.setAzimuthalAngle(currentAzimuth + deltaX * SENSITIVITY);
-                controlsRef.current.setPolarAngle(currentPolar - deltaY * SENSITIVITY);
-
-                controlsRef.current.update();
-            }
-
-            previousPalmPos.current = { x: currentPalm.x, y: currentPalm.y };
-        } else {
-            // Reset when fist is opened or lost
-            previousPalmPos.current = null;
+        // Read, not subscribed: entering camera mode needn't re-render this
+        if (!useGameStore.getState().isCameraMode || !hand) {
+            orbit.reset();
+            return;
         }
+        const { azimuth, polar } = orbit.update(palmCentre(hand.landmarks), delta);
+        if (azimuth === 0 && polar === 0) return;
+        // Applied in full, now: with damping on, OrbitControls would apply 5% per update and coast on
+        // after the hand stops. OrbitDrive already smooths.
+        const damping = controls.enableDamping;
+        controls.enableDamping = false;
+        controls.setAzimuthalAngle(controls.getAzimuthalAngle() + azimuth);
+        controls.setPolarAngle(controls.getPolarAngle() + polar);
+        controls.enableDamping = damping;
     });
 
     return null;
