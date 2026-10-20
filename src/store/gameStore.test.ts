@@ -76,15 +76,23 @@ describe('useGameStore', () => {
     expect(state.heldBlockId).toBeNull()
   })
 
-  it('remembers the block moved this turn after release, until reset (C-2)', () => {
-    const { setHeldBlockId } = useGameStore.getState()
-    act(() => setHeldBlockId('2-0'))
-    expect(useGameStore.getState()).toMatchObject({ heldBlockId: '2-0', movingBlockId: '2-0' })
-    act(() => setHeldBlockId(null))
-    expect(useGameStore.getState()).toMatchObject({ heldBlockId: null, movingBlockId: '2-0' })
-    act(() => setHeldBlockId('3-1'))
-    expect(useGameStore.getState().movingBlockId).toBe('3-1')
+  it('tracks the move, scores it, and clears it on reset (C-1)', () => {
+    const { setHeldBlockId, setMovePhase, scoreMove } = useGameStore.getState()
+    act(() => {
+      setHeldBlockId('2-0')
+      setMovePhase('HOLDING', '2-0')
+    })
+    expect(useGameStore.getState()).toMatchObject({ heldBlockId: '2-0', movingBlockId: '2-0', movePhase: 'HOLDING' })
+    act(() => scoreMove())
+    expect(useGameStore.getState()).toMatchObject({ score: 1, movingBlockId: null, movePhase: 'IDLE' })
     act(() => useGameStore.getState().resetGame())
-    expect(useGameStore.getState()).toMatchObject({ heldBlockId: null, movingBlockId: null })
+    expect(useGameStore.getState()).toMatchObject({ score: 0, heldBlockId: null, movingBlockId: null, movePhase: 'IDLE' })
+  })
+
+  it('a foul ends the game with its reason (C-4)', () => {
+    act(() => useGameStore.getState().foul('dropped'))
+    expect(useGameStore.getState()).toMatchObject({ gameState: 'GAME_OVER', foulReason: 'dropped' })
+    act(() => useGameStore.getState().resetGame())
+    expect(useGameStore.getState()).toMatchObject({ gameState: 'PLAYING', foulReason: null })
   })
 })

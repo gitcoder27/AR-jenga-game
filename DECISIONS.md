@@ -132,3 +132,28 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   rules' bookkeeping.
 - **The optional auto "placement view" is skipped.** The new framing already shows the top at every allowed
   orbit (see the sweep).
+
+### Moves, scoring and fouls (C-1, C-4)
+
+- **The move lifecycle lives in `src/game/moves.ts` (`MoveTracker`).** The app runs it after every physics step
+  (`GameRules`, Classic only); the headless tests run the same class.
+  - Phases: IDLE → HOLDING → MOVED ⇄ HOLDING → SETTLING → scored → IDLE.
+  - Checks run at 10 Hz.
+- **Scoring.** A move scores when the moved block, let go, rests within the footprint and above the highest
+  *full* level, so a block completing a part-built top level counts. Every block must also stay under
+  0.05 u/s and 0.1 rad/s for 3 s. The block then joins the tower at its new level.
+- **No clean-extraction bonus.** The review's optional bonus is not implemented: the score is the number of
+  completed moves.
+- **Fouls are rule-based, with no floor dependency.** Classic ends the moment either of these happens:
+  - Any block other than the moved one drops half a block height below its level, or its centre goes 0.25
+    past the footprint edge (an unheld block tips off there). A block culled by the kill plane counts too.
+  - The moved block falls off the table: centre below y = −1. Dropping your own block on the table is
+    allowed; it stays the moved block and can be picked up again. Dropping it off the table can't be
+    recovered, so it ends the game.
+- **Grabbing another block while the moved one is out** makes the new block the moved one. The old block then
+  counts as a tower block at its original level, so if it's lying on the table, that's a foul.
+- `Block.tsx`'s floor-contact rule and `movingBlockId`'s "exempt from the floor rule" meaning are gone.
+  `movingBlockId` now mirrors the tracker.
+- **Slow-motion beat skipped.** The review's optional 1–2 s slow-motion before the modal is not done.
+- The game-over modal says why the game ended ("A block fell from the tower" or "The block you were moving
+  fell off the table"). A HUD line says what to do next in the move.

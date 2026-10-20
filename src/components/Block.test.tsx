@@ -6,13 +6,11 @@ import type { MockProps, MockSelector } from '../test/mockProps'
 
 const mockSetGameState = vi.fn()
 let mockHeldBlockId: string | null = null
-let mockMovingBlockId: string | null = null
 
 vi.mock('../store/gameStore', () => ({
     useGameStore: (selector: MockSelector) => selector({
         setGameState: mockSetGameState,
         heldBlockId: mockHeldBlockId,
-        movingBlockId: mockMovingBlockId,
         hoveredBlockId: null,
         gameState: 'PLAYING',
         gameMode: 'CLASSIC',
@@ -51,7 +49,6 @@ describe('Block', () => {
     beforeEach(() => {
         mockSetGameState.mockClear()
         mockHeldBlockId = null
-        mockMovingBlockId = null
     })
 
     it('renders a dynamic rigid body with correct properties', () => {
@@ -71,32 +68,9 @@ describe('Block', () => {
         expect(instance).toBeInTheDocument()
     })
 
-    it('triggers GAME_OVER when colliding with floor if not safe', () => {
+    it('floor contact alone never ends the game: fouls are rule-based (C-4, see game/moves.ts)', () => {
         const { getByTestId } = render(<Block id="test-block" position={[0, 0, 0]} rotation={[0, 0, 0]} />)
-        const rb = getByTestId('block-rb')
-
-        fireEvent.click(rb)
-
-        expect(mockSetGameState).toHaveBeenCalledWith('GAME_OVER')
-    })
-
-    it('does NOT trigger GAME_OVER for the block being moved this turn, even after release', () => {
-        // Grabbed, then dropped: no longer held, but still the block moved this turn
-        mockMovingBlockId = 'test-block'
-        const { getByTestId } = render(<Block id="test-block" position={[0, 0, 0]} rotation={[0, 0, 0]} />)
-
         fireEvent.click(getByTestId('block-rb'))
-
         expect(mockSetGameState).not.toHaveBeenCalled()
-    })
-
-    it('triggers GAME_OVER for a block that was moved in an earlier turn', () => {
-        // Previously handled, but another block is being moved now
-        mockMovingBlockId = 'other-block'
-        const { getByTestId } = render(<Block id="test-block" position={[0, 0, 0]} rotation={[0, 0, 0]} />)
-
-        fireEvent.click(getByTestId('block-rb'))
-
-        expect(mockSetGameState).toHaveBeenCalledWith('GAME_OVER')
     })
 })

@@ -53,6 +53,8 @@ export interface Scene {
     /** Simulated seconds since creation */
     time: number;
     /** One fixed physics step. `beforeStep` runs first, like useBeforePhysicsStep. */
+    /** Runs after every physics step, like useAfterPhysicsStep. */
+    afterStep: ((scene: Scene) => void) | null;
     step(beforeStep?: (scene: Scene) => void): void;
     stepFor(seconds: number, beforeStep?: (scene: Scene) => void): void;
     free(): void;
@@ -145,6 +147,7 @@ export async function createScene({ seed = 1 }: { seed?: number } = {}): Promise
         rapier: RAPIER,
         eventQueue,
         blocks,
+        afterStep: null,
         block: (id) => {
             const b = byId.get(id);
             if (!b) throw new Error(`no block ${id}`);
@@ -160,6 +163,7 @@ export async function createScene({ seed = 1 }: { seed?: number } = {}): Promise
             world.timestep = PHYSICS_TIMESTEP;
             world.step(eventQueue);
             scene.time += PHYSICS_TIMESTEP;
+            scene.afterStep?.(scene);
         },
         stepFor(seconds, beforeStep) {
             const n = Math.round(seconds / PHYSICS_TIMESTEP);

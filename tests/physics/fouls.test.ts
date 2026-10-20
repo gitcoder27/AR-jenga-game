@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { RigidBody } from '@dimforge/rapier3d-compat';
-import { knownBug } from './knownBug';
 import { BLOCK_GAP, BLOCK_HEIGHT, BLOCK_WIDTH } from '../../src/game/config';
 import { createScene, type Scene, type SceneBlock } from './scene';
 import { add, blockAxis, pullBlock, rebaseline } from './scenarios';
-import { createFoulMonitor } from './appRules';
+import { createRulesMonitor } from './appRules';
 
 /** Half-extent of the tower's square footprint. */
 const FOOTPRINT = 1.5 * BLOCK_WIDTH + BLOCK_GAP;
@@ -38,16 +37,16 @@ async function settledScene(seed: number): Promise<Scene> {
 }
 
 /** Steps the scene, tracking when the first block is dislodged and when the app reports a foul. */
-function observe(scene: Scene, seconds: number, drive: (t: number) => void, heldId: string | null = null): FoulTiming {
-    const monitor = createFoulMonitor(scene);
+function observe(scene: Scene, seconds: number, drive: (t: number) => void): FoulTiming {
+    const monitor = createRulesMonitor(scene);
     const timing: FoulTiming = { dislodgedAt: null, fouledAt: null };
     const start = scene.time;
     const steps = Math.round(seconds * 60);
     for (let i = 0; i < steps; i++) {
         scene.step(() => drive(scene.time - start));
         const t = scene.time - start;
-        if (timing.dislodgedAt === null && scene.blocks.some((b) => b.id !== heldId && isDislodged(b))) timing.dislodgedAt = t;
-        if (timing.fouledAt === null && monitor.check(heldId)) timing.fouledAt = t;
+        if (timing.dislodgedAt === null && scene.blocks.some((b) => isDislodged(b))) timing.dislodgedAt = t;
+        if (timing.fouledAt === null && monitor.check()) timing.fouledAt = t;
     }
     return timing;
 }
@@ -60,7 +59,7 @@ function expectPromptFoul(timing: FoulTiming): void {
 
 // C-4: report fouls as soon as a block falls from the tower, not when it reaches the floor.
 describe('collapse-to-foul latency', () => {
-    knownBug('pushing a top block off the tower fouls within 0.5 s', async () => {
+    it('pushing a top block off the tower fouls within 0.5 s', async () => {
         const scene = await settledScene(4);
         const block = scene.block('17-1');
         const axis = blockAxis(block);
@@ -71,7 +70,7 @@ describe('collapse-to-foul latency', () => {
         scene.free();
     });
 
-    knownBug('pushing a low block out onto the table fouls within 0.5 s', async () => {
+    it('pushing a low block out onto the table fouls within 0.5 s', async () => {
         const scene = await settledScene(5);
         const block = scene.block('2-1');
         const axis = blockAxis(block);
@@ -82,7 +81,7 @@ describe('collapse-to-foul latency', () => {
         scene.free();
     });
 
-    knownBug('sweeping through the middle of the tower (collapse) fouls within 0.5 s', async () => {
+    it('sweeping through the middle of the tower (collapse) fouls within 0.5 s', async () => {
         const scene = await settledScene(6);
         const from = { x: -8, y: 9, z: 0 };
         const pusher = createPusher(scene, from, [0.5, 1.2, 4]);
@@ -93,10 +92,11 @@ describe('collapse-to-foul latency', () => {
 
     it('a clean brisk extraction of a held block never fouls', async () => {
         const scene = await settledScene(1);
-        const monitor = createFoulMonitor(scene);
+        const monitor = createRulesMonitor(scene);
         const result = pullBlock(scene, '8-0', 15);
         expect(result.grabbed).toBe(true);
-        expect(monitor.check('8-0')).toBe(false);
+        expect(monitor.tracker.movingId).toBe('8-0');
+        expect(monitor.check()).toBe(false);
         scene.free();
     });
 

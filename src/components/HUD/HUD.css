@@ -280,3 +280,30 @@
         white-space: normal;
     }
 }
+
+.hud-move-hint {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    padding: 6px 14px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #00e5ff;
+    color: #00e5ff;
+    font-size: clamp(0.7rem, 2.4vw, 0.95rem);
+    letter-spacing: 1px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.hud-move-hint[data-phase='SETTLING'] {
+    border-color: #76ff03;
+    color: #76ff03;
+}
+
+.hud-foul-detail {
+    margin: 0 0 12px;
+    opacity: 0.85;
+}

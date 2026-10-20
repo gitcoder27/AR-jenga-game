@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react'
-import { RigidBody, CuboidCollider, type CollisionEnterPayload, type RapierRigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import { Instance } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -21,12 +21,8 @@ const HIGHLIGHT_COLOR = new THREE.Color('#00e5ff')
 const HIGHLIGHT_INTENSITY = 0.4
 
 export default function Block({ id, position, rotation, seed = 1 }: BlockProps) {
-    const setGameState = useGameStore((state) => state.setGameState)
     const isHeld = useGameStore((state) => state.heldBlockId === id)
-    const isMoving = useGameStore((state) => state.movingBlockId === id)
     const isHovered = useGameStore((state) => state.hoveredBlockId === id)
-    const gameState = useGameStore((state) => state.gameState)
-    const gameMode = useGameStore((state) => state.gameMode)
     const meshRef = useRef<THREE.Mesh>(null)
     const rigidBodyRef = useRef<RapierRigidBody>(null)
 
@@ -47,18 +43,6 @@ export default function Block({ id, position, rotation, seed = 1 }: BlockProps) 
         }
         return baseColor
     }, [baseColor, isHovered, isHeld])
-
-    const handleCollision = ({ other }: CollisionEnterPayload) => {
-        if (gameState !== 'PLAYING') return
-
-        const otherName = other.rigidBodyObject?.name
-        if (otherName === 'floor') {
-            // The block being moved this turn may be dropped; anything else on the floor ends the game.
-            if (!isMoving && gameMode === 'CLASSIC') {
-                setGameState('GAME_OVER')
-            }
-        }
-    }
 
     // Animate highlight effect
     useFrame(() => {
@@ -82,7 +66,6 @@ export default function Block({ id, position, rotation, seed = 1 }: BlockProps) 
             restitution={RESTITUTION}
             name={`block-${id}`}
             userData={userData}
-            onCollisionEnter={handleCollision}
             canSleep={true}
             colliders={false}
         >

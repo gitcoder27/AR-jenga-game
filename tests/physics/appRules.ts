@@ -1,32 +1,33 @@
 /**
- * Adapter between the physics scenarios and the app's foul detection, so the
- * fouls tests assert behaviour without caring how the app implements it.
+ * Adapter between the physics scenarios and the app's rules, so the fouls and
+ * scoring tests assert behaviour without caring how the app implements it.
  *
- * Current app rule (Block.tsx onCollisionEnter): a CLASSIC game ends when a
- * block that is not held touches the body named "floor".
+ * The app runs MoveTracker after every physics step (RulesMonitor.tsx) and
+ * feeds it the hand's held block; this does the same for a headless scene.
  */
+import { PHYSICS_TIMESTEP } from '../../src/game/config';
+import { MoveTracker, type FoulReason } from '../../src/game/moves';
 import type { Scene } from './scene';
 
-export interface FoulMonitor {
-    /** Call after every physics step. Returns true once a foul has been detected. */
-    check(heldId: string | null): boolean;
+export interface RulesMonitor {
+    tracker: MoveTracker;
+    score: number;
+    foul: { reason: FoulReason; blockId: string } | null;
+    /** Returns true once a foul has been detected. */
+    check(): boolean;
 }
 
-export function createFoulMonitor(scene: Scene): FoulMonitor {
-    const blockByHandle = new Map(scene.blocks.map((b) => [b.body.handle, b]));
-    let fouled = false;
-    return {
-        check(heldId) {
-            scene.eventQueue.drainCollisionEvents((h1, h2, started) => {
-                if (!started) return;
-                const b1 = scene.world.getCollider(h1)?.parent();
-                const b2 = scene.world.getCollider(h2)?.parent();
-                for (const [a, b] of [[b1, b2], [b2, b1]]) {
-                    const block = a ? blockByHandle.get(a.handle) : undefined;
-                    if (block && b === scene.floor && block.id !== heldId) fouled = true;
-                }
-            });
-            return fouled;
-        },
+export function createRulesMonitor(scene: Scene): RulesMonitor {
+    const monitor: RulesMonitor = {
+        tracker: new MoveTracker({
+            onScore: () => { monitor.score += 1; },
+            onFoul: (reason, blockId) => { monitor.foul ??= { reason, blockId }; },
+        }),
+        score: 0,
+        foul: null,
+        check: () => monitor.foul !== null,
     };
+    scene.hand.onHeldChange = (id) => monitor.tracker.setHeld(id);
+    scene.afterStep = () => monitor.tracker.step(scene.world, PHYSICS_TIMESTEP);
+    return monitor;
 }

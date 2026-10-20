@@ -1,21 +1,32 @@
-import { test, expect, knownBug } from './fixtures'
+import { test, expect, flakyKnownBug } from './fixtures'
 import { carryTo, grabBlock, release, storeState } from './helpers'
 
 const ID = '2-0'
-const TOP_Y = 18 * 1.5
+const TOP_FACE = 18 * 1.5
 
 // C-1 / C-3: the core loop. Extract a block, put it on top, let the tower settle: +1.
-knownBug('a full move (extract, place on top, settle) scores 1 [C-1, C-3]', async ({ page, driver, startGame }) => {
+// The rules score this (tests/physics/moves.test.ts). End to end it still fails on the
+// way in: approaching 2-0, the hand's 21 infinite-mass joint colliders can punch the
+// neighbouring 2--1 out of the tower (G-3), which is a foul. Plain once G-1/G-3 land.
+flakyKnownBug('a full move (extract, place on top, settle) scores 1 [C-1, C-3]', async ({ page, driver, startGame }) => {
   test.setTimeout(240_000)
   await startGame('CLASSIC')
+  const block = (await driver((d) => d.blockPositions()))[ID]
   const { hand } = await grabBlock(page, driver, ID)
-  const out = { ...hand, z: hand.z + 6 }
-  await carryTo(page, driver, out, 900)
-  const above = { x: 0, y: TOP_Y + 3, z: out.z }
-  await carryTo(page, driver, above, 2500)
-  const onTop = { x: 0, y: TOP_Y + 1.2, z: 0 }
-  await carryTo(page, driver, onTop, 2500, 2500)
-  await release(page, driver, onTop)
-  await driver((d, a) => d.moveHand('tuckedReady', a, 1000), { ...onTop, z: 8 })
-  await expect.poll(async () => (await storeState(driver)).score, { timeout: 20_000 }).toBe(1)
+  await expect.poll(async () => (await storeState(driver)).movePhase).toBe('HOLDING')
+
+  // Keep the grab offset: the hand holds the block by its front end
+  const grabbed = (await driver((d) => d.blockPositions()))[ID]
+  const handFor = (c: { x: number; y: number; z: number }) => ({ x: c.x + hand.x - grabbed.x, y: c.y + hand.y - grabbed.y, z: c.z + hand.z - grabbed.z })
+  // Out briskly along its length, up beside the tower, over the top
+  await carryTo(page, driver, handFor({ ...block, z: block.z + 8.5 }), 700, 600)
+  await carryTo(page, driver, handFor({ x: block.x, y: TOP_FACE + 4, z: block.z + 8.5 }), 1500, 600)
+  const over = handFor({ x: 0.5, y: TOP_FACE + 2, z: 0.4 })
+  await carryTo(page, driver, over, 1500, 1000)
+  await expect.poll(async () => (await storeState(driver)).placementTarget).not.toBeNull()
+
+  await release(page, driver, over)
+  await driver((d, a) => d.moveHand('relaxed', a, 800), { ...over, z: over.z + 8 })
+  await expect.poll(async () => (await storeState(driver)).score, { timeout: 30_000 }).toBe(1)
+  expect((await storeState(driver)).gameState).toBe('PLAYING')
 })

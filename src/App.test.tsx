@@ -72,6 +72,10 @@ vi.mock('./components/StudioRoom', () => ({
     StudioRoom: () => <div data-testid="studio-room">StudioRoom Mock</div>
 }))
 
+vi.mock('./components/GameRules', () => ({
+    default: () => null,
+}))
+
 vi.mock('./components/CameraControls', () => ({
     default: () => <div data-testid="camera-controls" />
 }))

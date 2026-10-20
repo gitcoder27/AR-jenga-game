@@ -106,6 +106,9 @@ export async function waitForRest(page: Page, driver: Driver, { threshold = 0.05
 export async function storeState(driver: Driver) {
   return driver((d) => {
     const s = d.store()
-    return { heldBlockId: s.heldBlockId, hoveredBlockId: s.hoveredBlockId, score: s.score, gameState: s.gameState, gameMode: s.gameMode }
+    return {
+      heldBlockId: s.heldBlockId, hoveredBlockId: s.hoveredBlockId, score: s.score, gameState: s.gameState, gameMode: s.gameMode,
+      movePhase: s.movePhase, placementTarget: s.placementTarget, foulReason: s.foulReason,
+    }
   })
 }

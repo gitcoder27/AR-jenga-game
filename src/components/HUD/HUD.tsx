@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useGameStore, type TrackingStatus } from '../../store/gameStore';
+import type { FoulReason, MovePhase } from '../../game/moves';
 import './HUD.css';
 
 const TRACKING_LABELS: Record<TrackingStatus, string> = {
@@ -7,6 +8,19 @@ const TRACKING_LABELS: Record<TrackingStatus, string> = {
     error: 'Hand tracking unavailable',
     'no-hand': 'Show your hand to the camera',
     ready: 'Hand tracked',
+};
+
+/** What to do next in a Classic move (C-1) */
+const MOVE_HINTS: Record<MovePhase, string | null> = {
+    IDLE: null,
+    HOLDING: 'PULL IT OUT, THEN PUT IT ON TOP',
+    MOVED: 'PICK IT UP AND PUT IT ON TOP',
+    SETTLING: 'HOLD ON… WAITING FOR THE TOWER TO SETTLE',
+};
+
+const FOULS: Record<FoulReason, { title: string; detail: string }> = {
+    'block-fell': { title: 'TOWER COLLAPSED', detail: 'A block fell from the tower.' },
+    dropped: { title: 'BLOCK DROPPED', detail: 'The block you were moving fell off the table.' },
 };
 
 export const HUD: React.FC = () => {
@@ -25,7 +39,11 @@ export const HUD: React.FC = () => {
         trackingDelegate,
         retryTracking,
         resetView,
+        movePhase,
+        placementTarget,
+        foulReason,
     } = useGameStore();
+    const moveHint = placementTarget !== null && movePhase === 'HOLDING' ? 'LET GO TO PLACE IT' : MOVE_HINTS[movePhase];
 
     useEffect(() => {
         if (isInstructionsVisible) {
@@ -58,6 +76,10 @@ export const HUD: React.FC = () => {
                     <span className="value">{score}</span>
                 </div>
             </div>
+
+            {gameMode === 'CLASSIC' && gameState === 'PLAYING' && moveHint && (
+                <div className="hud-move-hint" role="status" data-phase={movePhase}>{moveHint}</div>
+            )}
 
             {/* Instructions Overlay */}
             {isInstructionsVisible && (
@@ -110,7 +132,8 @@ export const HUD: React.FC = () => {
             {gameState === 'GAME_OVER' && (
                 <div className="hud-modal-overlay">
                     <div className="hud-modal">
-                        <h2>TOWER COLLAPSED</h2>
+                        <h2>{FOULS[foulReason ?? 'block-fell'].title}</h2>
+                        {foulReason && <p className="hud-foul-detail">{FOULS[foulReason].detail}</p>}
                         <div className="hud-final-score">
                             <span className="label">FINAL SCORE</span>
                             <span className="value">{score}</span>

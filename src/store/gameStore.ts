@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { FoulReason, MovePhase } from '../game/moves'
 
 export type GameState = 'PLAYING' | 'GAME_OVER'
 export type GameMode = 'MENU' | 'CLASSIC' | 'SANDBOX'
@@ -14,12 +15,12 @@ export interface GameStore {
     gameState: GameState
     score: number
     heldBlockId: string | null
-    /**
-     * The block being moved this turn: set when a block is grabbed and kept after
-     * release until another block is grabbed or the game resets. It is exempt
-     * from the floor rule, so dropping it isn't an instant game over (C-2).
-     */
+    /** The block being moved this turn (Classic rules, C-1); null between moves */
     movingBlockId: string | null
+    /** Where the current move is: see MoveTracker */
+    movePhase: MovePhase
+    /** Why the game ended, when it ended on a foul (C-4) */
+    foulReason: FoulReason | null
     /** Block a pinch would grab right now (same id format as heldBlockId) */
     hoveredBlockId: string | null
     /** Slot ("level-slot") the held block would snap into if let go now (C-3) */
@@ -41,6 +42,10 @@ export interface GameStore {
     startGame: (mode: GameMode) => void
     returnToMenu: () => void
     incrementScore: () => void
+    setMovePhase: (phase: MovePhase, movingBlockId: string | null) => void
+    /** A move completed: +1 and the next move starts */
+    scoreMove: () => void
+    foul: (reason: FoulReason) => void
     setHeldBlockId: (id: string | null) => void
     setHoveredBlockId: (id: string | null) => void
     setPlacementTarget: (target: string | null) => void
@@ -63,6 +68,8 @@ const FRESH_GAME = {
     movingBlockId: null,
     hoveredBlockId: null,
     placementTarget: null,
+    movePhase: 'IDLE',
+    foulReason: null,
 } satisfies Partial<GameStore>
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -86,10 +93,10 @@ export const useGameStore = create<GameStore>((set) => ({
     }),
     returnToMenu: () => set({ gameMode: 'MENU', ...FRESH_GAME }),
     incrementScore: () => set((state) => ({ score: state.score + 1 })),
-    setHeldBlockId: (heldBlockId) => set((state) => ({
-        heldBlockId,
-        movingBlockId: heldBlockId ?? state.movingBlockId,
-    })),
+    setHeldBlockId: (heldBlockId) => set({ heldBlockId }),
+    setMovePhase: (movePhase, movingBlockId) => set({ movePhase, movingBlockId }),
+    scoreMove: () => set((state) => ({ score: state.score + 1, movePhase: 'IDLE', movingBlockId: null })),
+    foul: (foulReason) => set({ gameState: 'GAME_OVER', foulReason }),
     setHoveredBlockId: (hoveredBlockId) => set({ hoveredBlockId }),
     setPlacementTarget: (placementTarget) => set({ placementTarget }),
     setWebcamVisible: (isWebcamVisible) => set({ isWebcamVisible }),
