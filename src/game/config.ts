@@ -39,6 +39,11 @@ export const HAND_JOINT_RADIUS = 0.05;
 export const HAND_PARKING_POSITION: Vec3Tuple = [0, -100, 0];
 export const GRAB_RADIUS = 0.5;
 export const HELD_BLOCK_DAMPING = 2;
+/** Hold the hand still this long after tracking drops out before letting go (H-5). */
+export const TRACKING_LOSS_GRACE_S = 0.25;
+
+/** Blocks below this height have fallen out of the world and are culled (P-5). */
+export const KILL_PLANE_Y = -10;
 
 export const THUMB_TIP = 4;
 export const INDEX_TIP = 8;

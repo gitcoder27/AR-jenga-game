@@ -1,6 +1,5 @@
-import { describe, expect } from 'vitest';
-import { knownBug } from './knownBug';
-import { TOWER_LEVELS } from '../../src/game/config';
+import { describe, expect, it } from 'vitest';
+import { PHYSICS_TIMESTEP, TOWER_LEVELS } from '../../src/game/config';
 import { createScene, handInput, type Scene } from './scene';
 import { grabAt, rebaseline } from './scenarios';
 
@@ -18,9 +17,9 @@ async function holdAboveTower(): Promise<{ scene: Scene; carry: { x: number; y: 
     const carry = { ...pinch, y: pinch.y + 4 };
     for (let i = 1; i <= 60; i++) {
         const target = { ...pinch, y: pinch.y + (4 * i) / 60 };
-        scene.step(() => scene.hand.update(handInput(target, true, UP)));
+        scene.step(() => scene.hand.update(handInput(target, true, UP), PHYSICS_TIMESTEP));
     }
-    scene.stepFor(1, () => scene.hand.update(handInput(carry, true, UP)));
+    scene.stepFor(1, () => scene.hand.update(handInput(carry, true, UP), PHYSICS_TIMESTEP));
     rebaseline(scene);
     return { scene, carry };
 }
@@ -41,15 +40,15 @@ function speed(scene: Scene, id: string): number {
 
 // H-5: losing tracking while holding must never yank the block through the tower.
 describe('tracking loss while holding', () => {
-    knownBug('a 3-frame dropout leaves the tower intact and keeps the grab', async () => {
+    it('a 3-frame dropout leaves the tower intact and keeps the grab', async () => {
         const { scene, carry } = await holdAboveTower();
         let peak = 0;
         for (let i = 0; i < 3; i++) {
-            scene.step(() => scene.hand.update(null));
+            scene.step(() => scene.hand.update(null, PHYSICS_TIMESTEP));
             peak = Math.max(peak, speed(scene, TOP_ID));
         }
         for (let i = 0; i < 60; i++) {
-            scene.step(() => scene.hand.update(handInput(carry, true, UP)));
+            scene.step(() => scene.hand.update(handInput(carry, true, UP), PHYSICS_TIMESTEP));
             peak = Math.max(peak, speed(scene, TOP_ID));
         }
         expect(othersMaxShift(scene)).toBeLessThan(0.05);
@@ -58,12 +57,12 @@ describe('tracking loss while holding', () => {
         scene.free();
     });
 
-    knownBug('a lasting dropout releases the block, which then falls under gravity only', async () => {
+    it('a lasting dropout releases the block, which then falls under gravity only', async () => {
         const { scene } = await holdAboveTower();
         let peak = 0;
         let minY = Infinity;
         for (let i = 0; i < 30; i++) {
-            scene.step(() => scene.hand.update(null));
+            scene.step(() => scene.hand.update(null, PHYSICS_TIMESTEP));
             peak = Math.max(peak, speed(scene, TOP_ID));
             minY = Math.min(minY, scene.block(TOP_ID).body.translation().y);
         }

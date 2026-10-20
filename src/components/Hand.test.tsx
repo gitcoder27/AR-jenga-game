@@ -27,6 +27,8 @@ vi.mock('@react-three/rapier', async (importOriginal) => {
                 translation: () => ({ x: 0, y: 0, z: 0 }),
                 rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
                 setNextKinematicTranslation: vi.fn(),
+                setTranslation: vi.fn(),
+                numColliders: () => 0,
             }))
             return (
                 <div data-testid="hand-rb" data-type={type}>

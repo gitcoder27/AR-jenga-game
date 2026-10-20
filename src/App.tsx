@@ -18,6 +18,7 @@ import { DepthCursor } from './components/DepthCursor'
 import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
 import GestureOrbitController from './components/GestureOrbitController'
+import GameRules from './components/GameRules'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
           <Floor />
           <Table />
           <Tower key={gameId} />
+          <GameRules />
           <Hand result={result} />
           <DepthCursor result={result} />
 

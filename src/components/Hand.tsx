@@ -90,9 +90,9 @@ function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandL
     // Velocity tracking for adaptive smoothing
     const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
 
-    useFrame(() => {
+    useFrame((_, delta) => {
         if (!result || !result.landmarks || result.landmarks.length === 0) {
-            handPhysics.update(null)
+            handPhysics.update(null, delta)
             return
         }
 
@@ -124,7 +124,7 @@ function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandL
             return next
         })
 
-        handPhysics.update({ joints, pinching: isPinching, openPalm: isClosedFist })
+        handPhysics.update({ joints, pinching: isPinching, openPalm: isClosedFist }, delta)
     })
     return null
 }

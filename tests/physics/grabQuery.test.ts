@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect } from 'vitest';
 import { knownBug } from './knownBug';
-import { BLOCK_HALF_EXTENTS, GRAB_RADIUS, HAND_PARKING_POSITION, INDEX_TIP, TABLE_HALF_EXTENTS, THUMB_TIP } from '../../src/game/config';
+import { BLOCK_HALF_EXTENTS, GRAB_RADIUS, HAND_PARKING_POSITION, INDEX_TIP, PHYSICS_TIMESTEP, TABLE_HALF_EXTENTS, THUMB_TIP } from '../../src/game/config';
 import { createRng } from '../../src/game/towerLayout';
 import { findGrabCandidate, queryCursorFeedback, type Vec3 } from '../../src/game/grab';
 import { createScene, handInput, maxShift, type Scene, type SceneBlock } from './scene';
@@ -111,12 +111,12 @@ describe('sticky pinch [G-4]', () => {
         const pinch = frontPinchPoint(block);
         const away = add(pinch, axis, 4);
         // Close the hand 4 units away from the block, then sweep in while still pinching.
-        for (let i = 0; i < 15; i++) s.step(() => s.hand.update(handInput(away, true, axis)));
+        for (let i = 0; i < 15; i++) s.step(() => s.hand.update(handInput(away, true, axis), PHYSICS_TIMESTEP));
         expect(s.hand.heldBody).toBeNull();
         for (let i = 1; i <= 30; i++) {
-            s.step(() => s.hand.update(handInput(add(away, axis, (-4 * i) / 30), true, axis)));
+            s.step(() => s.hand.update(handInput(add(away, axis, (-4 * i) / 30), true, axis), PHYSICS_TIMESTEP));
         }
-        s.stepFor(0.5, () => s.hand.update(handInput(pinch, true, axis)));
+        s.stepFor(0.5, () => s.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
         expect(s.hand.heldBody).toBeNull();
         s.free();
     });

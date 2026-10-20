@@ -1,5 +1,5 @@
 /** Scripted interactions reused across the physics regression tests. */
-import { BLOCK_HALF_EXTENTS } from '../../src/game/config';
+import { BLOCK_HALF_EXTENTS, PHYSICS_TIMESTEP } from '../../src/game/config';
 import type { Vec3 } from '../../src/game/grab';
 import { handInput, type Scene, type SceneBlock } from './scene';
 
@@ -32,8 +32,8 @@ export function rebaseline(scene: Scene): void {
 
 /** Bring the hand to `pinch` open, then close it for a few frames. Returns true if the block was grabbed. */
 export function grabAt(scene: Scene, pinch: Vec3, back: Vec3, settleFrames = 10, pinchFrames = 10): boolean {
-    for (let i = 0; i < settleFrames; i++) scene.step(() => scene.hand.update(handInput(pinch, false, back)));
-    for (let i = 0; i < pinchFrames; i++) scene.step(() => scene.hand.update(handInput(pinch, true, back)));
+    for (let i = 0; i < settleFrames; i++) scene.step(() => scene.hand.update(handInput(pinch, false, back), PHYSICS_TIMESTEP));
+    for (let i = 0; i < pinchFrames; i++) scene.step(() => scene.hand.update(handInput(pinch, true, back), PHYSICS_TIMESTEP));
     return scene.hand.heldBody !== null;
 }
 
@@ -63,10 +63,10 @@ export function pullBlock(scene: Scene, id: string, speed: number, distance = 9,
     const steps = Math.max(1, Math.round((distance / speed) * 60));
     for (let i = 1; i <= steps; i++) {
         const target = add(pinch, axis, (distance * i) / steps);
-        scene.step(() => scene.hand.update(handInput(target, true, axis)));
+        scene.step(() => scene.hand.update(handInput(target, true, axis), PHYSICS_TIMESTEP));
     }
     const end = add(pinch, axis, distance);
-    scene.stepFor(holdSeconds, () => scene.hand.update(handInput(end, true, axis)));
+    scene.stepFor(holdSeconds, () => scene.hand.update(handInput(end, true, axis), PHYSICS_TIMESTEP));
 
     const p = block.body.translation();
     const extracted = (p.x - start.x) * axis.x + (p.y - start.y) * axis.y + (p.z - start.z) * axis.z;

@@ -1,7 +1,15 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
 import type { ImpulseJoint, RigidBody, World } from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
-import { GRAB_RADIUS, HAND_PARKING_POSITION, HELD_BLOCK_DAMPING, INDEX_TIP, THUMB_TIP } from './config';
+import type { Collider } from '@dimforge/rapier3d-compat';
+import {
+    GRAB_RADIUS,
+    HAND_PARKING_POSITION,
+    HELD_BLOCK_DAMPING,
+    INDEX_TIP,
+    THUMB_TIP,
+    TRACKING_LOSS_GRACE_S,
+} from './config';
 
 export type Rapier = typeof RAPIER;
 
@@ -59,16 +67,27 @@ export interface HandInput {
     openPalm: boolean;
 }
 
+function forEachCollider(body: RigidBody, fn: (collider: Collider) => void): void {
+    for (let i = 0; i < body.numColliders(); i++) fn(body.collider(i));
+}
+
 /**
  * Drives the kinematic hand joint bodies and owns the grab joint.
  * The bodies are supplied by the caller (React components in the app, the
  * headless scene in tests).
+ *
+ * Tracking loss (H-5): the hand freezes where it was for TRACKING_LOSS_GRACE_S,
+ * so brief dropouts keep the grab. After that the grab is released and the hand
+ * is parked with its colliders disabled. Parking and re-acquiring teleport the
+ * bodies (no velocity), and a joint's collider is only re-enabled once it is
+ * clear of every block, so the hand never sweeps through or spawns inside the tower.
  */
 export class HandPhysics {
     private joint: ImpulseJoint | null = null;
     private grabbed: RigidBody | null = null;
     private previousDamping = { linear: 0, angular: 0 };
     private parked = true;
+    private lostFor = 0;
     private readonly world: World;
     private readonly rapier: Rapier;
     private readonly getBodies: () => (RigidBody | null)[];
@@ -88,22 +107,27 @@ export class HandPhysics {
         return this.parked;
     }
 
-    update(input: HandInput | null): void {
+    /**
+     * Advance one frame. `input` is null when no hand was detected; `dt` is the
+     * frame time in seconds.
+     */
+    update(input: HandInput | null, dt: number): void {
         const bodies = this.getBodies();
 
         if (!input) {
-            if (!this.parked) {
-                const [x, y, z] = HAND_PARKING_POSITION;
-                bodies.forEach((rb) => rb?.setNextKinematicTranslation({ x, y, z }));
-                this.parked = true;
-            }
+            this.onTrackingLost(bodies, dt);
             return;
         }
+        this.lostFor = 0;
 
-        input.joints.forEach((target, i) => {
-            bodies[i]?.setNextKinematicTranslation(target);
-        });
-        this.parked = false;
+        if (this.parked) {
+            // Re-acquired: teleport without velocity; colliders come back once clear.
+            input.joints.forEach((target, i) => bodies[i]?.setTranslation(target, true));
+            this.parked = false;
+        } else {
+            input.joints.forEach((target, i) => bodies[i]?.setNextKinematicTranslation(target));
+        }
+        this.enableClearColliders(bodies);
 
         if (input.pinching && !input.openPalm) {
             if (!this.joint) this.tryGrab(bodies);
@@ -124,6 +148,37 @@ export class HandPhysics {
         }
     }
 
+    private onTrackingLost(bodies: (RigidBody | null)[], dt: number): void {
+        if (this.parked) return;
+        this.lostFor += dt;
+        // Grace period: leave the bodies where they are (no new kinematic target = no motion).
+        if (this.lostFor <= TRACKING_LOSS_GRACE_S) return;
+
+        this.release();
+        const [x, y, z] = HAND_PARKING_POSITION;
+        for (const body of bodies) {
+            if (!body) continue;
+            forEachCollider(body, (c) => c.setEnabled(false));
+            body.setTranslation({ x, y, z }, false);
+        }
+        this.parked = true;
+    }
+
+    private enableClearColliders(bodies: (RigidBody | null)[]): void {
+        for (const body of bodies) {
+            if (!body) continue;
+            forEachCollider(body, (collider) => {
+                if (collider.isEnabled()) return;
+                const overlapping = this.world.intersectionWithShape(
+                    body.translation(),
+                    IDENTITY_ROTATION,
+                    collider.shape,
+                    this.rapier.QueryFilterFlags.ONLY_DYNAMIC,
+                );
+                if (!overlapping) collider.setEnabled(true);
+            });
+        }
+    }
     private tryGrab(bodies: (RigidBody | null)[]): void {
         const thumbTip = bodies[THUMB_TIP];
         const indexTip = bodies[INDEX_TIP];

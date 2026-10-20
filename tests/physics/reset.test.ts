@@ -1,5 +1,6 @@
 import { describe, expect } from 'vitest';
 import { knownBug } from './knownBug';
+import { PHYSICS_TIMESTEP } from '../../src/game/config';
 import { createScene, handInput } from './scene';
 import { blockAxis, frontPinchPoint, grabAt } from './scenarios';
 
@@ -18,8 +19,8 @@ describe('reset while holding', () => {
         for (const b of scene.blocks) scene.world.removeRigidBody(b.body);
 
         expect(() => {
-            scene.step(() => scene.hand.update(handInput(pinch, false, axis)));
-            scene.stepFor(0.5, () => scene.hand.update(handInput(pinch, true, axis)));
+            scene.step(() => scene.hand.update(handInput(pinch, false, axis), PHYSICS_TIMESTEP));
+            scene.stepFor(0.5, () => scene.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
         }).not.toThrow();
         expect(scene.hand.heldBody).toBeNull();
         scene.free();

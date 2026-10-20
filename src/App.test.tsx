@@ -47,6 +47,7 @@ vi.mock('@react-three/rapier', () => ({
             {children}
         </div>
     ),
+    useAfterPhysicsStep: vi.fn(),
 }))
 
 vi.mock('three', () => {
