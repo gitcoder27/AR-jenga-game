@@ -4,18 +4,19 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import type { TrackedHand } from '../tracking/handTracker';
 
 interface GestureOrbitControllerProps {
-    /** The filtered hand and its gesture, shared with Hand (H-7) */
-    hand: TrackedHand | null;
+    /** The filtered hand and its gesture, shared with Hand (H-7), read every frame (M-1) */
+    handRef: React.RefObject<TrackedHand | null>;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
 }
 
 const SENSITIVITY = 15; // Adjustment factor for orbit speed
 
-export default function GestureOrbitController({ hand, controlsRef }: GestureOrbitControllerProps) {
+export default function GestureOrbitController({ handRef, controlsRef }: GestureOrbitControllerProps) {
     const previousPalmPos = useRef<{ x: number; y: number } | null>(null);
 
     useFrame(() => {
         if (!controlsRef.current) return;
+        const hand = handRef.current;
 
         if (hand?.gesture.isOpenPalm) {
             const currentPalm = hand.landmarks[0]; // Wrist position (landmark 0)

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier'
 import { Instance } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
@@ -20,7 +20,11 @@ interface BlockProps {
 const HIGHLIGHT_COLOR = new THREE.Color('#00e5ff')
 const HIGHLIGHT_INTENSITY = 0.4
 
-export default function Block({ id, position, rotation, seed = 1 }: BlockProps) {
+/**
+ * One tower block. Memoized, with selectors for its own held / hovered state
+ * only, so a hover change re-renders just the blocks it concerns (M-1).
+ */
+function Block({ id, position, rotation, seed = 1 }: BlockProps) {
     const isHeld = useGameStore((state) => state.heldBlockId === id)
     const isHovered = useGameStore((state) => state.hoveredBlockId === id)
     const meshRef = useRef<THREE.Mesh>(null)
@@ -76,3 +80,5 @@ export default function Block({ id, position, rotation, seed = 1 }: BlockProps) 
         </RigidBody>
     )
 }
+
+export default memo(Block)

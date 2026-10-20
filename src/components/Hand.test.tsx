@@ -126,7 +126,8 @@ describe('Hand Component', () => {
         const runFrame = () => useFrameMock.mock.calls.at(-1)![0]({} as never, 1 / 60)
 
         // Open hand first: a pinch only grabs as it closes (G-4)
-        const { rerender } = render(<Hand hand={handWith(open)} />)
+        const handRef: { current: TrackedHand | null } = { current: handWith(open) }
+        render(<Hand handRef={handRef} />)
 
         // Mock intersection to return a hit
         const mockBody = {
@@ -152,7 +153,8 @@ describe('Hand Component', () => {
         runFrame()
         expect(mockWorld.createImpulseJoint).not.toHaveBeenCalled()
 
-        rerender(<Hand hand={handWith({ ...open, state: 'PINCHING', isPinching: true, confidence: 0.9 })} />)
+        // No re-render: the hand is read from the ref every frame (M-1)
+        handRef.current = handWith({ ...open, state: 'PINCHING', isPinching: true, confidence: 0.9 })
         runFrame()
 
         expect(mockWorld.intersectionsWithShape).toHaveBeenCalled()

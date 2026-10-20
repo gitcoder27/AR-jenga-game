@@ -37,7 +37,8 @@ function App() {
 
 function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const [cameraActive, setCameraActive] = useState(false)
-  const [hand, setHand] = useState<TrackedHand | null>(null)
+  // The latest tracked hand: a ref, read in the frame loop, so detections don't re-render the scene (M-1)
+  const handRef = useRef<TrackedHand | null>(null)
   // Filtering, outlier rejection and gestures, once per detection (H-6, H-7)
   const [tracker] = useState(() => new HandTracker())
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
@@ -61,7 +62,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
         if (res) {
           // MediaPipe landmarks are normalized per axis; gestures and filtering need the frame's aspect
           const aspect = videoElement.videoHeight ? videoElement.videoWidth / videoElement.videoHeight : 1
-          setHand(tracker.update(res.landmarks[0], now, aspect))
+          handRef.current = tracker.update(res.landmarks[0], now, aspect)
           const status = res.landmarks.length > 0 ? 'ready' : 'no-hand'
           if (useGameStore.getState().trackingStatus !== status) setTrackingStatus(status)
         }
@@ -88,10 +89,10 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <Table />
             <Tower key={gameId} />
             <GameRules key={gameId} />
-            <Hand hand={hand} />
+            <Hand handRef={handRef} />
 
             <CameraControls controlsRef={orbitControlsRef} />
-            <GestureOrbitController hand={hand} controlsRef={orbitControlsRef} />
+            <GestureOrbitController handRef={handRef} controlsRef={orbitControlsRef} />
           </Physics>
         </Canvas>
       </SceneErrorBoundary>

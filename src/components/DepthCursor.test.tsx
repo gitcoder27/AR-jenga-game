@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render } from '@testing-library/react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { DepthCursor } from './DepthCursor';
+import { cursorLook } from './cursorLook';
 import { NO_FEEDBACK, type CursorFeedback, type HandPhysics, type Vec3 } from '../game/grab';
-import { useGameStore } from '../store/gameStore';
 
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
@@ -16,31 +16,39 @@ function fakeHand(pinchPoint: Vec3 | null, feedback: CursorFeedback = NO_FEEDBAC
   return { pinchPoint, feedback } as unknown as HandPhysics;
 }
 
-function renderCursor(hand: HandPhysics) {
-  vi.mocked(useFrame).mockClear();
-  return render(<DepthCursor handPhysics={hand} isPinching={false} isOpenPalm={false} confidence={0} />);
-}
+const gesture = (isPinching: boolean, isOpenPalm = false, confidence = 0) => ({ isPinching, isOpenPalm, confidence });
 
 describe('DepthCursor', () => {
-  beforeEach(() => {
-    act(() => useGameStore.getState().setHoveredBlockId(null));
-  });
-
   it('registers a frame callback that tolerates unmounted refs', () => {
-    renderCursor(fakeHand(null));
+    vi.mocked(useFrame).mockClear();
+    render(<DepthCursor handPhysics={fakeHand(null)} handRef={{ current: null }} />);
     const callback = vi.mocked(useFrame).mock.calls[0][0];
     expect(() => callback({} as never, 0)).not.toThrow();
   });
 
-  it('shows the grab sphere only when pinching while a block is in range', () => {
-    const hand = fakeHand({ x: 0, y: 0, z: 0 });
-    const { container, rerender } = render(<DepthCursor handPhysics={hand} isPinching isOpenPalm={false} confidence={1} />);
-    const meshes = () => container.querySelectorAll('mesh').length;
-    const outOfRange = meshes();
+  it('never re-renders on its own: no store subscriptions (M-1)', () => {
+    vi.mocked(useFrame).mockClear();
+    render(<DepthCursor handPhysics={fakeHand({ x: 0, y: 0, z: 0 })} handRef={{ current: null }} />);
+    expect(vi.mocked(useFrame)).toHaveBeenCalledTimes(1);
+  });
+});
 
-    act(() => useGameStore.getState().setHoveredBlockId('2-0'));
-    rerender(<DepthCursor handPhysics={hand} isPinching isOpenPalm={false} confidence={1} />);
-    // In range: the secondary ring and the grab sphere appear.
-    expect(meshes()).toBe(outOfRange + 2);
+describe('cursorLook', () => {
+  it('shows the grab sphere only when pinching while a block is in range', () => {
+    expect(cursorLook(gesture(true), true).grabSphere).toBe(true);
+    expect(cursorLook(gesture(true), false).grabSphere).toBe(false);
+    expect(cursorLook(gesture(false), true).grabSphere).toBe(false);
+  });
+
+  it('colours: open palm, then pinching, then in range, then idle', () => {
+    expect(cursorLook(gesture(false, true), true).color).toBe('#ff9800');
+    expect(cursorLook(gesture(true), true).color).toBe('#00ff00');
+    expect(cursorLook(gesture(false), true).color).toBe('#00e5ff');
+    expect(cursorLook(null, false).color).toBe('#ffffff');
+  });
+
+  it('the inner dot grows with confidence', () => {
+    expect(cursorLook(gesture(true, false, 1), false).dotScale).toBeCloseTo(1.3);
+    expect(cursorLook(null, false).dotScale).toBe(1);
   });
 });

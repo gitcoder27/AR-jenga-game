@@ -283,3 +283,29 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   the jumps a dropped camera frame makes. The One Euro filter follows them quickly by design, so a single jump
   while extracting crossed the 1.5 slip distance at once (E2E carries lost the block under SwiftShader frame
   hiccups). A yank keeps the error up and still slips; the physics suite is unchanged.
+
+### Render architecture (M-1, F-7)
+
+- **The tracked hand is a ref, not React state.** `App`'s detection loop writes `handRef.current`. Hand, the
+  cursor, HandPhysics and the orbit gesture read it in `useFrame`. React state changes only on discrete events
+  (tracking status, held/hovered id, placement target, move phase).
+- **Hand and cursor visuals are imperative** (F-7):
+  - Hand: one shared material for the joints and one for the bones, recoloured each frame, and group
+    visibility set in the frame loop.
+  - Cursor: `cursorLook()` (a pure function, unit-tested) decides colour, opacity, the in-range ring, the grab
+    sphere and the dot size, and `CursorMaterials.apply()` writes it. The in-range ring and the grab sphere are
+    always mounted and toggled by visibility.
+  - "In range" now comes from `handPhysics.feedback`, the same per-frame grab candidate, rather than a
+    `hoveredBlockId` subscription. So the cursor has no store subscriptions and never re-renders.
+- **`Block` is memoized.** It already selected only its own held/hovered state, so a hover change re-renders
+  only the blocks it concerns.
+- **HandBone uses module-scope scratch vectors** (M-2, in passing).
+- **Validation:** `e2e/renders.spec.ts` counts commits with a stub React DevTools hook, the review's §4
+  method. With a tracked hand in empty space:
+
+  |                    | Before | After |
+  |--------------------|--------|-------|
+  | 3 s at rest        | 46     | 0     |
+  | 2.5 s moving       | 50     | 0     |
+
+  Frame-time p95 on a mid-range phone was not measured; there is no device here.

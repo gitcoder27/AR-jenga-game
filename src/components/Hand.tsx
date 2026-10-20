@@ -6,15 +6,24 @@ import { HandPhysics } from '../game/grab'
 import { HAND_PARKING_POSITION } from '../game/config'
 import { handToWorld } from '../tracking/mapping'
 import type { TrackedHand } from '../tracking/handTracker'
-import type * as THREE from 'three'
+import * as THREE from 'three'
 import { DepthCursor } from './DepthCursor'
 import { PlacementGhost } from './PlacementGhost'
 import { PlacementAssist } from '../game/placement'
 import { useGameStore } from '../store/gameStore'
 
 interface HandProps {
-    /** The filtered hand and its gesture (HandTracker): the one source every part of the hand reads (H-6, H-7) */
-    hand: TrackedHand | null
+    /**
+     * The filtered hand and its gesture (HandTracker): the one source every part
+     * of the hand reads (H-6, H-7). A ref read every frame, so a new detection
+     * doesn't re-render anything (M-1).
+     */
+    handRef: React.RefObject<TrackedHand | null>
+}
+
+const HAND_COLORS = {
+    joint: { idle: '#cccccc', pinch: '#00e5ff', palm: '#ff9800' },
+    bone: { idle: '#888888', pinch: '#00e5ff', palm: '#ff9800' },
 }
 
 const CONNECTIONS = [
@@ -27,30 +36,30 @@ const CONNECTIONS = [
 ];
 
 
-export default function Hand({ hand }: HandProps) {
+export default function Hand({ handRef }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const isPinching = hand?.gesture.isPinching ?? false
-    const isOpenPalm = hand?.gesture.isOpenPalm ?? false
+    const groupRef = useRef<THREE.Group>(null)
+    // Shared by all joints / all bones; recoloured in the frame loop (F-7)
+    const materials = useMemo(() => ({
+        joint: new THREE.MeshStandardMaterial({ color: HAND_COLORS.joint.idle, metalness: 1.0, roughness: 0.2 }),
+        bone: new THREE.MeshStandardMaterial({ color: HAND_COLORS.bone.idle, metalness: 0.9, roughness: 0.1 }),
+    }), [])
+    useEffect(() => () => {
+        materials.joint.dispose()
+        materials.bone.dispose()
+    }, [materials])
 
-    // We keep the component mounted to avoid "pop-in" at [0,0,0]
-    // but we hide the visuals if no hand
-    const isVisible = hand !== null;
-
-    // Determine hand color based on gesture state
-    const getHandColor = () => {
-        if (isPinching) return '#00e5ff'; // Cyan for pinch
-        if (isOpenPalm) return '#ff9800'; // Orange for open palm (camera control)
-        return '#cccccc'; // Default gray
-    };
-
-    const getBoneColor = () => {
-        if (isPinching) return '#00e5ff';
-        if (isOpenPalm) return '#ff9800';
-        return '#888888';
-    };
+    useFrame(() => {
+        const hand = handRef.current
+        // Kept mounted to avoid "pop-in" at [0,0,0]; hidden while there is no hand
+        if (groupRef.current) groupRef.current.visible = hand !== null
+        const state = hand?.gesture.isPinching ? 'pinch' : hand?.gesture.isOpenPalm ? 'palm' : 'idle'
+        materials.joint.color.set(HAND_COLORS.joint[state])
+        materials.bone.color.set(HAND_COLORS.bone[state])
+    })
 
     return (
-        <group visible={isVisible}>
+        <group ref={groupRef} visible={false}>
             {/* Joint Visuals & Physics */}
             {Array.from({ length: 21 }).map((_, i) => (
                 <RigidBody
@@ -61,13 +70,8 @@ export default function Hand({ hand }: HandProps) {
                     colliders={false}
                     position={HAND_PARKING_POSITION} // Start far away
                 >
-                    <mesh castShadow>
+                    <mesh castShadow material={materials.joint}>
                         <sphereGeometry args={[0.05, 12, 12]} />
-                        <meshStandardMaterial
-                            color={getHandColor()}
-                            metalness={1.0}
-                            roughness={0.2}
-                        />
                     </mesh>
                 </RigidBody>
             ))}
@@ -79,16 +83,16 @@ export default function Hand({ hand }: HandProps) {
                     refs={refs}
                     startIdx={start}
                     endIdx={end}
-                    color={getBoneColor()}
+                    material={materials.bone}
                 />
             ))}
 
-            <UpdateLogic hand={hand} refs={refs} />
+            <UpdateLogic handRef={handRef} refs={refs} />
         </group>
     )
 }
 
-function UpdateLogic({ hand, refs }: { hand: TrackedHand | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]> }) {
+function UpdateLogic({ handRef, refs }: { handRef: React.RefObject<TrackedHand | null>, refs: React.MutableRefObject<(RapierRigidBody | null)[]> }) {
     const { world, rapier } = useRapier()
     const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera
     const worldRef = useRef<THREE.Vector3[]>([])
@@ -120,6 +124,7 @@ function UpdateLogic({ hand, refs }: { hand: TrackedHand | null, refs: React.Mut
     useBeforePhysicsStep(() => handPhysics.beforeStep())
 
     useFrame((_, delta) => {
+        const hand = handRef.current
         if (!hand) {
             handPhysics.update(null, delta)
             assist.update(handPhysics.heldBody, delta)
@@ -133,7 +138,7 @@ function UpdateLogic({ hand, refs }: { hand: TrackedHand | null, refs: React.Mut
     })
     return (
         <>
-            <DepthCursor handPhysics={handPhysics} isPinching={hand?.gesture.isPinching ?? false} isOpenPalm={hand?.gesture.isOpenPalm ?? false} confidence={hand?.gesture.confidence ?? 0} />
+            <DepthCursor handPhysics={handPhysics} handRef={handRef} />
             <PlacementGhost assist={assist} />
         </>
     )
