@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures'
 import { dist, frontOf } from './helpers'
 import type { PoseName } from '../src/test/handPoses'
+import { CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE, CAMERA_TARGET } from '../src/game/config'
 
 // H-1: a relaxed or claw hand at the depths needed to reach the tower must not
 // be read as "open palm" and start orbiting the camera.
@@ -42,7 +43,9 @@ test('orbit and zoom are limited, panning is off, and RESET VIEW restores the de
   const box = (await canvas.boundingBox())!
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
-  const polarDeg = (p: { x: number; y: number; z: number }) => (Math.acos(p.y / Math.hypot(p.x, p.y, p.z)) * 180) / Math.PI
+  const [tx, ty, tz] = CAMERA_TARGET
+  const fromTarget = (p: { x: number; y: number; z: number }) => Math.hypot(p.x - tx, p.y - ty, p.z - tz)
+  const polarDeg = (p: { x: number; y: number; z: number }) => (Math.acos((p.y - ty) / fromTarget(p)) * 180) / Math.PI
 
   // Drag up hard: tries to orbit under the table
   await page.mouse.move(cx, cy)
@@ -52,7 +55,7 @@ test('orbit and zoom are limited, panning is off, and RESET VIEW restores the de
   await page.waitForTimeout(500)
   let cam = await driver((d) => d.cameraPosition())
   expect(polarDeg(cam)).toBeLessThanOrEqual(80.5)
-  expect(cam.y).toBeGreaterThan(2)
+  expect(cam.y).toBeGreaterThan(ty)
 
   // Drag down hard: tries to go over the top
   await page.mouse.move(cx, box.y + 5)
@@ -68,11 +71,11 @@ test('orbit and zoom are limited, panning is off, and RESET VIEW restores the de
   for (let i = 0; i < 15; i++) await page.mouse.wheel(0, 400)
   await page.waitForTimeout(500)
   cam = await driver((d) => d.cameraPosition())
-  expect(Math.hypot(cam.x, cam.y, cam.z)).toBeLessThanOrEqual(28.1)
+  expect(fromTarget(cam)).toBeLessThanOrEqual(CAMERA_MAX_DISTANCE + 0.1)
   for (let i = 0; i < 15; i++) await page.mouse.wheel(0, -400)
   await page.waitForTimeout(500)
   cam = await driver((d) => d.cameraPosition())
-  expect(Math.hypot(cam.x, cam.y, cam.z)).toBeGreaterThanOrEqual(17.9)
+  expect(fromTarget(cam)).toBeGreaterThanOrEqual(CAMERA_MIN_DISTANCE - 0.1)
 
   // Right-drag would pan: the camera keeps looking at the tower axis
   await page.mouse.move(cx, cy)
@@ -81,7 +84,7 @@ test('orbit and zoom are limited, panning is off, and RESET VIEW restores the de
   await page.mouse.up({ button: 'right' })
   await page.waitForTimeout(500)
   const target = await driver((d) => d.orbitTarget())
-  expect(Math.hypot(target.x, target.y, target.z)).toBeLessThan(0.01)
+  expect(dist(target, { x: tx, y: ty, z: tz })).toBeLessThan(0.01)
 
   await page.getByRole('button', { name: /reset view/i }).click()
   await page.waitForTimeout(500)

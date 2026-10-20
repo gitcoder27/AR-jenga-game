@@ -1,4 +1,4 @@
-import { test, expect, knownBug } from './fixtures'
+import { test, expect, flakyKnownBug } from './fixtures'
 import { carryTo, dist, frontOf, grabBlock, movedBlocks, release, storeState } from './helpers'
 
 const ID = '2-0'
@@ -43,7 +43,8 @@ test.describe('grab → carry → release', () => {
     await expect.poll(async () => (await storeState(driver)).hoveredBlockId, { timeout: 8000 }).toBe(ID)
   })
 
-  knownBug('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
+  // Toppled 3 of 3 repeats with the item-1 framing, but passed once: flaky until the soft grab (G-1) lands.
+  flakyKnownBug('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
     const { hand } = await grabBlock(page, driver, ID)
     const before = await driver((d) => d.blockPositions())

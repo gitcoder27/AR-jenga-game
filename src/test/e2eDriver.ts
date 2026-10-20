@@ -44,8 +44,8 @@ let current: { pose: PoseName; at: Vec3 } | null = null;
 
 /** Landmarks that put `pose`'s thumb–index midpoint at world point `at`. */
 export function landmarksFor(pose: PoseName, at: Vec3): Landmark[] {
-    const { x, y, handZ } = worldToLandmark(at, rootState().camera);
-    return buildLandmarks(pose, palmSizeForDepth(handZ), x, y, videoAspect());
+    const { x, y, depth } = worldToLandmark(at, rootState().camera as THREE.PerspectiveCamera);
+    return buildLandmarks(pose, palmSizeForDepth(depth), x, y, videoAspect());
 }
 
 export function setHand(pose: PoseName, at: Vec3): void {

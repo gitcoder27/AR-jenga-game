@@ -136,3 +136,10 @@ export { expect }
  * (the fix commit then switches it to `test`). SHOW_KNOWN_BUGS=1 runs it plainly.
  */
 export const knownBug = (process.env.SHOW_KNOWN_BUGS ? test : test.fail) as typeof test
+
+/**
+ * A known bug that doesn't reproduce every run: skipped as test.fixme, since
+ * test.fail would turn red on the runs where it happens to pass.
+ * SHOW_KNOWN_BUGS=1 runs it plainly.
+ */
+export const flakyKnownBug = (process.env.SHOW_KNOWN_BUGS ? test : test.fixme) as typeof test

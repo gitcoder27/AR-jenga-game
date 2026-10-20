@@ -8,7 +8,8 @@ import useGesture from '../hooks/useGesture'
 import { HandBone } from './HandBone'
 import { HandPhysics } from '../game/grab'
 import { HAND_PARKING_POSITION } from '../game/config'
-import { landmarkToWorld } from '../tracking/mapping'
+import { handToWorld } from '../tracking/mapping'
+import type * as THREE from 'three'
 import { DepthCursor } from './DepthCursor'
 import { useGameStore } from '../store/gameStore'
 
@@ -89,7 +90,8 @@ export default function Hand({ result, aspect = 1 }: HandProps) {
 
 function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isPinchForming: boolean, isOpenPalm: boolean, confidence: number }) {
     const { world, rapier } = useRapier()
-    const { camera } = useThree()
+    const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera
+    const worldRef = useRef<THREE.Vector3[]>([])
     // Mirror the grab (C-2) and the hover target (F-1) into the store
     const handPhysics = useMemo(
         () => new HandPhysics(world, rapier, () => refs.current, {
@@ -117,11 +119,12 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, con
         }
 
         const landmarks = result.landmarks[0]
-        const handZ = calculateDepth(landmarks)
+        const depth = calculateDepth(landmarks)
         const isFirstFrame = handPhysics.isParked
+        const world = handToWorld(landmarks, depth, camera, worldRef.current)
 
-        const joints = landmarks.map((landmark, index) => {
-            const worldPos = landmarkToWorld(landmark, handZ, camera)
+        const joints = landmarks.map((_, index) => {
+            const worldPos = world[index]
             const rb = refs.current[index]
             if (isFirstFrame || !rb) {
                 // Teleport instantly on first frame to avoid knocking tower from center

@@ -7,16 +7,17 @@ import Hand from './Hand'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import type { ReactNode } from 'react'
 
-vi.mock('@react-three/fiber', () => ({
-    useFrame: vi.fn(),
-    useThree: vi.fn(() => ({
-        camera: {
-            position: { x: 0, y: 10, z: 20 },
-            quaternion: { x: 0, y: 0, z: 0, w: 1 },
-        }
-    })),
-    extend: vi.fn(),
-}))
+vi.mock('@react-three/fiber', async () => {
+    const { PerspectiveCamera } = await import('three')
+    const camera = new PerspectiveCamera(50, 16 / 9)
+    camera.position.set(0, 14, 40)
+    const state = { camera }
+    return {
+        useFrame: vi.fn(),
+        useThree: vi.fn((selector?: (s: typeof state) => unknown) => (selector ? selector(state) : state)),
+        extend: vi.fn(),
+    }
+})
 
 
 vi.mock('@react-three/rapier', async (importOriginal) => {

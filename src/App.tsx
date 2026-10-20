@@ -20,7 +20,7 @@ import GameRules from './components/GameRules'
 import CameraControls from './components/CameraControls'
 import SceneErrorBoundary from './components/SceneErrorBoundary'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { CAMERA_POSITION } from './game/config'
+import { CAMERA_FOV, CAMERA_POSITION } from './game/config'
 
 function App() {
   // Created once, so the model loads while the menu is showing
@@ -75,7 +75,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
       <Webcam onVideoReady={handleVideoReady} />
 
       <SceneErrorBoundary onRestart={resetGame}>
-        <Canvas shadows camera={{ position: CAMERA_POSITION }}>
+        <Canvas shadows camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}>
           <Physics gravity={[0, -9.81, 0]}>
             <color attach="background" args={['#111']} />
             <Lighting />

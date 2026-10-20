@@ -41,12 +41,16 @@ export const TABLE_POSITION: Vec3Tuple = [0, -1, 0];
 export const FLOOR_HALF_EXTENTS: Vec3Tuple = [50, 0.5, 50];
 export const FLOOR_POSITION: Vec3Tuple = [0, -5, 0];
 
-// Camera. The hand's reach is fixed relative to the camera (12–28 units, C-3),
-// so zoom and orbit are limited to keep the tower reachable and above the table (V-2).
-export const CAMERA_POSITION: Vec3Tuple = [0, 10, 20];
-export const CAMERA_TARGET: Vec3Tuple = [0, 0, 0];
-export const CAMERA_MIN_DISTANCE = 18;
-export const CAMERA_MAX_DISTANCE = 28;
+// Camera (C-3, V-1, V-2). The orbit target is the middle of the tower plus
+// headroom for placing on top, and the hand's reach is centred on it
+// (tracking/mapping.ts), so every allowed orbit and zoom keeps the whole tower
+// on screen and within reach (src/tracking/mapping.test.ts sweeps this).
+export const CAMERA_FOV = 50;
+export const CAMERA_TARGET: Vec3Tuple = [0, 14, 0];
+/** Default view: 40 units from the target, 20° above horizontal. */
+export const CAMERA_POSITION: Vec3Tuple = [0, 14 + 40 * Math.cos((70 * Math.PI) / 180), 40 * Math.sin((70 * Math.PI) / 180)];
+export const CAMERA_MIN_DISTANCE = 36;
+export const CAMERA_MAX_DISTANCE = 48;
 export const CAMERA_MIN_POLAR_ANGLE = (15 * Math.PI) / 180;
 export const CAMERA_MAX_POLAR_ANGLE = (80 * Math.PI) / 180;
 
