@@ -111,7 +111,7 @@ describe('useGameStore', () => {
     expect(useGameStore.getState().isCameraMode).toBe(false)
   })
 
-  it('depth settings: direction, calibration, and only they are kept across visits (H-3, H-4)', () => {
+  it('depth settings: direction and calibration are kept across visits, with only the tutorial flag and background (H-3, H-4)', () => {
     const s = useGameStore.getState()
     act(() => {
       s.setHeldBlockId(null)
@@ -125,7 +125,7 @@ describe('useGameStore', () => {
       depthSettings: { reachIn: true, calibration: { near: 0.3, far: 0.1 } },
     })
     const saved = JSON.parse(localStorage.getItem('ar-jenga-settings')!)
-    expect(Object.keys(saved.state)).toEqual(['depthSettings', 'tutorialDone'])
+    expect(Object.keys(saved.state)).toEqual(['depthSettings', 'tutorialDone', 'sceneBackground'])
     act(() => {
       useGameStore.getState().clearCalibration()
       useGameStore.getState().setReachIn(false)
@@ -152,5 +152,16 @@ describe('useGameStore', () => {
     expect(useGameStore.getState()).toMatchObject({ gameMode: 'CLASSIC', tutorialStep: 'camera' })
     act(() => useGameStore.getState().returnToMenu())
     expect(useGameStore.getState().tutorialStep).toBeNull()
+  })
+
+  it('the background defaults to the studio; the mirror-AR choice outlives games and visits (feature #10)', () => {
+    act(() => useGameStore.setState({ sceneBackground: 'studio' }))
+    act(() => useGameStore.getState().setSceneBackground('camera'))
+    act(() => useGameStore.getState().startGame('SANDBOX'))
+    act(() => useGameStore.getState().resetGame())
+    act(() => useGameStore.getState().returnToMenu())
+    expect(useGameStore.getState().sceneBackground).toBe('camera')
+    expect(JSON.parse(localStorage.getItem('ar-jenga-settings')!).state.sceneBackground).toBe('camera')
+    act(() => useGameStore.getState().setSceneBackground('studio'))
   })
 })

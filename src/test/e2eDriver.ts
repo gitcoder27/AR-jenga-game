@@ -189,6 +189,21 @@ export function handJointPositions(): Vec3[] {
     return out;
 }
 
+/** What's behind the table: the scene background, the studio backdrop and the floor mesh (feature #10). */
+export function sceneBackground(): { kind: 'video' | 'color' | 'other' | 'none'; videoPlaying: boolean; studio: boolean; floorVisible: boolean } {
+    const { scene } = rootState();
+    const bg = scene.background;
+    // The mirror-AR background is a canvas the webcam frames are copied to
+    const video = bg instanceof THREE.CanvasTexture ? document.querySelector('video') : null;
+    const kind = video ? 'video' : bg instanceof THREE.Color ? 'color' : bg ? 'other' : 'none';
+    return {
+        kind,
+        videoPlaying: Boolean(video && !video.paused && video.readyState >= 2),
+        studio: scene.getObjectByName('studio-room') !== undefined,
+        floorVisible: scene.getObjectByName('floor-mesh')?.visible ?? false,
+    };
+}
+
 /** R3F clock time, to check the render loop is alive. */
 export function clockTime(): number {
     return rootState().clock.elapsedTime;

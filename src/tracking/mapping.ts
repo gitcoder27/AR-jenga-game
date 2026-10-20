@@ -119,3 +119,20 @@ export function handToWorld(
     });
     return out;
 }
+
+/**
+ * The part of the webcam frame behind the screen, as the texture transform for
+ * the mirror-AR background: a video pixel then shows on screen exactly where
+ * landmarkToWorld puts a landmark at that pixel, so the virtual pinch point sits
+ * on the player's real fingertips. Texture u = offset + repeat × screen u (the
+ * same for v), with v = 1 at the frame's top row. Like the hand mapping it
+ * fits each axis on its own, so the image stretches when the screen's aspect
+ * differs from the camera's.
+ */
+export function frameTextureTransform(): { repeat: [number, number]; offset: [number, number] } {
+    const g = FRAME_TO_SCREEN_GAIN;
+    return {
+        repeat: [-1 / g, 1 / g], // mirrored, like the hand
+        offset: [0.5 + 0.5 / g, 1 - FRAME_CENTER_Y - 0.5 / g],
+    };
+}

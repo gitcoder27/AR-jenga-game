@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { HAND_SCALE, handToWorld, landmarkToWorld, pinchAnchor, worldToLandmark } from './mapping'
+import { HAND_SCALE, frameTextureTransform, handToWorld, landmarkToWorld, pinchAnchor, worldToLandmark } from './mapping'
 import {
     BLOCK_HEIGHT,
     BLOCK_LENGTH,
@@ -71,6 +71,34 @@ describe('landmark → world mapping', () => {
             expect(right.x).toBeGreaterThan(0.99)
             expect(top.y).toBeGreaterThan(0.99)
             expect(bottom.y).toBeLessThan(-0.99)
+        }
+    })
+})
+
+describe('mirror-AR background [feature #10]', () => {
+    it('the video pixel under a landmark is the one it was tracked at, at every layout, orbit and depth', () => {
+        const { repeat, offset } = frameTextureTransform()
+        for (const aspect of Object.values(ASPECTS)) {
+            for (const camera of [orbitCamera(aspect, 1.1, 40, 0.4), orbitCamera(aspect, CAMERA_MIN_POLAR_ANGLE, CAMERA_MIN_DISTANCE, -1.2)]) {
+                for (const [x, y, depth] of [[0.2, 0.3, -0.5], [0.5, 0.45, 0], [0.85, 0.8, 0.8]]) {
+                    const ndc = landmarkToWorld({ x, y, z: 0 }, depth, camera).project(camera)
+                    const screen = { u: (ndc.x + 1) / 2, v: (ndc.y + 1) / 2 }
+                    // Texture v = 1 is the frame's top row (flipY)
+                    expect(offset[0] + repeat[0] * screen.u).toBeCloseTo(x, 6)
+                    expect(offset[1] + repeat[1] * screen.v).toBeCloseTo(1 - y, 6)
+                }
+            }
+        }
+    })
+
+    it('the whole screen shows the camera image, none of it past the frame edges', () => {
+        const { repeat, offset } = frameTextureTransform()
+        for (const corner of [0, 1]) {
+            for (const i of [0, 1]) {
+                const uv = offset[i] + repeat[i] * corner
+                expect(uv).toBeGreaterThanOrEqual(0)
+                expect(uv).toBeLessThanOrEqual(1)
+            }
         }
     })
 })

@@ -20,6 +20,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
   - **Camera**: Hold an open palm still, then move your hand to turn the view. You can also press **C**, use the TURN VIEW button, or drag with the mouse.
 - **Interactive Gameplay**: Carefully remove blocks from the tower and stack them on top without toppling the structure.
 - **Immersive Environment**: Features a 3D studio room environment, dynamic lighting, shadows, and high-quality block materials.
+- **Mirror AR**: **SETTINGS → BACKGROUND → YOUR CAMERA** puts your mirrored webcam image behind the table, lined up so the virtual hand's pinch point sits on your real fingertips. **STUDIO** switches back. This is a webcam background, not WebXR: there's no phone or headset AR mode.
 - **HUD**: Heads-Up Display showing your score and current game status.
 
 ## 🛠️ Tech Stack
@@ -83,6 +84,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
    - Press **C**, or use the **TURN VIEW** button, to switch it on or off without the gesture. It is unavailable while you hold a block.
    - Drag with the mouse to orbit, or scroll to zoom. The view can't go under the table or zoom out of reach.
    - **SETTINGS → RESET VIEW** restores the default framing.
+   - **SETTINGS → BACKGROUND**: **YOUR CAMERA** shows your webcam behind the table, mirrored and lined up with your hand ("mirror AR"); **STUDIO** is the default room. The game remembers the choice in this browser.
 5. **Rules**:
    - **Loose blocks**: Every level has one block a fraction shorter than the other two. It carries nothing, so it slides out easily; the other two are held tight and drag the tower if you pull them. Probe with a fingertip: the loose one moves.
    - **Classic**: Take a block out of the tower and put it on top. It scores once the tower settles. The game ends when a block falls from the tower, or when the block you're moving falls off the table. Leaving a Classic game in play (**EXIT GAME** or the title) asks first.

@@ -35,6 +35,19 @@ test.describe('screenshots', () => {
       await page.waitForTimeout(3000)
       await shot('3-game-hand')
 
+      // Mirror AR (feature #10): the same moment with the webcam behind the table.
+      // The fake camera's picture is a mirrored clock over a green pacman.
+      await page.getByRole('button', { name: 'SETTINGS' }).click()
+      await page.getByRole('button', { name: 'YOUR CAMERA' }).click()
+      await page.waitForTimeout(1500)
+      await shot('3b-settings-background')
+      await page.getByRole('button', { name: 'Close settings' }).click()
+      await page.waitForTimeout(1500)
+      await shot('3c-mirror-ar')
+      await page.getByRole('button', { name: 'SETTINGS' }).click()
+      await page.getByRole('button', { name: 'STUDIO' }).click()
+      await page.getByRole('button', { name: 'Close settings' }).click()
+
       // Hand at the left and right edges of the webcam frame
       for (const [label, x] of [['left', 0.08], ['right', 0.92]] as const) {
         await page.evaluate((x) => {

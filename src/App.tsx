@@ -16,6 +16,7 @@ import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
 import { StudioRoom } from './components/StudioRoom'
+import { MirrorBackground } from './components/MirrorBackground'
 import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
 import GestureOrbitController from './components/GestureOrbitController'
@@ -57,6 +58,8 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const [gauge] = useState(() => new DepthGaugeView())
 
   const gameId = useGameStore((state) => state.gameId)
+  // Mirror AR: the webcam behind the table, once the camera is running (feature #10)
+  const mirror = useGameStore((state) => state.sceneBackground) === 'camera' ? videoElement : null
   const resetGame = useGameStore((state) => state.resetGame)
 
   const handleVideoReady = useCallback((vid: HTMLVideoElement) => {
@@ -100,12 +103,12 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
       <SceneErrorBoundary onRestart={resetGame}>
         <Canvas shadows camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}>
           <Physics gravity={GRAVITY} contactNaturalFrequency={CONTACT_NATURAL_FREQUENCY}>
-            <color attach="background" args={['#111']} />
+            {mirror ? <MirrorBackground video={mirror} /> : <color attach="background" args={['#111']} />}
             <Lighting />
             <EnvironmentSetup />
-            <StudioRoom />
+            {!mirror && <StudioRoom />}
 
-            <Floor />
+            <Floor visible={!mirror} />
             <Table />
             <Tower key={gameId} />
             <GameRules />

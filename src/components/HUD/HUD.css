@@ -55,6 +55,8 @@
 
 .hud-score {
     text-align: right;
+    /* Readable over the mirror-AR camera image too (feature #10), like the depth gauge's labels */
+    text-shadow: 0 0 4px #000;
 }
 
 .hud-score .label {

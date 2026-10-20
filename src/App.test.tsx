@@ -73,6 +73,10 @@ vi.mock('./components/StudioRoom', () => ({
     StudioRoom: () => <div data-testid="studio-room">StudioRoom Mock</div>
 }))
 
+vi.mock('./components/MirrorBackground', () => ({
+    MirrorBackground: () => <div data-testid="mirror-background">MirrorBackground Mock</div>
+}))
+
 vi.mock('./components/GameRules', () => ({
     default: () => null,
 }))

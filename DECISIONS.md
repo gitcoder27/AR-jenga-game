@@ -7,11 +7,11 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
 
 | Topic | Decision | Status |
 |---|---|---|
-| H-3 depth mapping | Keep the "mirror" mapping as the default. Add a settings toggle for "reach-in", fix the README, and add a depth gauge. | README fixed (Phase 1 #11); toggle and gauge pending (Phase 2) |
-| H-2 camera mode | Hold an open palm still for 400 ms to enter camera mode. Show a visible mode indicator, turn hand colliders off in camera mode, and add a HUD toggle plus a keyboard fallback. | Pending (Phase 2 #10) |
-| G-1 grab | A dynamic proxy body driven by a PD controller, with a force cap and slip release. Start at block↔block friction 0.45, block↔table 0.6 and gravity ×2, then tune until the physics tests pass. | Pending (Phase 2 #4; friction in Phase 1 #10) |
-| Asset hosting | Self-host the HDR, the MediaPipe model and the WASM matching the npm package version. Don't commit large binaries unless unavoidable. | Done (see "Self-hosting" below) |
-| Phase 3 #10 | Implement only the "mirror AR" webcam background behind a toggle. Skip full WebXR. | Pending |
+| H-3 depth mapping | Keep the "mirror" mapping as the default. Add a settings toggle for "reach-in", fix the README, and add a depth gauge. | Done: README in Phase 1 #11; toggle, gauge and calibration in Phase 2 #11 (`8d1b961`) |
+| H-2 camera mode | Hold an open palm still for 400 ms to enter camera mode. Show a visible mode indicator, turn hand colliders off in camera mode, and add a HUD toggle plus a keyboard fallback. | Done, Phase 2 #10 (`5b50b72`) |
+| G-1 grab | A dynamic proxy body driven by a PD controller, with a force cap and slip release. Start at block↔block friction 0.45, block↔table 0.6 and gravity ×2, then tune until the physics tests pass. | Done: friction in Phase 1 #10, the grab in Phase 2 #4 (`f5e14ff`), gravity ×2 in Phase 2 #15 (`1909415`) |
+| Asset hosting | Self-host the HDR, the MediaPipe model and the WASM matching the npm package version. Don't commit large binaries unless unavoidable. | Done (see "Assets" below) |
+| Phase 3 #8 (feature #10) | Implement only the "mirror AR" webcam background behind a toggle. Skip full WebXR. | Done; WebXR skipped (see "Mirror AR" below) |
 
 ## Made during implementation
 
@@ -646,4 +646,45 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
     one seed's varied tower that tipped the short neighbour off. The H-5 tracking-loss tests lift on identical
     blocks.
   - **Difficulty presets from the seed** (the review's suggestion) are not done.
+
+### Mirror AR (Phase 3 #8, feature #10)
+
+The brief limits Phase 3 to this one item: the webcam image as the background, behind a toggle. **WebXR is
+skipped**, as the brief directs: no `immersive-ar` session, no hit-test table placement, no headset or phone-AR
+mode. The rest of Phase 3 (pointer mode, worker, audio, multiplayer and so on) is out of scope for this run too.
+
+- **The toggle:** **SETTINGS → BACKGROUND: STUDIO / YOUR CAMERA** (`sceneBackground` in the store). Studio is the
+  default. The choice is kept in this browser, next to the depth settings and the tutorial flag. Without a running
+  camera the studio stays, whatever the setting.
+- **While on**, the webcam replaces the background colour, and the studio backdrop and the floor's mesh are hidden.
+  The floor's collider stays, so nothing about the physics changes. The table, the tower and the virtual hand
+  render as before.
+- **Lined up with the hand.** The background uses the hand mapping's own constants (`frameTextureTransform()` in
+  `mapping.ts`, next to `FRAME_TO_SCREEN_GAIN` and `FRAME_CENTER_Y`). A landmark's video pixel shows on screen
+  exactly where `landmarkToWorld` puts it, so the virtual pinch point sits on your real fingertips. A unit test checks
+  this at every layout, orbit and depth.
+  - **The trade-off:** the hand mapping fits each axis of the webcam frame to the screen on its own (edge-to-edge
+    reach, M-4). So the image stretches when the screen's shape differs from the camera's. A 4:3 camera is 1.33×
+    wide on a 16:9 screen. A portrait phone screen with a landscape camera squeezes it about 2.9× instead. An
+    aspect-correct crop wouldn't stretch, but then your hand on screen wouldn't be where the game thinks it is.
+    I kept the alignment, since that's the point of mirror AR. **Not playtested:** whether the stretch bothers
+    players on a phone in portrait is an open question.
+- **Mirrored**, like the preview and the hand: move right and your image moves right.
+- **The HUD over a camera image.** The bars and buttons already have dark backings. The score was the only text
+  with none, and it got faint over the fake camera's bright green. It now has the depth gauge labels' black
+  text-shadow, which is invisible on the studio's dark background.
+- **Copied through a 2D canvas, once per camera frame** (the same `onVideoFrames` as detection, H-8).
+  - Uploading the `<video>` element to WebGL directly gave a black background under SwiftShader. That's the E2E
+    browser, and also what Chrome falls back to on a blocklisted GPU. Copied through a canvas, the same frame shows.
+    The cost is one `drawImage` of the 640×480 frame per camera frame.
+  - It isn't a `VideoTexture` for a second reason: its `dispose()` stops its frame updates for good. React
+    StrictMode's remount in development therefore froze it.
+  - **Measured only under SwiftShader** at 640×360: 12.8–15.9 FPS with the camera background, against 11.7–13.6
+    with the studio. Hiding the studio's geometry and shadows evidently outweighs the copy there. GPU cost is
+    unmeasured.
+- **Tests:** `mapping.test.ts` (the alignment), the store and HUD unit tests, and `e2e/mirror.spec.ts`. The E2E
+  checks that the fake camera's moving picture shows and the hand still grabs, that STUDIO restores the room, that
+  the choice survives a reload, and that a blocked camera leaves the studio up.
+- **Not done:** person segmentation, so your real hand can't appear in front of the tower; it's always behind.
+  Lighting doesn't adapt to the camera image either.
 

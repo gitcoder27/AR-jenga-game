@@ -11,8 +11,9 @@ const CALIBRATION_TEXT: Record<Exclude<CalibrationStatus, 'idle'>, string> = {
 };
 
 /**
- * Settings panel: the view (RESET VIEW, M-5 moved it here from the bar), which
- * way the hand moves in depth (H-3), and the 5-second near/far calibration (H-4).
+ * Settings panel: the view (RESET VIEW, M-5 moved it here from the bar), the
+ * background (studio or mirror AR, feature #10), which way the hand moves in
+ * depth (H-3), and the 5-second near/far calibration (H-4).
  */
 export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const depthSettings = useGameStore((s) => s.depthSettings);
@@ -22,6 +23,8 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     const startCalibration = useGameStore((s) => s.startCalibration);
     const clearCalibration = useGameStore((s) => s.clearCalibration);
     const startTutorial = useGameStore((s) => s.startTutorial);
+    const sceneBackground = useGameStore((s) => s.sceneBackground);
+    const setSceneBackground = useGameStore((s) => s.setSceneBackground);
     const { reachIn, calibration } = depthSettings;
 
     return (
@@ -29,6 +32,24 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             <p className="hud-settings-label">VIEW</p>
             <div className="hud-settings-row">
                 <button className="hud-button" onClick={resetView}>RESET VIEW</button>
+            </div>
+            <p className="hud-settings-label">BACKGROUND</p>
+            <div className="hud-settings-row">
+                <button
+                    className={`hud-button ${sceneBackground === 'studio' ? 'active' : ''}`}
+                    aria-pressed={sceneBackground === 'studio'}
+                    onClick={() => setSceneBackground('studio')}
+                >
+                    STUDIO
+                </button>
+                {/* Mirror AR (feature #10): the webcam image behind the table */}
+                <button
+                    className={`hud-button ${sceneBackground === 'camera' ? 'active' : ''}`}
+                    aria-pressed={sceneBackground === 'camera'}
+                    onClick={() => setSceneBackground('camera')}
+                >
+                    YOUR CAMERA
+                </button>
             </div>
             <p className="hud-settings-label">MOVING YOUR HAND TOWARD THE WEBCAM MOVES IT:</p>
             <div className="hud-settings-row">

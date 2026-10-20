@@ -14,6 +14,7 @@ const mockSetInstructionsVisible = vi.fn();
 const mockSetTutorialStep = vi.fn();
 const mockEndTutorial = vi.fn();
 const mockStartTutorial = vi.fn();
+const mockSetSceneBackground = vi.fn();
 
 vi.mock('../../store/gameStore', () => ({
   useGameStore: Object.assign((selector?: MockSelector) => {
@@ -40,6 +41,8 @@ vi.mock('../../store/gameStore', () => ({
       setTutorialStep: mockSetTutorialStep,
       endTutorial: mockEndTutorial,
       startTutorial: mockStartTutorial,
+      sceneBackground: 'studio',
+      setSceneBackground: mockSetSceneBackground,
       ...overrides,
     };
     return selector ? selector(state) : state;
@@ -94,6 +97,26 @@ describe('HUD', () => {
       overrides = { heldBlockId: '3-1' };
       render(<HUD />);
       expect(screen.getByRole('button', { name: /turn view/i })).toBeDisabled();
+      overrides = {};
+    });
+  });
+
+  describe('background [feature #10]', () => {
+    it('the SETTINGS panel switches between the studio and the mirror-AR camera background', () => {
+      overrides = {};
+      const { unmount } = render(<HUD />);
+      fireEvent.click(screen.getByRole('button', { name: 'SETTINGS' }));
+      expect(screen.getByRole('button', { name: 'STUDIO' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'YOUR CAMERA' })).toHaveAttribute('aria-pressed', 'false');
+      fireEvent.click(screen.getByRole('button', { name: 'YOUR CAMERA' }));
+      expect(mockSetSceneBackground).toHaveBeenCalledWith('camera');
+      unmount();
+      overrides = { sceneBackground: 'camera' };
+      render(<HUD />);
+      fireEvent.click(screen.getByRole('button', { name: 'SETTINGS' }));
+      expect(screen.getByRole('button', { name: 'YOUR CAMERA' })).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.click(screen.getByRole('button', { name: 'STUDIO' }));
+      expect(mockSetSceneBackground).toHaveBeenCalledWith('studio');
       overrides = {};
     });
   });

@@ -17,6 +17,7 @@ export type TrackingDelegate = 'GPU' | 'CPU'
  * attempt ended ('done', or failed: no hand seen, or near and far too alike).
  */
 export type CalibrationStatus = 'idle' | 'near' | 'far' | 'done' | 'no-hand' | 'too-similar'
+export type SceneBackground = 'studio' | 'camera'
 
 export interface GameStore {
     gameMode: GameMode
@@ -58,6 +59,11 @@ export interface GameStore {
     tutorialStep: TutorialStep | null
     /** Finished or skipped once; kept in this browser, so it runs on the first Classic game only */
     tutorialDone: boolean
+    /**
+     * Behind the table: the virtual studio, or the mirrored webcam image ("mirror
+     * AR", review feature #10). Kept in this browser across visits.
+     */
+    sceneBackground: SceneBackground
     setGameState: (state: GameState) => void
     startGame: (mode: GameMode) => void
     returnToMenu: () => void
@@ -91,6 +97,7 @@ export interface GameStore {
     setTutorialStep: (step: TutorialStep) => void
     /** Skip or close it; either way it is done */
     endTutorial: () => void
+    setSceneBackground: (background: SceneBackground) => void
 }
 
 const newTowerSeed = () => Math.floor(Math.random() * 2 ** 31)
@@ -114,6 +121,7 @@ export const useGameStore = create<GameStore>()(persist((set) => ({
     depthSettings: DEFAULT_DEPTH_SETTINGS,
     tutorialStep: null,
     tutorialDone: false,
+    sceneBackground: 'studio',
     ...FRESH_GAME,
     gameId: 0,
     towerSeed: 1,
@@ -183,9 +191,10 @@ export const useGameStore = create<GameStore>()(persist((set) => ({
     // Reaching the end counts as done, even if the last card is never closed
     setTutorialStep: (tutorialStep) => set(tutorialStep === 'done' ? { tutorialStep, tutorialDone: true } : { tutorialStep }),
     endTutorial: () => set({ tutorialStep: null, tutorialDone: true }),
+    setSceneBackground: (sceneBackground) => set({ sceneBackground }),
 }), {
-    // Only the player's depth settings and whether they've had the tutorial outlive the page
+    // Only the player's depth settings, background and whether they've had the tutorial outlive the page
     name: 'ar-jenga-settings',
     version: 1,
-    partialize: (state) => ({ depthSettings: state.depthSettings, tutorialDone: state.tutorialDone }),
+    partialize: (state) => ({ depthSettings: state.depthSettings, tutorialDone: state.tutorialDone, sceneBackground: state.sceneBackground }),
 }))

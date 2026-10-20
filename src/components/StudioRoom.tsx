@@ -4,6 +4,7 @@ import { Backdrop } from '@react-three/drei';
 export const StudioRoom: React.FC = () => {
   return (
     <Backdrop
+      name="studio-room"
       receiveShadow
       scale={[50, 20, 20]}
       position={[0, -5, -10]} // Position it behind the table
