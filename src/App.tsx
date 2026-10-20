@@ -107,7 +107,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <Floor />
             <Table />
             <Tower key={gameId} />
-            <GameRules key={gameId} />
+            <GameRules />
             <Hand handRef={handRef} clutch={clutch} />
 
             <CameraControls controlsRef={orbitControlsRef} />
