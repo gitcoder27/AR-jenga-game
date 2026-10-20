@@ -246,3 +246,40 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
     lift in 1.5 s lags past the 3-unit carry slip distance.
   - Level 16 pulls are chaotic in the sim: 16-1 at 2 u/s gave 2.6–11.8 for small controller gain changes. They
     are tracked only through the 16-0 known bug.
+
+### Tracking filter and one gesture source (H-6, H-7)
+
+- **One pipeline, run once per detection** (`src/tracking/handTracker.ts`, called from `App`'s detection loop).
+  The steps, in order:
+  1. Outlier rejection.
+  2. A One Euro filter on every landmark coordinate, timed by the detection timestamps.
+  3. A steadier One Euro filter on the hand-size depth.
+  4. The gesture state machine on the filtered landmarks and the same timestamps.
+
+  Every consumer reads its output (`TrackedHand`): the joint bodies, the cursor, the grab, the placement assist
+  and the orbit gesture.
+  - `useGesture`, and with it three separate gesture state machines with `performance.now()` inside `useMemo`,
+    is gone, along with `adaptiveLerp` and `calculatePinchPoint`.
+  - `HandPhysics` takes the pinch point from this frame's mapped joints, not from the joint bodies, which only
+    get there on the next physics step.
+- **Outlier rejection.** A frame is dropped when the whole-hand centroid jumps more than 0.5 palm lengths from
+  the last accepted frame, unless the previous frame was dropped too. So a single glitch frame is ignored, and
+  a real fast move is followed one frame late.
+- **Depth has its own filter.** Depth comes from the wrist→middle-MCP image length, a difference of two
+  landmarks, and the depth mapping magnifies it about 100× into world units. With the landmark filter alone,
+  depth noise dominated the still-hand jitter.
+- **Tuning is on synthetic streams; no real sessions were recorded.**
+  - Noise model for a still hand: a per-frame whole-hand shift (σ 0.002 image heights) plus per-landmark noise
+    (σ 0.001). Both are assumptions; MediaPipe's real jitter was not measured.
+  - Results at the default camera, in world units of the pinch point:
+    - Jitter RMS: 0.192 raw → 0.068 at 30 fps, 0.064 at 60 fps.
+    - Lag to 90% of a step (sideways or in depth): ≤ 67 ms at 30 fps, ≤ 50 ms at 60 fps.
+  - The review's jitter target (< 0.05) is **not met** under this noise model. A sweep of One Euro parameters
+    (minCutoff 0.1–1, beta 5–100, dCutoff 1–10) found nothing below ~0.06 that kept every lag under 80 ms: the
+    noise in the speed estimate keeps the cutoff up.
+  - Chosen: landmarks {minCutoff 0.3, beta 15, dCutoff 4}; depth {minCutoff 0.25, beta 100, dCutoff 1}.
+  - Re-tune on recorded real sessions (playtest checklist).
+- **A slip needs 0.15 s behind the pinch** (`GRAB_SLIP_TIME`), not one step. The old per-frame lerp rate-limited
+  the jumps a dropped camera frame makes. The One Euro filter follows them quickly by design, so a single jump
+  while extracting crossed the 1.5 slip distance at once (E2E carries lost the block under SwiftShader frame
+  hiccups). A yank keeps the error up and still slips; the physics suite is unchanged.

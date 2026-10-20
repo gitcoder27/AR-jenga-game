@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
-import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, type RapierRigidBody, useBeforePhysicsStep, useRapier } from '@react-three/rapier'
-import { calculateDepth } from '../utils/depth'
-import { adaptiveLerp, calculateVelocity } from '../utils/smoothing'
-import useGesture from '../hooks/useGesture'
 import { HandBone } from './HandBone'
 import { HandPhysics } from '../game/grab'
 import { HAND_PARKING_POSITION } from '../game/config'
 import { handToWorld } from '../tracking/mapping'
+import type { TrackedHand } from '../tracking/handTracker'
 import type * as THREE from 'three'
 import { DepthCursor } from './DepthCursor'
 import { PlacementGhost } from './PlacementGhost'
@@ -16,9 +13,8 @@ import { PlacementAssist } from '../game/placement'
 import { useGameStore } from '../store/gameStore'
 
 interface HandProps {
-    result: HandLandmarkerResult | null
-    /** Video width / height, for the gesture classifier */
-    aspect?: number
+    /** The filtered hand and its gesture (HandTracker): the one source every part of the hand reads (H-6, H-7) */
+    hand: TrackedHand | null
 }
 
 const CONNECTIONS = [
@@ -31,13 +27,14 @@ const CONNECTIONS = [
 ];
 
 
-export default function Hand({ result, aspect = 1 }: HandProps) {
+export default function Hand({ hand }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const { isPinching, isOpenPalm, confidence, gestureState } = useGesture(result?.landmarks?.[0], aspect)
+    const isPinching = hand?.gesture.isPinching ?? false
+    const isOpenPalm = hand?.gesture.isOpenPalm ?? false
 
     // We keep the component mounted to avoid "pop-in" at [0,0,0]
-    // but we hide the visuals if no result
-    const isVisible = !!(result && result.landmarks && result.landmarks.length > 0);
+    // but we hide the visuals if no hand
+    const isVisible = hand !== null;
 
     // Determine hand color based on gesture state
     const getHandColor = () => {
@@ -86,12 +83,12 @@ export default function Hand({ result, aspect = 1 }: HandProps) {
                 />
             ))}
 
-            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isPinchForming={gestureState === 'PINCH_READY'} isOpenPalm={isOpenPalm} confidence={confidence} />
+            <UpdateLogic hand={hand} refs={refs} />
         </group>
     )
 }
 
-function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isPinchForming: boolean, isOpenPalm: boolean, confidence: number }) {
+function UpdateLogic({ hand, refs }: { hand: TrackedHand | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]> }) {
     const { world, rapier } = useRapier()
     const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera
     const worldRef = useRef<THREE.Vector3[]>([])
@@ -119,54 +116,24 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, con
         useGameStore.getState().setHeldBlockId(null)
         useGameStore.getState().setHoveredBlockId(null)
     }, [handPhysics])
-    // Velocity tracking for adaptive smoothing
-    const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
-
     // The soft grab's forces follow the pinch point every physics step (G-1)
     useBeforePhysicsStep(() => handPhysics.beforeStep())
 
     useFrame((_, delta) => {
-        if (!result || !result.landmarks || result.landmarks.length === 0) {
+        if (!hand) {
             handPhysics.update(null, delta)
             assist.update(handPhysics.heldBody, delta)
             return
         }
-
-        const landmarks = result.landmarks[0]
-        const depth = calculateDepth(landmarks)
-        const isFirstFrame = handPhysics.isParked
-        const world = handToWorld(landmarks, depth, camera, worldRef.current)
-
-        const joints = landmarks.map((_, index) => {
-            const worldPos = world[index]
-            const rb = refs.current[index]
-            if (isFirstFrame || !rb) {
-                // Teleport instantly on first frame to avoid knocking tower from center
-                prevPositionsRef.current.set(index, { x: worldPos.x, y: worldPos.y, z: worldPos.z });
-                return { x: worldPos.x, y: worldPos.y, z: worldPos.z }
-            }
-            const currentPos = rb.translation()
-            const prevPos = prevPositionsRef.current.get(index) || currentPos;
-
-            // Calculate velocity for adaptive smoothing
-            const velocity = calculateVelocity(prevPos, worldPos);
-
-            // Adaptive smoothing: fast movements = responsive, slow = stable
-            const next = {
-                x: adaptiveLerp(currentPos.x, worldPos.x, velocity),
-                y: adaptiveLerp(currentPos.y, worldPos.y, velocity),
-                z: adaptiveLerp(currentPos.z, worldPos.z, velocity),
-            }
-            prevPositionsRef.current.set(index, next);
-            return next
-        })
-
-        handPhysics.update({ joints, pinching: isPinching, closing: isPinchForming, openPalm: isOpenPalm }, delta)
+        // Already filtered (HandTracker): the joints go exactly where the hand is
+        const joints = handToWorld(hand.landmarks, hand.depth, camera, worldRef.current)
+        const { isPinching, isClosing, isOpenPalm } = hand.gesture
+        handPhysics.update({ joints, pinching: isPinching, closing: isClosing, openPalm: isOpenPalm }, delta)
         assist.update(handPhysics.heldBody, delta)
     })
     return (
         <>
-            <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isOpenPalm={isOpenPalm} confidence={confidence} />
+            <DepthCursor handPhysics={handPhysics} isPinching={hand?.gesture.isPinching ?? false} isOpenPalm={hand?.gesture.isOpenPalm ?? false} confidence={hand?.gesture.confidence ?? 0} />
             <PlacementGhost assist={assist} />
         </>
     )

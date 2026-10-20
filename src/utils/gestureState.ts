@@ -51,12 +51,6 @@ export interface GestureMetrics {
     indexFolded: boolean;
 }
 
-export interface GestureResult {
-    state: GestureState;
-    confidence: number;         // 0-1 how "committed" the gesture is
-    pinchPoint: { x: number; y: number; z: number } | null;
-}
-
 type Point = { x: number; y: number; z: number };
 
 const FINGERS = [
@@ -195,24 +189,6 @@ export function calculateConfidence(state: GestureState, metrics: GestureMetrics
         default:
             return 0;
     }
-}
-
-/**
- * Calculate pinch midpoint for grab targeting
- */
-export function calculatePinchPoint(
-    landmarks: Array<{ x: number; y: number; z: number }> | undefined
-): { x: number; y: number; z: number } | null {
-    if (!landmarks || landmarks.length < 9) return null;
-
-    const thumbTip = landmarks[4];
-    const indexTip = landmarks[8];
-
-    return {
-        x: (thumbTip.x + indexTip.x) / 2,
-        y: (thumbTip.y + indexTip.y) / 2,
-        z: (thumbTip.z + indexTip.z) / 2,
-    };
 }
 
 /** Angle (degrees) between segments a→b and b→c: 0 for a straight joint */

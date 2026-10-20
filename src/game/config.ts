@@ -98,6 +98,8 @@ export const GRAB_MAX_ACCELERATION = 20;
 export const GRAB_SLIP_DISTANCE = 1.5;
 /** …and this far once it is out, so a brisk carry at a low frame rate doesn't drop it. */
 export const GRAB_CARRY_SLIP_DISTANCE = 3;
+/** …for this long: a jump of the hand from a dropped camera frame is caught up before it slips */
+export const GRAB_SLIP_TIME = 0.15;
 /** Mass of the proxy "fingertip" body */
 export const GRAB_PROXY_MASS = 1;
 /** A pinch only grabs within this long of closing; pinching in the air never grabs later (G-4). */

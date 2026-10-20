@@ -1,27 +1,24 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import useGesture from '../hooks/useGesture';
+import type { TrackedHand } from '../tracking/handTracker';
 
 interface GestureOrbitControllerProps {
-    result: HandLandmarkerResult | null;
+    /** The filtered hand and its gesture, shared with Hand (H-7) */
+    hand: TrackedHand | null;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
-    /** Video width / height, for the gesture classifier */
-    aspect?: number;
 }
 
 const SENSITIVITY = 15; // Adjustment factor for orbit speed
 
-export default function GestureOrbitController({ result, controlsRef, aspect = 1 }: GestureOrbitControllerProps) {
-    const { isOpenPalm } = useGesture(result?.landmarks?.[0], aspect);
+export default function GestureOrbitController({ hand, controlsRef }: GestureOrbitControllerProps) {
     const previousPalmPos = useRef<{ x: number; y: number } | null>(null);
 
     useFrame(() => {
         if (!controlsRef.current) return;
 
-        if (isOpenPalm && result?.landmarks?.[0]) {
-            const currentPalm = result.landmarks[0][0]; // Wrist position (landmark 0)
+        if (hand?.gesture.isOpenPalm) {
+            const currentPalm = hand.landmarks[0]; // Wrist position (landmark 0)
 
             if (previousPalmPos.current) {
                 // Calculate delta (inverted X for natural feel in mirror view)

@@ -11,10 +11,17 @@ const MAX_DIST = 0.35;
 export function calculateDepth(landmarks: NormalizedLandmark[]) {
     if (!landmarks || landmarks.length <= 9) return 0;
 
-    const wrist = landmarks[0];
-    const middleMCP = landmarks[9];
-    const distance = Math.hypot(wrist.x - middleMCP.x, wrist.y - middleMCP.y);
-    const clampedDist = Math.max(MIN_DIST, Math.min(MAX_DIST, distance));
+    return depthFromPalmLength(palmLength(landmarks));
+}
+
+/** Wrist→middle-MCP length in the image (normalized units, as calculateDepth measures it). */
+export function palmLength(landmarks: readonly { x: number; y: number }[]): number {
+    return Math.hypot(landmarks[0].x - landmarks[9].x, landmarks[0].y - landmarks[9].y);
+}
+
+/** calculateDepth for a given wrist→middle-MCP image length. */
+export function depthFromPalmLength(length: number): number {
+    const clampedDist = Math.max(MIN_DIST, Math.min(MAX_DIST, length));
     const t = (clampedDist - MIN_DIST) / (MAX_DIST - MIN_DIST);
     return 2 * t - 1;
 }

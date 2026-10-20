@@ -12,6 +12,8 @@ import {
     GRAB_RADIUS,
     GRAB_SLIP_DISTANCE,
     GRAB_CARRY_SLIP_DISTANCE,
+    GRAB_SLIP_TIME,
+    PHYSICS_TIMESTEP,
     GRAVITY,
     HAND_PARKING_POSITION,
     INDEX_DIP,
@@ -189,6 +191,8 @@ interface SoftGrab {
      * left resting on its supports, until its centre leaves the footprint.
      */
     extracting: boolean;
+    /** How long the block has been further than the slip distance behind the pinch (s) */
+    behindFor: number;
 }
 
 const outsideFootprint = (t: Vec3) => Math.max(Math.abs(t.x), Math.abs(t.z)) >= TOWER_FOOTPRINT;
@@ -279,8 +283,11 @@ export class HandPhysics {
         const v = proxy.linvel();
         const ex = this.pinch.x - p.x, ey = this.pinch.y - p.y, ez = this.pinch.z - p.z;
         if (held.extracting && outsideFootprint(held.block.translation())) held.extracting = false;
-        if (Math.hypot(ex, ey, ez) > (held.extracting ? GRAB_SLIP_DISTANCE : GRAB_CARRY_SLIP_DISTANCE)) {
-            // The block is stuck or the hand moved too fast: it slips out of the fingers
+        const behind = Math.hypot(ex, ey, ez) > (held.extracting ? GRAB_SLIP_DISTANCE : GRAB_CARRY_SLIP_DISTANCE);
+        held.behindFor = behind ? held.behindFor + PHYSICS_TIMESTEP : 0;
+        if (held.behindFor > GRAB_SLIP_TIME) {
+            // The block is stuck or the hand kept moving too fast: it slips out of the fingers.
+            // A one-off jump of the hand (a dropped camera frame) is caught up before then.
             this.release();
             return;
         }
@@ -386,12 +393,11 @@ export class HandPhysics {
             input.joints.forEach((target, i) => bodies[i]?.setNextKinematicTranslation(target));
         }
 
-        const thumbTip = bodies[THUMB_TIP];
-        const indexTip = bodies[INDEX_TIP];
+        // From this frame's hand, not the joint bodies, which only get there on the next step (H-6)
+        const t = input.joints[THUMB_TIP];
+        const i = input.joints[INDEX_TIP];
         let feedback = NO_FEEDBACK;
-        if (thumbTip && indexTip) {
-            const t = thumbTip.translation();
-            const i = indexTip.translation();
+        if (t && i) {
             this.pinch.x = (t.x + i.x) / 2;
             this.pinch.y = (t.y + i.y) / 2;
             this.pinch.z = (t.z + i.z) / 2;
@@ -509,7 +515,7 @@ export class HandPhysics {
             y: m * ((BLOCK_WIDTH ** 2 + BLOCK_LENGTH ** 2) / 12 + r2 - r.y * r.y),
             z: m * ((BLOCK_WIDTH ** 2 + BLOCK_HEIGHT ** 2) / 12 + r2 - r.z * r.z),
         };
-        this.held = { proxy, joint, block: body, mass, inertia, targetRotation: { ...rotation }, extracting: hasBlocksAbove(world, body) };
+        this.held = { proxy, joint, block: body, mass, inertia, targetRotation: { ...rotation }, extracting: hasBlocksAbove(world, body), behindFor: 0 };
         body.wakeUp();
         this.onHeldChange?.(blockIdOf(body));
     }

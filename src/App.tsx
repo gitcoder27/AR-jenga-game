@@ -8,7 +8,7 @@ import Floor from './components/Floor'
 import Table from './components/Table'
 import Tower from './components/Tower'
 import useHandTracking from './hooks/useHandTracking'
-import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
+import { HandTracker, type TrackedHand } from './tracking/handTracker'
 import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
@@ -37,16 +37,15 @@ function App() {
 
 function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const [cameraActive, setCameraActive] = useState(false)
-  const [result, setResult] = useState<HandLandmarkerResult | null>(null)
+  const [hand, setHand] = useState<TrackedHand | null>(null)
+  // Filtering, outlier rejection and gestures, once per detection (H-6, H-7)
+  const [tracker] = useState(() => new HandTracker())
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const requestRef = useRef<number>(0)
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
   const gameId = useGameStore((state) => state.gameId)
   const resetGame = useGameStore((state) => state.resetGame)
-
-  // MediaPipe landmarks are normalized per axis; gestures need the frame's aspect
-  const videoAspect = videoElement && videoElement.videoHeight ? videoElement.videoWidth / videoElement.videoHeight : 1
 
   const handleVideoReady = useCallback((vid: HTMLVideoElement) => {
     setCameraActive(true)
@@ -57,9 +56,12 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
     if (isReady && videoElement && cameraActive) {
       const { setTrackingStatus } = useGameStore.getState()
       const loop = () => {
-        const res = detect(videoElement, performance.now())
+        const now = performance.now()
+        const res = detect(videoElement, now)
         if (res) {
-          setResult(res)
+          // MediaPipe landmarks are normalized per axis; gestures and filtering need the frame's aspect
+          const aspect = videoElement.videoHeight ? videoElement.videoWidth / videoElement.videoHeight : 1
+          setHand(tracker.update(res.landmarks[0], now, aspect))
           const status = res.landmarks.length > 0 ? 'ready' : 'no-hand'
           if (useGameStore.getState().trackingStatus !== status) setTrackingStatus(status)
         }
@@ -68,7 +70,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
       loop()
       return () => cancelAnimationFrame(requestRef.current)
     }
-  }, [isReady, videoElement, cameraActive, detect])
+  }, [isReady, videoElement, cameraActive, detect, tracker])
 
   return (
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
@@ -86,10 +88,10 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <Table />
             <Tower key={gameId} />
             <GameRules key={gameId} />
-            <Hand result={result} aspect={videoAspect} />
+            <Hand hand={hand} />
 
             <CameraControls controlsRef={orbitControlsRef} />
-            <GestureOrbitController result={result} controlsRef={orbitControlsRef} aspect={videoAspect} />
+            <GestureOrbitController hand={hand} controlsRef={orbitControlsRef} />
           </Physics>
         </Canvas>
       </SceneErrorBoundary>

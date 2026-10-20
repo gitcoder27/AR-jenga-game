@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
-import * as useGestureHook from '../hooks/useGesture'
 import * as rapier from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
 import Hand from './Hand'
-import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
+import type { HandGesture, TrackedHand } from '../tracking/handTracker'
 import type { ReactNode } from 'react'
 
 vi.mock('@react-three/fiber', async () => {
@@ -53,9 +52,6 @@ vi.mock('./PlacementGhost', () => ({
     PlacementGhost: () => null,
 }))
 
-vi.mock('../hooks/useGesture', () => ({
-    default: vi.fn()
-}))
 
 
 
@@ -111,14 +107,6 @@ describe('Hand Component', () => {
     }
 
     beforeEach(() => {
-        vi.mocked(useGestureHook.default).mockReturnValue({
-            isPinching: false,
-            isOpenPalm: false,
-            gestureState: 'IDLE',
-            confidence: 0,
-            pinchPoint: null,
-            metrics: null,
-        })
         vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as unknown as ReturnType<typeof rapier.useRapier>)
 
         mockWorld.intersectionWithShape.mockClear()
@@ -132,21 +120,13 @@ describe('Hand Component', () => {
 
 
     it('grabs the block under the pinch when the pinch closes', () => {
-        const openHand = {
-            isPinching: false,
-            isOpenPalm: false,
-            gestureState: 'IDLE' as const,
-            confidence: 0,
-            pinchPoint: null,
-            metrics: null,
-        }
-        const result = { landmarks: [Array(21).fill({ x: 0, y: 0, z: 0 })] } as unknown as HandLandmarkerResult
+        const open: HandGesture = { state: 'IDLE', isPinching: false, isOpenPalm: false, isClosing: false, confidence: 0 }
+        const handWith = (gesture: HandGesture): TrackedHand => ({ landmarks: Array(21).fill({ x: 0.5, y: 0.5, z: 0 }), gesture, depth: 0, timestamp: 0 })
         const useFrameMock = vi.mocked(useFrame)
         const runFrame = () => useFrameMock.mock.calls.at(-1)![0]({} as never, 1 / 60)
 
         // Open hand first: a pinch only grabs as it closes (G-4)
-        vi.mocked(useGestureHook.default).mockReturnValue(openHand)
-        const { rerender } = render(<Hand result={result} />)
+        const { rerender } = render(<Hand hand={handWith(open)} />)
 
         // Mock intersection to return a hit
         const mockBody = {
@@ -163,7 +143,8 @@ describe('Hand Component', () => {
         }
         const mockCollider = {
             parent: vi.fn().mockReturnValue(mockBody),
-            projectPoint: vi.fn().mockReturnValue({ isInside: false, point: { x: 0.2, y: 0, z: 0 } }),
+            // The pinch point is inside the block
+            projectPoint: vi.fn().mockReturnValue({ isInside: true, point: { x: 0, y: 0, z: 0 } }),
         }
 
         mockWorld.intersectionsWithShape.mockImplementation((_pos, _rot, _shape, callback) => callback(mockCollider))
@@ -171,13 +152,7 @@ describe('Hand Component', () => {
         runFrame()
         expect(mockWorld.createImpulseJoint).not.toHaveBeenCalled()
 
-        vi.mocked(useGestureHook.default).mockReturnValue({
-            ...openHand,
-            isPinching: true,
-            gestureState: 'PINCHING',
-            confidence: 0.9,
-        })
-        rerender(<Hand result={result} />)
+        rerender(<Hand hand={handWith({ ...open, state: 'PINCHING', isPinching: true, confidence: 0.9 })} />)
         runFrame()
 
         expect(mockWorld.intersectionsWithShape).toHaveBeenCalled()

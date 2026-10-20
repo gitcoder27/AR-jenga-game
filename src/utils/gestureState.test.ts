@@ -3,7 +3,6 @@ import {
     calculateGestureMetrics,
     transitionGestureState,
     calculateConfidence,
-    calculatePinchPoint,
     PINCH_ENTER_THRESHOLD,
     PINCH_EXIT_THRESHOLD,
     GESTURE_DEBOUNCE_MS,
@@ -142,22 +141,6 @@ describe('gestureState', () => {
             expect(calculateConfidence('PINCHING', { ...metrics, pinchRatio: 0.05 })).toBeGreaterThan(
                 calculateConfidence('PINCHING', { ...metrics, pinchRatio: 0.3 })
             )
-        })
-    })
-
-    describe('calculatePinchPoint', () => {
-        it('returns null for undefined landmarks', () => {
-            expect(calculatePinchPoint(undefined)).toBeNull()
-        })
-
-        it('calculates midpoint between thumb and index tips', () => {
-            const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 })
-            landmarks[4] = { x: 0, y: 0, z: 0 }
-            landmarks[8] = { x: 1, y: 2, z: 3 }
-
-            const point = calculatePinchPoint(landmarks)
-
-            expect(point).toEqual({ x: 0.5, y: 1, z: 1.5 })
         })
     })
 
