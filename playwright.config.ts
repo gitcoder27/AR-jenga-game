@@ -12,7 +12,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: [['list']],
+  // CI (Q-2): a stray test.only fails the run; failures are annotated on the PR and kept as an HTML report
+  forbidOnly: !!process.env.CI,
+  reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
     ...devices['Desktop Chrome'],

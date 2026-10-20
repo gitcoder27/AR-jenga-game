@@ -125,7 +125,9 @@ npm run test:e2e  # browser tests with a scripted hand (Playwright, fake webcam)
 npm run lint
 ```
 
-The E2E suite replaces MediaPipe with a stub that plays scripted hand poses, so it needs no webcam. Tests for known, not-yet-fixed bugs run as expected failures; set `SHOW_KNOWN_BUGS=1` to run them as normal tests.
+The E2E suite replaces MediaPipe with a stub that plays scripted hand poses, so it needs no webcam.
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request: lint, the unit and headless physics tests, and the build in one job, and the E2E suite in another (Chromium with SwiftShader and a fake webcam). A failed E2E run uploads its traces and screenshots as the `playwright-results` artifact. Tests for known, not-yet-fixed bugs run as expected failures; set `SHOW_KNOWN_BUGS=1` to run them as normal tests.
 
 ## 📄 License
 

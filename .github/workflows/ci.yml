@@ -1,0 +1,76 @@
+# Q-2: the two harnesses that catch what actually breaks run on every push and PR:
+# the headless Rapier suite (real physics, in `npm test`) and the Playwright E2E
+# with a scripted hand (SwiftShader, fake webcam).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, unit + physics tests, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Self-hosted model and HDR (O-3): downloaded once per script version, SHA-256 checked
+      - uses: actions/cache@v4
+        with:
+          path: |
+            public/mediapipe/hand_landmarker.task
+            public/hdri
+          key: runtime-assets-${{ hashFiles('scripts/fetch-assets.mjs') }}
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: E2E (scripted hand)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: |
+            public/mediapipe/hand_landmarker.task
+            public/hdri
+          key: runtime-assets-${{ hashFiles('scripts/fetch-assets.mjs') }}
+      - name: Cache Playwright browsers
+        id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps chromium
+        if: steps.browsers.outputs.cache-hit == 'true'
+      - run: npm run test:e2e
+      - name: Traces and screenshots of failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14

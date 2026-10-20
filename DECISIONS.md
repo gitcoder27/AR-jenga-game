@@ -537,3 +537,36 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
     mouse orbit can start anywhere above the tower. `e2e/exit.spec.ts` drags from the bar: the camera turns. Before
     the fix it didn't move.
 
+### CI (Q-2)
+
+- **Both harnesses from Q-2 already exist:**
+  - `tests/physics`: headless Rapier, real physics, run by `npm test`.
+  - `e2e/`: Playwright with a scripted MediaPipe stand-in.
+
+  #14 runs them on every push and pull request: `.github/workflows/ci.yml`.
+- **Two jobs, in parallel:**
+  - **checks:** lint, `npm test` (unit and physics) and the build.
+  - **e2e:** `npm run test:e2e`.
+
+  Both use Node 24, the version used here.
+- **Caching:**
+  - npm is cached.
+  - The runtime assets (the hand model and the HDR) are cached, keyed by `scripts/fetch-assets.mjs`, which pins
+    their URLs and SHA-256. A run downloads them only when the script changes.
+  - Playwright's Chromium is cached, keyed by the lockfile. A cache hit still installs the system libraries.
+- **On CI, Playwright:**
+  - fails on a stray `test.only`;
+  - annotates failures on the PR;
+  - keeps an HTML report, uploaded with the traces when the E2E job fails.
+  - Retries stay at 0, so a flaky test shows up as a failure, not a pass.
+- **Validated locally, not on GitHub:**
+  - Nothing is pushed in this pass.
+  - The workflow passes `actionlint` 1.7.7.
+  - Its steps were run in a clean worktree of the commit with `CI=1`: `npm ci`, lint, `npm test`, the build, and
+    the full E2E suite. This is the result reported in the #14 commit.
+- **Unverified on GitHub's runners:**
+  - The E2E frame-rate floors (8 FPS steady state; 1–4 in the layout and screenshot specs) were measured on this
+    4-core ARM machine with SwiftShader.
+  - GitHub's 4-vCPU x86 runners are expected to be at least as fast, but this hasn't been run there.
+  - The first CI run should be checked for timing failures before the suite is made a required check.
+
