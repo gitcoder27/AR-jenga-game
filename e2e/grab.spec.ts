@@ -49,14 +49,19 @@ test.describe('grab → carry → release', () => {
 
   // Toppled 3 of 3 with the rigid grab. With the soft grab (G-1) the block above (3-1)
   // moves 0.18–0.38, so the threshold is the review's sim 6b one (0.5), as in tests/physics/pull.test.ts.
+  // All the way out, like that test: stopping 0.9 short and holding there levered the block
+  // under its cross neighbours, which moved them 0.5–0.57 (headless too).
   test('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
     ID = await looseBlock(driver, 2)
     const { hand } = await grabBlock(page, driver, ID)
     const before = await driver((d) => d.blockPositions())
-    await carryTo(page, driver, { ...hand, z: hand.z + 6 }, 3000, 2500)
+    await carryTo(page, driver, { ...hand, z: hand.z + 9 }, 4500, 2500)
     const after = await driver((d) => d.blockPositions())
-    expect(after[ID].z - before[ID].z).toBeGreaterThan(4)
+    const disturbed = Math.max(...Object.keys(after).filter((k) => k !== ID).map((k) => dist(after[k], before[k])))
+    console.log(`G-1 careful pull of ${ID}: the most any other block moved is ${disturbed.toFixed(2)}`)
+    // Clear of the tower: a block is 7.5 long
+    expect(after[ID].z - before[ID].z).toBeGreaterThan(7.5)
     expect(movedBlocks(before, after, [ID], 0.5)).toEqual([])
   })
 })

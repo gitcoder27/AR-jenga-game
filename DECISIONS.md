@@ -645,6 +645,17 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   - **A straight lift of a top-centre block** shoves its neighbours 0.4–0.5 sideways, even on identical blocks. In
     one seed's varied tower that tipped the short neighbour off. The H-5 tracking-loss tests lift on identical
     blocks.
+  - **A pull paused just short of clear** levers the cross blocks above and below. Found at the Phase 3 gate, where
+    the E2E careful pull stopped 0.9 short and held for 2.5 s (it now pulls all the way out, like the physics
+    test). Headless, for level 2's loose block at 2 u/s:
+
+    | Pull | Most any other block moves |
+    |---|---|
+    | All the way out, seeds 1–12 | 0.05–0.34 (test: under 0.5) |
+    | Held 0.9 short for 2.5 s, seeds 3 and 5 | 0.53 and 0.57 (known-bug test) |
+
+    Slower pulls also drag further than faster ones: 0.06–0.19 at 4 u/s for the same seeds. Players do pause
+    mid-pull, so this is the playtest's question as much as the solver's.
   - **Difficulty presets from the seed** (the review's suggestion) are not done.
 
 ### Mirror AR (Phase 3 #8, feature #10)
