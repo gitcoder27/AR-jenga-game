@@ -33,6 +33,15 @@ export const TABLE_POSITION: Vec3Tuple = [0, -1, 0];
 export const FLOOR_HALF_EXTENTS: Vec3Tuple = [50, 0.5, 50];
 export const FLOOR_POSITION: Vec3Tuple = [0, -5, 0];
 
+// Camera. The hand's reach is fixed relative to the camera (12–28 units, C-3),
+// so zoom and orbit are limited to keep the tower reachable and above the table (V-2).
+export const CAMERA_POSITION: Vec3Tuple = [0, 10, 20];
+export const CAMERA_TARGET: Vec3Tuple = [0, 0, 0];
+export const CAMERA_MIN_DISTANCE = 18;
+export const CAMERA_MAX_DISTANCE = 28;
+export const CAMERA_MIN_POLAR_ANGLE = (15 * Math.PI) / 180;
+export const CAMERA_MAX_POLAR_ANGLE = (80 * Math.PI) / 180;
+
 // Hand / grab
 export const HAND_JOINT_COUNT = 21;
 export const HAND_JOINT_RADIUS = 0.05;

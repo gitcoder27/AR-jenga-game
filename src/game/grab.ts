@@ -142,6 +142,8 @@ export class HandPhysics {
     private readonly rapier: Rapier;
     private readonly getBodies: () => (RigidBody | null)[];
     private readonly pinch: Vec3 = { x: 0, y: 0, z: 0 };
+    private readonly drop: Vec3 = { x: 0, y: 0, z: 0 };
+    private hasDrop = false;
     private hover: CursorFeedback = NO_FEEDBACK;
     /** Called with the block id on grab and null when the grab ends for any reason (C-2). */
     onHeldChange: ((blockId: string | null) => void) | null;
@@ -173,6 +175,14 @@ export class HandPhysics {
     /** Midpoint of the thumb and index tips, where a pinch grabs; null while parked. */
     get pinchPoint(): Readonly<Vec3> | null {
         return this.parked ? null : this.pinch;
+    }
+
+    /**
+     * Where the pinch point projects straight down onto the first surface below it
+     * (a block, the table or the floor), for a depth cue (F-3); null while parked.
+     */
+    get dropPoint(): Readonly<Vec3> | null {
+        return !this.parked && this.hasDrop ? this.drop : null;
     }
 
     /** Pinching but not holding: the pinch closed on nothing and won't grab until reopened (G-4). */
@@ -219,6 +229,7 @@ export class HandPhysics {
             this.pinch.y = (t.y + i.y) / 2;
             this.pinch.z = (t.z + i.z) / 2;
             if (!this.joint) feedback = queryCursorFeedback(this.world, this.rapier, this.pinch);
+            this.updateDropPoint();
         }
 
         if (input.pinching && !input.openPalm) {
@@ -233,6 +244,18 @@ export class HandPhysics {
             if (!input.closing) this.armed = true;
         }
         this.setHover(this.joint ? NO_FEEDBACK : feedback);
+    }
+
+    private updateDropPoint(): void {
+        const ray = new this.rapier.Ray(this.pinch, { x: 0, y: -1, z: 0 });
+        // Skip the hand itself (kinematic) and the block it carries
+        const hit = this.world.castRay(ray, 100, true, this.rapier.QueryFilterFlags.EXCLUDE_KINEMATIC, undefined, undefined, this.grabbed ?? undefined);
+        this.hasDrop = hit !== null;
+        if (hit) {
+            this.drop.x = this.pinch.x;
+            this.drop.y = this.pinch.y - hit.timeOfImpact;
+            this.drop.z = this.pinch.z;
+        }
     }
 
     private setHover(feedback: CursorFeedback): void {

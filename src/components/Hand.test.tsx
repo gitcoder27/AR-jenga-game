@@ -56,6 +56,7 @@ describe('Hand Component', () => {
     const mockWorld = {
         intersectionWithShape: vi.fn(),
         intersectionsWithShape: vi.fn(),
+        castRay: vi.fn().mockReturnValue(null),
         createImpulseJoint: vi.fn(),
         removeImpulseJoint: vi.fn(),
     }
@@ -64,7 +65,8 @@ describe('Hand Component', () => {
         JointData: {
             fixed: vi.fn().mockReturnValue({}),
         },
-        QueryFilterFlags: { ONLY_DYNAMIC: 3 },
+        QueryFilterFlags: { ONLY_DYNAMIC: 3, EXCLUDE_KINEMATIC: 2 },
+        Ray: vi.fn(),
     }
 
     beforeEach(() => {

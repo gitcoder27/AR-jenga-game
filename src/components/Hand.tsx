@@ -60,7 +60,7 @@ export default function Hand({ result, aspect = 1 }: HandProps) {
                     colliders="ball"
                     position={HAND_PARKING_POSITION} // Start far away
                 >
-                    <mesh>
+                    <mesh castShadow>
                         <sphereGeometry args={[0.05, 12, 12]} />
                         <meshStandardMaterial
                             color={getHandColor()}

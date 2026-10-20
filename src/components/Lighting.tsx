@@ -4,14 +4,17 @@ export const Lighting: React.FC = () => {
   return (
     <>
       <ambientLight intensity={0.4} />
-      <directionalLight 
-        castShadow 
-        position={[5, 10, 5]} 
+      {/* Key light high above the tower; its shadow frustum covers the whole
+          27-unit tower and the table (F-3). */}
+      <directionalLight
+        castShadow
+        position={[15, 40, 15]}
         intensity={1.5}
-        shadow-mapSize={[1024, 1024]}
-        shadow-bias={-0.0001}
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0005}
+        shadow-normalBias={0.02}
       >
-        <orthographicCamera attach="shadow-camera" args={[-10, 10, 10, -10]} />
+        <orthographicCamera attach="shadow-camera" args={[-14, 14, 14, -14, 1, 80]} />
       </directionalLight>
     </>
   );

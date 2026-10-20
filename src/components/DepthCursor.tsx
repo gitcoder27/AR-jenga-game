@@ -31,10 +31,29 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinchin
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
   const missedRef = useRef<THREE.Mesh>(null);
+  const dropRef = useRef<THREE.Group>(null);
+  const dropLineRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
   const isInRange = useGameStore((state) => state.hoveredBlockId !== null);
 
   useFrame(() => {
+    // Depth cue (F-3): dark disc where the pinch point projects onto the surface below, plus a thin drop line
+    const marker = dropRef.current;
+    const pinchAbove = handPhysics.pinchPoint;
+    const drop = handPhysics.dropPoint;
+    if (marker) {
+      marker.visible = pinchAbove !== null && drop !== null;
+      if (pinchAbove && drop) {
+        marker.position.set(drop.x, drop.y + 0.02, drop.z);
+        const height = pinchAbove.y - drop.y;
+        if (dropLineRef.current) {
+          dropLineRef.current.visible = height > 0.3;
+          dropLineRef.current.scale.set(1, Math.max(height, 0.001), 1);
+          dropLineRef.current.position.set(0, height / 2, 0);
+        }
+      }
+    }
+
     const group = groupRef.current;
     if (!group) return;
     const pinch = handPhysics.pinchPoint;
@@ -61,6 +80,19 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinchin
   const cursorOpacity = isPinching ? 0.95 : isClosedFist ? 0.85 : isInRange ? 0.8 : 0.65;
 
   return (
+    <>
+    {/* Depth cue: where the pinch point is above the surface below it */}
+    <group ref={dropRef} visible={false}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.25, 24]} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.45} depthWrite={false} />
+      </mesh>
+      <mesh ref={dropLineRef}>
+        <cylinderGeometry args={[0.012, 0.012, 1, 6]} />
+        <meshBasicMaterial color={cursorColor} transparent opacity={0.35} depthWrite={false} />
+      </mesh>
+    </group>
+
     <group ref={groupRef} position={[0, -100, 0]} visible={false}>
       {/* Outer ring - pulses with proximity */}
       <mesh ref={ringRef}>
@@ -126,5 +158,6 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinchin
         </mesh>
       )}
     </group>
+    </>
   );
 };

@@ -31,6 +31,8 @@ interface GameStore {
     trackingDelegate: TrackingDelegate | null
     /** Bumped by retryTracking() to re-initialise the hand tracker */
     trackingAttempt: number
+    /** Bumped by resetView() to put the camera back at its default framing */
+    viewResetId: number
     setGameState: (state: GameState) => void
     startGame: (mode: GameMode) => void
     returnToMenu: () => void
@@ -43,6 +45,7 @@ interface GameStore {
     setTrackingStatus: (status: TrackingStatus, error?: string | null) => void
     setTrackingDelegate: (delegate: TrackingDelegate | null) => void
     retryTracking: () => void
+    resetView: () => void
 }
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -59,6 +62,7 @@ export const useGameStore = create<GameStore>((set) => ({
     trackingError: null,
     trackingDelegate: null,
     trackingAttempt: 0,
+    viewResetId: 0,
     setGameState: (gameState) => set({ gameState }),
     startGame: (gameMode) => set({
         gameMode,
@@ -94,4 +98,5 @@ export const useGameStore = create<GameStore>((set) => ({
         trackingError: null,
         trackingAttempt: state.trackingAttempt + 1,
     })),
+    resetView: () => set((state) => ({ viewResetId: state.viewResetId + 1 })),
 }))

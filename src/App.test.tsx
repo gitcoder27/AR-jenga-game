@@ -70,6 +70,10 @@ vi.mock('./components/StudioRoom', () => ({
     StudioRoom: () => <div data-testid="studio-room">StudioRoom Mock</div>
 }))
 
+vi.mock('./components/CameraControls', () => ({
+    default: () => <div data-testid="camera-controls" />
+}))
+
 describe('App', () => {
     const mockResetGame = vi.fn()
     const mockUseGameStore = vi.mocked(useGameStore)

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import './App.css'
 import Webcam from './components/Webcam'
@@ -18,8 +17,10 @@ import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
 import GestureOrbitController from './components/GestureOrbitController'
 import GameRules from './components/GameRules'
+import CameraControls from './components/CameraControls'
 import SceneErrorBoundary from './components/SceneErrorBoundary'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { CAMERA_POSITION } from './game/config'
 
 function App() {
   // Created once, so the model loads while the menu is showing
@@ -74,7 +75,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
       <Webcam onVideoReady={handleVideoReady} />
 
       <SceneErrorBoundary onRestart={resetGame}>
-        <Canvas shadows camera={{ position: [0, 10, 20] }}>
+        <Canvas shadows camera={{ position: CAMERA_POSITION }}>
           <Physics gravity={[0, -9.81, 0]}>
             <color attach="background" args={['#111']} />
             <Lighting />
@@ -87,9 +88,8 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <GameRules />
             <Hand result={result} aspect={videoAspect} />
 
-            <OrbitControls ref={orbitControlsRef} />
+            <CameraControls controlsRef={orbitControlsRef} />
             <GestureOrbitController result={result} controlsRef={orbitControlsRef} aspect={videoAspect} />
-            <gridHelper args={[20, 20]} />
           </Physics>
         </Canvas>
       </SceneErrorBoundary>

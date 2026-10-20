@@ -33,3 +33,57 @@ test('sweeping a deliberate open palm still orbits the camera [H-1]', async ({ p
   await page.waitForTimeout(800)
   expect(dist(await driver((d) => d.cameraPosition()), start)).toBeGreaterThan(0.5)
 })
+
+// V-2: the camera can't go under the table, zoom out of reach or pan away, and RESET VIEW restores it.
+test('orbit and zoom are limited, panning is off, and RESET VIEW restores the default framing [V-2]', async ({ page, driver, startGame }) => {
+  await startGame('SANDBOX')
+  const start = await driver((d) => d.cameraPosition())
+  const canvas = page.locator('canvas')
+  const box = (await canvas.boundingBox())!
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  const polarDeg = (p: { x: number; y: number; z: number }) => (Math.acos(p.y / Math.hypot(p.x, p.y, p.z)) * 180) / Math.PI
+
+  // Drag up hard: tries to orbit under the table
+  await page.mouse.move(cx, cy)
+  await page.mouse.down()
+  await page.mouse.move(cx, box.y + 5, { steps: 10 })
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+  let cam = await driver((d) => d.cameraPosition())
+  expect(polarDeg(cam)).toBeLessThanOrEqual(80.5)
+  expect(cam.y).toBeGreaterThan(2)
+
+  // Drag down hard: tries to go over the top
+  await page.mouse.move(cx, box.y + 5)
+  await page.mouse.down()
+  await page.mouse.move(cx, box.y + box.height - 5, { steps: 10 })
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+  cam = await driver((d) => d.cameraPosition())
+  expect(polarDeg(cam)).toBeGreaterThanOrEqual(14.5)
+
+  // Zoom far out and in
+  await page.mouse.move(cx, cy)
+  for (let i = 0; i < 15; i++) await page.mouse.wheel(0, 400)
+  await page.waitForTimeout(500)
+  cam = await driver((d) => d.cameraPosition())
+  expect(Math.hypot(cam.x, cam.y, cam.z)).toBeLessThanOrEqual(28.1)
+  for (let i = 0; i < 15; i++) await page.mouse.wheel(0, -400)
+  await page.waitForTimeout(500)
+  cam = await driver((d) => d.cameraPosition())
+  expect(Math.hypot(cam.x, cam.y, cam.z)).toBeGreaterThanOrEqual(17.9)
+
+  // Right-drag would pan: the camera keeps looking at the tower axis
+  await page.mouse.move(cx, cy)
+  await page.mouse.down({ button: 'right' })
+  await page.mouse.move(cx + 150, cy + 80, { steps: 10 })
+  await page.mouse.up({ button: 'right' })
+  await page.waitForTimeout(500)
+  const target = await driver((d) => d.orbitTarget())
+  expect(Math.hypot(target.x, target.y, target.z)).toBeLessThan(0.01)
+
+  await page.getByRole('button', { name: /reset view/i }).click()
+  await page.waitForTimeout(500)
+  expect(dist(await driver((d) => d.cameraPosition()), start)).toBeLessThan(0.01)
+})

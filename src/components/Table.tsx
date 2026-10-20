@@ -4,7 +4,7 @@ import { TABLE_FRICTION, TABLE_HALF_EXTENTS, TABLE_POSITION, RESTITUTION } from 
 export default function Table() {
     return (
         <RigidBody type="fixed" friction={TABLE_FRICTION} restitution={RESTITUTION} name="table">
-            <mesh position={TABLE_POSITION}>
+            <mesh position={TABLE_POSITION} castShadow receiveShadow>
                 <boxGeometry args={[TABLE_HALF_EXTENTS[0] * 2, TABLE_HALF_EXTENTS[1] * 2, TABLE_HALF_EXTENTS[2] * 2]} />
                 <meshStandardMaterial color="#8B4513" />
             </mesh>

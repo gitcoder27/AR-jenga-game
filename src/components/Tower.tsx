@@ -9,7 +9,7 @@ export default function Tower() {
     const blocks = useMemo(() => generateTowerLayout(), []);
 
     return (
-        <Instances range={TOWER_BLOCK_COUNT}>
+        <Instances range={TOWER_BLOCK_COUNT} castShadow receiveShadow>
             <boxGeometry args={[BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_LENGTH]} />
             <WoodMaterial />
             {blocks.map(b => (

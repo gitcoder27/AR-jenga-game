@@ -107,6 +107,13 @@ export function cameraPosition(): Vec3 {
     return { x: p.x, y: p.y, z: p.z };
 }
 
+/** The point the orbit controls look at. */
+export function orbitTarget(): Vec3 {
+    const controls = rootState().controls as unknown as { target: THREE.Vector3 } | null;
+    if (!controls) throw new Error('no default controls');
+    return { x: controls.target.x, y: controls.target.y, z: controls.target.z };
+}
+
 /** World position of every block, keyed by id ("2-0"). */
 export function blockPositions(): Record<string, Vec3> {
     const out: Record<string, Vec3> = {};

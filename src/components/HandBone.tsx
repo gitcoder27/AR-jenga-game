@@ -49,7 +49,7 @@ export const HandBone: React.FC<HandBoneProps> = ({ refs, startIdx, endIdx, colo
   });
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} castShadow>
       <cylinderGeometry args={[0.04, 0.04, 1, 8]} />
       <meshStandardMaterial color={color} metalness={0.9} roughness={0.1} />
     </mesh>
