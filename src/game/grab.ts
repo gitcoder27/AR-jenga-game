@@ -32,42 +32,58 @@ export function blockIdOf(body: RigidBody | null | undefined): string | null {
     return typeof data?.blockId === 'string' ? data.blockId : null;
 }
 
+export interface GrabCandidate {
+    body: RigidBody;
+    blockId: string;
+    /** Distance from the query point to the block's surface (0 inside) */
+    distance: number;
+}
+
+/** The block whose surface is nearest `point`, if it is closer than `radius`. */
+function nearestBlockWithin(world: World, rapier: Rapier, point: Vec3, radius: number): GrabCandidate | null {
+    let best: GrabCandidate | null = null;
+    // All dynamic colliders touching the ball: the hand (kinematic), table and floor
+    // (fixed) can't hide a block from the query (G-5).
+    world.intersectionsWithShape(point, IDENTITY_ROTATION, new rapier.Ball(radius), (collider) => {
+        const body = collider.parent();
+        const blockId = blockIdOf(body);
+        if (!body || !blockId) return true;
+        const projection = collider.projectPoint(point, true);
+        const distance = !projection || projection.isInside ? 0 : Math.hypot(
+            projection.point.x - point.x, projection.point.y - point.y, projection.point.z - point.z);
+        if (distance < radius && (!best || distance < best.distance)) best = { body, blockId, distance };
+        return true;
+    }, rapier.QueryFilterFlags.ONLY_DYNAMIC);
+    return best;
+}
+
 /**
- * Returns the body a pinch at `point` would grab, or null.
+ * The block a pinch at `point` would grab: the block nearest the point by
+ * surface distance, within GRAB_RADIUS. Grab and hover feedback both use this (F-2, G-5).
  */
-export function findGrabCandidate(world: World, rapier: Rapier, point: Vec3): RigidBody | null {
-    const hit = world.intersectionWithShape(point, IDENTITY_ROTATION, new rapier.Ball(GRAB_RADIUS));
-    if (!hit) return null;
-    const body = hit.parent();
-    return body && body.isDynamic() ? body : null;
+export function findGrabCandidate(world: World, rapier: Rapier, point: Vec3): GrabCandidate | null {
+    return nearestBlockWithin(world, rapier, point, GRAB_RADIUS);
 }
 
 export interface CursorFeedback {
-    blockName: string | null;
-    inRange: boolean;
+    /** What a pinch here would grab; null when out of range */
+    candidate: GrabCandidate | null;
+    /** 0 (nothing within 2 × GRAB_RADIUS) to 1 (touching a block) */
     proximity: number;
 }
 
+export const NO_FEEDBACK: CursorFeedback = { candidate: null, proximity: 0 };
+
 /**
- * Proximity feedback shown by the depth cursor.
+ * Hover feedback at `point`. `candidate` is exactly findGrabCandidate(point),
+ * so "in range" is shown if and only if a pinch would grab (F-1, F-2).
  */
-export function queryCursorFeedback(world: World, rapier: Rapier, point: Vec3, previousProximity: number): CursorFeedback {
-    const hit = world.intersectionWithShape(point, IDENTITY_ROTATION, new rapier.Ball(GRAB_RADIUS * 2));
-    if (!hit) {
-        return { blockName: null, inRange: false, proximity: previousProximity * 0.9 };
-    }
-    const body = hit.parent();
-    if (!body || !body.isDynamic()) {
-        return { blockName: null, inRange: false, proximity: 0 };
-    }
-    const userData = body.userData as { name?: string } | undefined;
-    const name = userData?.name || '';
-    const bodyPos = body.translation();
-    const dist = Math.hypot(point.x - bodyPos.x, point.y - bodyPos.y, point.z - bodyPos.z);
+export function queryCursorFeedback(world: World, rapier: Rapier, point: Vec3): CursorFeedback {
+    const near = nearestBlockWithin(world, rapier, point, GRAB_RADIUS * 2);
+    if (!near) return NO_FEEDBACK;
     return {
-        blockName: name.startsWith('block-') ? name : null,
-        inRange: dist < GRAB_RADIUS,
-        proximity: Math.max(0, 1 - dist / (GRAB_RADIUS * 2)),
+        candidate: near.distance < GRAB_RADIUS ? near : null,
+        proximity: 1 - near.distance / (GRAB_RADIUS * 2),
     };
 }
 
@@ -114,19 +130,24 @@ export class HandPhysics {
     private readonly world: World;
     private readonly rapier: Rapier;
     private readonly getBodies: () => (RigidBody | null)[];
+    private readonly pinch: Vec3 = { x: 0, y: 0, z: 0 };
+    private hover: CursorFeedback = NO_FEEDBACK;
     /** Called with the block id on grab and null when the grab ends for any reason (C-2). */
-    onHeldChange: ((blockId: string | null) => void) | null = null;
+    onHeldChange: ((blockId: string | null) => void) | null;
+    /** Called when the block a pinch would grab changes (F-1). */
+    onHoverChange: ((blockId: string | null) => void) | null;
 
     constructor(
         world: World,
         rapier: Rapier,
         getBodies: () => (RigidBody | null)[],
-        onHeldChange: ((blockId: string | null) => void) | null = null,
+        listeners: Partial<Pick<HandPhysics, 'onHeldChange' | 'onHoverChange'>> = {},
     ) {
         this.world = world;
         this.rapier = rapier;
         this.getBodies = getBodies;
-        this.onHeldChange = onHeldChange;
+        this.onHeldChange = listeners.onHeldChange ?? null;
+        this.onHoverChange = listeners.onHoverChange ?? null;
     }
 
     get heldBody(): RigidBody | null {
@@ -136,6 +157,16 @@ export class HandPhysics {
     /** True until the first tracked frame after a tracking loss. */
     get isParked(): boolean {
         return this.parked;
+    }
+
+    /** Midpoint of the thumb and index tips, where a pinch grabs; null while parked. */
+    get pinchPoint(): Readonly<Vec3> | null {
+        return this.parked ? null : this.pinch;
+    }
+
+    /** Hover feedback at the pinch point this frame. Empty while holding or parked. */
+    get feedback(): CursorFeedback {
+        return this.hover;
     }
 
     /**
@@ -162,11 +193,31 @@ export class HandPhysics {
         }
         this.enableClearColliders(bodies);
 
+        const thumbTip = bodies[THUMB_TIP];
+        const indexTip = bodies[INDEX_TIP];
+        let feedback = NO_FEEDBACK;
+        if (thumbTip && indexTip) {
+            const t = thumbTip.translation();
+            const i = indexTip.translation();
+            this.pinch.x = (t.x + i.x) / 2;
+            this.pinch.y = (t.y + i.y) / 2;
+            this.pinch.z = (t.z + i.z) / 2;
+            if (!this.joint) feedback = queryCursorFeedback(this.world, this.rapier, this.pinch);
+        }
+
         if (input.pinching && !input.openPalm) {
-            if (!this.joint) this.tryGrab(bodies);
+            if (!this.joint && feedback.candidate && thumbTip) this.grab(thumbTip, feedback.candidate.body);
         } else {
             this.release();
         }
+        this.setHover(this.joint ? NO_FEEDBACK : feedback);
+    }
+
+    private setHover(feedback: CursorFeedback): void {
+        const previous = this.hover.candidate?.blockId ?? null;
+        this.hover = feedback;
+        const next = feedback.candidate?.blockId ?? null;
+        if (next !== previous) this.onHoverChange?.(next);
     }
 
     /**
@@ -199,6 +250,7 @@ export class HandPhysics {
         if (this.lostFor <= TRACKING_LOSS_GRACE_S) return;
 
         this.release();
+        this.setHover(NO_FEEDBACK);
         const [x, y, z] = HAND_PARKING_POSITION;
         for (const body of bodies) {
             if (!body) continue;
@@ -223,21 +275,8 @@ export class HandPhysics {
             });
         }
     }
-    private tryGrab(bodies: (RigidBody | null)[]): void {
-        const thumbTip = bodies[THUMB_TIP];
-        const indexTip = bodies[INDEX_TIP];
-        if (!thumbTip || !indexTip) return;
-
+    private grab(thumbTip: RigidBody, body: RigidBody): void {
         const thumbPos = thumbTip.translation();
-        const indexPos = indexTip.translation();
-        const mid = {
-            x: (thumbPos.x + indexPos.x) / 2,
-            y: (thumbPos.y + indexPos.y) / 2,
-            z: (thumbPos.z + indexPos.z) / 2,
-        };
-        const body = findGrabCandidate(this.world, this.rapier, mid);
-        if (!body) return;
-
         this.previousDamping = { linear: body.linearDamping(), angular: body.angularDamping() };
         body.setLinearDamping(HELD_BLOCK_DAMPING);
         body.setAngularDamping(HELD_BLOCK_DAMPING);

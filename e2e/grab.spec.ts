@@ -34,13 +34,13 @@ test.describe('grab → carry → release', () => {
     expect((await storeState(driver)).heldBlockId).toBeNull()
   })
 
-  knownBug('hovering next to a block sets hoveredBlockId [F-1]', async ({ page, driver, startGame }) => {
+  test('hovering next to a block sets hoveredBlockId [F-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
     const pinch = await frontOf(driver, ID)
     await driver((d, a) => d.setHand('tuckedReady', a), { ...pinch, z: pinch.z + 3 })
     await page.waitForTimeout(1500)
     await driver((d, a) => d.moveHand('tuckedReady', a, 1200), pinch)
-    await expect.poll(async () => (await storeState(driver)).hoveredBlockId, { timeout: 8000 }).toBe(`block-${ID}`)
+    await expect.poll(async () => (await storeState(driver)).hoveredBlockId, { timeout: 8000 }).toBe(ID)
   })
 
   knownBug('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {

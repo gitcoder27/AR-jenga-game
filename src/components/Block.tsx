@@ -21,14 +21,12 @@ export default function Block({ id, position, rotation }: BlockProps) {
     const setGameState = useGameStore((state) => state.setGameState)
     const isHeld = useGameStore((state) => state.heldBlockId === id)
     const isMoving = useGameStore((state) => state.movingBlockId === id)
-    const hoveredBlockId = useGameStore((state) => state.hoveredBlockId)
+    const isHovered = useGameStore((state) => state.hoveredBlockId === id)
     const gameState = useGameStore((state) => state.gameState)
     const gameMode = useGameStore((state) => state.gameMode)
     const meshRef = useRef<THREE.Mesh>(null)
     const rigidBodyRef = useRef<RapierRigidBody>(null)
 
-    // Is this block currently being hovered?
-    const isHovered = hoveredBlockId === `block-${id}`
     const userData = useMemo<BlockUserData>(() => ({ blockId: id }), [id])
 
     // Generate random shade variation per block

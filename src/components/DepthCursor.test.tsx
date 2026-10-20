@@ -1,48 +1,46 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
-import { DepthCursor } from './DepthCursor';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { act, render } from '@testing-library/react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { DepthCursor } from './DepthCursor';
+import { NO_FEEDBACK, type CursorFeedback, type HandPhysics, type Vec3 } from '../game/grab';
+import { useGameStore } from '../store/gameStore';
 
-// Mock Drei's Ring
-vi.mock('@react-three/drei', () => ({
-  Ring: (props: any) => <div data-testid="depth-cursor" {...props} />,
-}));
-
-// Mock useFrame
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
-  useThree: vi.fn(() => ({
-    camera: {
-      position: { x: 0, y: 10, z: 20 },
-      quaternion: { x: 0, y: 0, z: 0, w: 1 },
-    }
-  })),
-  extend: vi.fn(),
+  useThree: vi.fn(() => ({ camera: { position: new THREE.Vector3(0, 10, 20) } })),
 }));
 
+// Stand-in for HandPhysics: the cursor only reads the pinch point and the feedback.
+function fakeHand(pinchPoint: Vec3 | null, feedback: CursorFeedback = NO_FEEDBACK) {
+  return { pinchPoint, feedback } as unknown as HandPhysics;
+}
+
+function renderCursor(hand: HandPhysics) {
+  vi.mocked(useFrame).mockClear();
+  return render(<DepthCursor handPhysics={hand} isPinching={false} isClosedFist={false} confidence={0} />);
+}
 
 describe('DepthCursor', () => {
-  it('is hidden when result is null', () => {
-    const { getByTestId } = render(<DepthCursor result={null} />);
-    const cursor = getByTestId('depth-cursor');
-    // React omits boolean false attributes on DOM elements
-    expect(cursor.getAttribute('visible')).toBeNull();
+  beforeEach(() => {
+    act(() => useGameStore.getState().setHoveredBlockId(null));
   });
 
-  it('renders cursor when result is provided and updates without crash', () => {
-    // Create a mock result with enough landmarks
-    const landmarks = Array(21).fill(0).map((_, i) => ({ x: i * 0.01, y: i * 0.01, z: 0 }));
-    const mockResult = { landmarks: [landmarks] };
+  it('registers a frame callback that tolerates unmounted refs', () => {
+    renderCursor(fakeHand(null));
+    const callback = vi.mocked(useFrame).mock.calls[0][0];
+    expect(() => callback({} as never, 0)).not.toThrow();
+  });
 
-    const { getByTestId } = render(<DepthCursor result={mockResult as any} />);
-    expect(getByTestId('depth-cursor')).toBeDefined();
+  it('shows the grab sphere only when pinching while a block is in range', () => {
+    const hand = fakeHand({ x: 0, y: 0, z: 0 });
+    const { container, rerender } = render(<DepthCursor handPhysics={hand} isPinching isClosedFist={false} confidence={1} />);
+    const meshes = () => container.querySelectorAll('mesh').length;
+    const outOfRange = meshes();
 
-    // Verify useFrame logic
-    const useFrameMock = vi.mocked(useFrame);
-    // Get the callback passed to useFrame
-    const callback = useFrameMock.mock.calls[0][0];
-
-    // Execute it. Should not throw.
-    expect(() => callback({} as any, 0)).not.toThrow();
+    act(() => useGameStore.getState().setHoveredBlockId('2-0'));
+    rerender(<DepthCursor handPhysics={hand} isPinching isClosedFist={false} confidence={1} />);
+    // In range: the secondary ring and the grab sphere appear.
+    expect(meshes()).toBe(outOfRange + 2);
   });
 });

@@ -14,7 +14,8 @@ interface GameStore {
      * from the floor rule, so dropping it isn't an instant game over (C-2).
      */
     movingBlockId: string | null
-    hoveredBlockId: string | null  // Block currently under the pointer
+    /** Block a pinch would grab right now (same id format as heldBlockId) */
+    hoveredBlockId: string | null
     gameId: number
     isWebcamVisible: boolean
     isInstructionsVisible: boolean

@@ -14,7 +14,6 @@ import { useGameStore } from './store/gameStore'
 import { Lighting } from './components/Lighting'
 import { EnvironmentSetup } from './components/EnvironmentSetup'
 import { StudioRoom } from './components/StudioRoom'
-import { DepthCursor } from './components/DepthCursor'
 import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
 import GestureOrbitController from './components/GestureOrbitController'
@@ -72,7 +71,6 @@ function App() {
             <Tower key={gameId} />
             <GameRules />
             <Hand result={result} />
-            <DepthCursor result={result} />
 
             <OrbitControls ref={orbitControlsRef} />
             <GestureOrbitController result={result} controlsRef={orbitControlsRef} />

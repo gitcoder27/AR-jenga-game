@@ -69,9 +69,6 @@ vi.mock('./components/EnvironmentSetup', () => ({
 vi.mock('./components/StudioRoom', () => ({
     StudioRoom: () => <div data-testid="studio-room">StudioRoom Mock</div>
 }))
-vi.mock('./components/DepthCursor', () => ({
-    DepthCursor: () => <div data-testid="depth-cursor">DepthCursor Mock</div>
-}))
 
 describe('App', () => {
     const mockResetGame = vi.fn()

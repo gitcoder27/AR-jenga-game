@@ -35,6 +35,17 @@ test.describe('screenshots', () => {
       await page.waitForTimeout(3000)
       await shot('3-game-hand')
 
+      // Hover (cyan tint, F-1), then pinch (green held tint, C-2), then let go
+      const front = await frontOf(driver, '2-0')
+      await driver((d, a) => d.moveHand('tuckedReady', a, 1000), front)
+      await page.waitForTimeout(3000)
+      await shot('3b-hover')
+      await driver((d, a) => d.setHand('tuckedPinch', a), front)
+      await page.waitForTimeout(2000)
+      await shot('3c-held')
+      await driver((d, a) => d.setHand('relaxed', a), { ...pinch, z: pinch.z + 2 })
+      await page.waitForTimeout(3000)
+
       // Hand at the left and right edges of the webcam frame
       for (const [label, x] of [['left', 0.08], ['right', 0.92]] as const) {
         await page.evaluate((x) => {

@@ -9,6 +9,7 @@ import { HandBone } from './HandBone'
 import { HandPhysics } from '../game/grab'
 import { HAND_PARKING_POSITION } from '../game/config'
 import { landmarkToWorld } from '../tracking/mapping'
+import { DepthCursor } from './DepthCursor'
 import { useGameStore } from '../store/gameStore'
 
 interface HandProps {
@@ -27,7 +28,7 @@ const CONNECTIONS = [
 
 export default function Hand({ result }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const { isPinching, isClosedFist } = useGesture(result?.landmarks?.[0])
+    const { isPinching, isClosedFist, confidence } = useGesture(result?.landmarks?.[0])
 
     // We keep the component mounted to avoid "pop-in" at [0,0,0]
     // but we hide the visuals if no result
@@ -79,17 +80,20 @@ export default function Hand({ result }: HandProps) {
                 />
             ))}
 
-            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isClosedFist={isClosedFist} />
+            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isClosedFist={isClosedFist} confidence={confidence} />
         </group>
     )
 }
 
-function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isClosedFist: boolean }) {
+function UpdateLogic({ result, refs, isPinching, isClosedFist, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isClosedFist: boolean, confidence: number }) {
     const { world, rapier } = useRapier()
     const { camera } = useThree()
-    // Mirror the grab into the store (C-2)
+    // Mirror the grab (C-2) and the hover target (F-1) into the store
     const handPhysics = useMemo(
-        () => new HandPhysics(world, rapier, () => refs.current, (id) => useGameStore.getState().setHeldBlockId(id)),
+        () => new HandPhysics(world, rapier, () => refs.current, {
+            onHeldChange: (id) => useGameStore.getState().setHeldBlockId(id),
+            onHoverChange: (id) => useGameStore.getState().setHoveredBlockId(id),
+        }),
         [world, rapier, refs],
     )
     const gameId = useGameStore((state) => state.gameId)
@@ -99,6 +103,7 @@ function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandL
     useEffect(() => () => {
         handPhysics.forget()
         useGameStore.getState().setHeldBlockId(null)
+        useGameStore.getState().setHoveredBlockId(null)
     }, [handPhysics])
     // Velocity tracking for adaptive smoothing
     const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
@@ -139,5 +144,5 @@ function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandL
 
         handPhysics.update({ joints, pinching: isPinching, openPalm: isClosedFist }, delta)
     })
-    return null
+    return <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isClosedFist={isClosedFist} confidence={confidence} />
 }

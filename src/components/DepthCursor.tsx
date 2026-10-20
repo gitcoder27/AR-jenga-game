@@ -1,21 +1,17 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useRapier } from '@react-three/rapier';
-import { calculateDepth } from '../utils/depth';
-import { ema } from '../utils/smoothing';
-import { landmarkToWorld } from '../tracking/mapping';
-import { queryCursorFeedback } from '../game/grab';
-import { GRAB_RADIUS } from '../game/config';
-import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';
 import * as THREE from 'three';
-import useGesture from '../hooks/useGesture';
+import { GRAB_RADIUS } from '../game/config';
+import type { HandPhysics } from '../game/grab';
 import { useGameStore } from '../store/gameStore';
 
 interface DepthCursorProps {
-  result: HandLandmarkerResult | null;
+  /** Source of the pinch point and the grab candidate; the cursor shows exactly what a pinch would do. */
+  handPhysics: HandPhysics;
+  isPinching: boolean;
+  isClosedFist: boolean;
+  confidence: number;
 }
-
-const PARKING_POSITION = new THREE.Vector3(0, -100, 0);
 
 // Color states for visual feedback
 const COLORS = {
@@ -25,101 +21,46 @@ const COLORS = {
   palm: '#ff9800',      // Orange: open palm mode (camera control)
 };
 
-export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
+/**
+ * Cursor at the pinch point. "In range" comes from the same per-frame grab
+ * candidate HandPhysics grabs with (F-1, F-2). Position and the proximity pulse
+ * are applied imperatively; React re-renders only when the hover target changes.
+ */
+export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinching, isClosedFist, confidence }) => {
   const groupRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
-  const { world, rapier } = useRapier();
-  const positionRef = useRef(new THREE.Vector3().copy(PARKING_POSITION));
-  const isFirstFrameRef = useRef(true);
-  const proximityRef = useRef(0); // 0-1 proximity to nearest block
-  const isInRangeRef = useRef(false);
-
-  const { isPinching, isClosedFist, confidence } = useGesture(result?.landmarks?.[0]);
-  const setHoveredBlockId = useGameStore((state) => state.setHoveredBlockId);
-  const hoveredBlockIdRef = useRef<string | null>(null);
+  const isInRange = useGameStore((state) => state.hoveredBlockId !== null);
 
   useFrame(() => {
-    if (!result || !result.landmarks || result.landmarks.length === 0) {
-      if (!isFirstFrameRef.current && groupRef.current) {
-        positionRef.current.copy(PARKING_POSITION);
-        groupRef.current.position.copy(PARKING_POSITION);
-        isFirstFrameRef.current = true;
-        proximityRef.current = 0;
-        isInRangeRef.current = false;
-      }
-      return;
-    }
-
-    if (!groupRef.current) return;
-
-    const landmarks = result.landmarks[0];
-    const thumb = landmarks[4];
-    const index = landmarks[8];
-
-    // Calculate pinch midpoint - this is where the grab will happen
-    const midX = (thumb.x + index.x) / 2;
-    const midY = (thumb.y + index.y) / 2;
-    const midZRaw = (thumb.z + index.z) / 2;
-    const handZ = calculateDepth(landmarks);
-
-    // Same landmark -> world mapping as Hand.tsx
-    const worldPos = landmarkToWorld({ x: midX, y: midY, z: midZRaw }, handZ, camera);
-
-    if (isFirstFrameRef.current) {
-      positionRef.current.copy(worldPos);
-      isFirstFrameRef.current = false;
-    } else {
-      // Use EMA for very smooth cursor movement
-      positionRef.current.x = ema(positionRef.current.x, worldPos.x, 0.2);
-      positionRef.current.y = ema(positionRef.current.y, worldPos.y, 0.2);
-      positionRef.current.z = ema(positionRef.current.z, worldPos.z, 0.2);
-    }
-
-    groupRef.current.position.copy(positionRef.current);
-
-    // Proximity detection: check if we're near any grabbable block
-    try {
-      const feedback = queryCursorFeedback(world, rapier, positionRef.current, proximityRef.current);
-      if (hoveredBlockIdRef.current !== feedback.blockName) {
-        hoveredBlockIdRef.current = feedback.blockName;
-        setHoveredBlockId(feedback.blockName);
-      }
-      proximityRef.current = feedback.proximity;
-      isInRangeRef.current = feedback.inRange;
-    } catch {
-      // Rapier may error during initialization
-      proximityRef.current = 0;
-      isInRangeRef.current = false;
-    }
-
+    const group = groupRef.current;
+    if (!group) return;
+    const pinch = handPhysics.pinchPoint;
+    group.visible = pinch !== null;
+    if (!pinch) return;
+    group.position.set(pinch.x, pinch.y, pinch.z);
     // Make the cursor face the camera
-    groupRef.current.lookAt(camera.position);
+    group.lookAt(camera.position);
+    // Ring grows as the pinch point nears a block
+    const ringScale = 1 + handPhysics.feedback.proximity * 0.3;
+    ringRef.current?.scale.set(ringScale, ringScale, 1);
   });
-
-  const isVisible = !!(result && result.landmarks && result.landmarks.length > 0);
 
   // Determine cursor color based on state
   const getCursorColor = () => {
     if (isClosedFist) return COLORS.palm;
     if (isPinching) return COLORS.grabbing;
-    if (isInRangeRef.current) return COLORS.inRange;
+    if (isInRange) return COLORS.inRange;
     return COLORS.idle;
   };
 
   const cursorColor = getCursorColor();
-
-  // Opacity increases with proximity and gesture confidence
-  const baseOpacity = isPinching ? 0.95 : isClosedFist ? 0.85 : 0.65;
-  const proximityBoost = proximityRef.current * 0.2;
-  const cursorOpacity = Math.min(1, baseOpacity + proximityBoost);
-
-  // Ring scale pulses based on proximity (larger when close to target)
-  const ringScale = 1 + proximityRef.current * 0.3;
+  const cursorOpacity = isPinching ? 0.95 : isClosedFist ? 0.85 : isInRange ? 0.8 : 0.65;
 
   return (
-    <group ref={groupRef} position={[0, -100, 0]} visible={isVisible}>
+    <group ref={groupRef} position={[0, -100, 0]} visible={false}>
       {/* Outer ring - pulses with proximity */}
-      <mesh scale={[ringScale, ringScale, 1]}>
+      <mesh ref={ringRef}>
         <ringGeometry args={[0.35, 0.4, 32]} />
         <meshBasicMaterial
           color={cursorColor}
@@ -130,7 +71,7 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
       </mesh>
 
       {/* Secondary ring - shows when in grab range */}
-      {isInRangeRef.current && (
+      {isInRange && (
         <mesh scale={[1.3, 1.3, 1]}>
           <ringGeometry args={[0.45, 0.48, 32]} />
           <meshBasicMaterial
@@ -164,7 +105,7 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ result }) => {
       </mesh>
 
       {/* Grab sphere visualization - shows when pinching and in range */}
-      {isPinching && isInRangeRef.current && (
+      {isPinching && isInRange && (
         <mesh>
           <sphereGeometry args={[GRAB_RADIUS, 16, 16]} />
           <meshBasicMaterial

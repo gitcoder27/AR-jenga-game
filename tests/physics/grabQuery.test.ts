@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { knownBug } from './knownBug';
 import { BLOCK_HALF_EXTENTS, GRAB_RADIUS, HAND_PARKING_POSITION, INDEX_TIP, PHYSICS_TIMESTEP, TABLE_HALF_EXTENTS, THUMB_TIP } from '../../src/game/config';
 import { createRng } from '../../src/game/towerLayout';
@@ -52,10 +52,6 @@ function placeFingertips(p: Vec3): void {
     scene.step();
 }
 
-function blockIdOf(scene: Scene, body: unknown): string | null {
-    return scene.blocks.find((b) => b.body === body)?.id ?? null;
-}
-
 beforeAll(async () => {
     scene = await createScene({ seed: 7 });
     scene.stepFor(2);
@@ -64,7 +60,7 @@ beforeAll(async () => {
 });
 
 describe('grab candidate query [G-5]', () => {
-    knownBug('returns the nearest block whenever one is within the grab radius, even with fingertips inside the query', () => {
+    it('returns the nearest block whenever one is within the grab radius, even with fingertips inside the query', () => {
         const misses: string[] = [];
         let inRange = 0;
         for (const p of samples) {
@@ -72,7 +68,8 @@ describe('grab candidate query [G-5]', () => {
             const { block, distance } = nearestBlock(p, scene.blocks);
             if (Math.abs(distance - GRAB_RADIUS) < BOUNDARY_EPS) continue;
             const candidate = findGrabCandidate(scene.world, scene.rapier, p);
-            const got = candidate ? blockIdOf(scene, candidate) : null;
+            const got = candidate?.blockId ?? null;
+            if (candidate) expect(candidate.body).toBe(scene.block(candidate.blockId).body);
             const want = distance < GRAB_RADIUS ? block.id : null;
             if (want) inRange++;
             if (got !== want) misses.push(`${JSON.stringify(p)} want ${want} got ${got}`);
@@ -85,17 +82,14 @@ describe('grab candidate query [G-5]', () => {
 });
 
 describe('cursor feedback matches what a pinch would grab [F-1, F-2]', () => {
-    knownBug('"in range" ⇔ a grab candidate exists, and the hovered id is that block', () => {
+    it('"in range" ⇔ a grab candidate exists, and the hovered id is that block', () => {
         const mismatches: string[] = [];
         let inRange = 0;
         for (const p of samples) {
-            const candidate = findGrabCandidate(scene.world, scene.rapier, p);
-            const feedback = queryCursorFeedback(scene.world, scene.rapier, p, 0);
-            const want = candidate ? `block-${blockIdOf(scene, candidate)}` : null;
+            const want = findGrabCandidate(scene.world, scene.rapier, p)?.blockId ?? null;
+            const got = queryCursorFeedback(scene.world, scene.rapier, p).candidate?.blockId ?? null;
             if (want) inRange++;
-            if (feedback.inRange !== (candidate !== null) || feedback.blockName !== want) {
-                mismatches.push(`${JSON.stringify(p)} grab=${want} cursor=${feedback.inRange}/${feedback.blockName}`);
-            }
+            if (got !== want) mismatches.push(`${JSON.stringify(p)} grab=${want} cursor=${got}`);
         }
         expect(inRange).toBeGreaterThan(300);
         expect(mismatches).toEqual([]);

@@ -40,3 +40,28 @@ describe('held block reporting', () => {
         scene.free();
     });
 });
+
+// F-1: hover is reported from the same per-frame candidate the grab uses.
+describe('hover reporting', () => {
+    it('reports the block a pinch would grab while approaching, and clears it while holding', async () => {
+        const scene = await createScene({ seed: 1 });
+        scene.stepFor(1);
+        const hovers: (string | null)[] = [];
+        scene.hand.onHoverChange = (id) => hovers.push(id);
+        const block = scene.block('5-0');
+        const axis = blockAxis(block);
+        const pinch = frontPinchPoint(block);
+        const far = { ...pinch, x: pinch.x + axis.x * 4, z: pinch.z + axis.z * 4 };
+
+        scene.stepFor(0.2, () => scene.hand.update(handInput(far, false, axis), PHYSICS_TIMESTEP));
+        expect(scene.hand.feedback.candidate).toBeNull();
+        scene.stepFor(0.3, () => scene.hand.update(handInput(pinch, false, axis), PHYSICS_TIMESTEP));
+        expect(scene.hand.feedback.candidate?.blockId).toBe('5-0');
+        expect(hovers).toEqual(['5-0']);
+
+        scene.step(() => scene.hand.update(handInput(pinch, true, axis), PHYSICS_TIMESTEP));
+        expect(scene.hand.heldBody).toBe(block.body);
+        expect(hovers).toEqual(['5-0', null]);
+        scene.free();
+    });
+});

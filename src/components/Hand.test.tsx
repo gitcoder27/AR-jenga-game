@@ -41,6 +41,11 @@ vi.mock('@react-three/rapier', async (importOriginal) => {
     }
 })
 
+// The cursor's frame callback needs real three.js objects; it has its own test.
+vi.mock('./DepthCursor', () => ({
+    DepthCursor: () => null,
+}))
+
 vi.mock('../hooks/useGesture', () => ({
     default: vi.fn()
 }))
@@ -50,6 +55,7 @@ vi.mock('../hooks/useGesture', () => ({
 describe('Hand Component', () => {
     const mockWorld = {
         intersectionWithShape: vi.fn(),
+        intersectionsWithShape: vi.fn(),
         createImpulseJoint: vi.fn(),
         removeImpulseJoint: vi.fn(),
     }
@@ -58,6 +64,7 @@ describe('Hand Component', () => {
         JointData: {
             fixed: vi.fn().mockReturnValue({}),
         },
+        QueryFilterFlags: { ONLY_DYNAMIC: 3 },
     }
 
     beforeEach(() => {
@@ -73,6 +80,7 @@ describe('Hand Component', () => {
         vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as any)
 
         mockWorld.intersectionWithShape.mockClear()
+        mockWorld.intersectionsWithShape.mockClear()
         mockWorld.createImpulseJoint.mockClear()
         mockWorld.removeImpulseJoint.mockClear()
         mockRapier.Ball.mockClear()
@@ -107,12 +115,14 @@ describe('Hand Component', () => {
             setAngularDamping: vi.fn(),
             translation: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }),
             rotation: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0, w: 1 }),
+            userData: { blockId: '2-0' },
         }
         const mockCollider = {
             parent: vi.fn().mockReturnValue(mockBody),
+            projectPoint: vi.fn().mockReturnValue({ isInside: false, point: { x: 0.2, y: 0, z: 0 } }),
         }
 
-        mockWorld.intersectionWithShape.mockReturnValue(mockCollider)
+        mockWorld.intersectionsWithShape.mockImplementation((_pos, _rot, _shape, callback) => callback(mockCollider))
 
         // Execute all frame callbacks (from HandBones and UpdateLogic)
         useFrameMock.mock.calls.forEach(call => {
@@ -120,8 +130,7 @@ describe('Hand Component', () => {
             callback({} as any, 0)
         })
 
-        expect(mockWorld.intersectionWithShape).toHaveBeenCalled()
-        expect(mockRapier.Ball).toHaveBeenCalledWith(0.5)
+        expect(mockWorld.intersectionsWithShape).toHaveBeenCalled()
         expect(mockWorld.createImpulseJoint).toHaveBeenCalled()
     })
 })
