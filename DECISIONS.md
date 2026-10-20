@@ -325,3 +325,28 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   HEAD's count is low only because this environment renders at about 12 FPS, slower than the fake camera. On
   a 60–120 Hz display the old rAF loop ran 2–4 detections per camera frame. Main-thread long tasks on a phone
   were not measured.
+
+### Hand targets per physics step (P-4)
+
+- **The hand is eased per physics step.** `HandMotion` (`src/game/grab.ts`) takes each render-frame sample and eases
+  toward it from the current hand position over that frame's `dt`.
+  - `HandPhysics.beforeStep()` (`useBeforePhysicsStep`) advances it one step at a time.
+  - The same eased hand drives the joint bodies, the fingertip's target and the soft grab's target.
+  - A frame with two steps moves the hand in both. A 120 Hz frame with no step just retargets.
+  - After a hitch, the catch-up steps spread the motion over the hitch time, so they don't push with a stale target.
+- **Interpolation, not extrapolation.** Extrapolating would overshoot on every stop, so the physical hand trails the
+  latest sample by up to one render frame (33 ms at 30 FPS, 8 ms at 120). Hover, grab start and the cursor still use
+  the latest sample, so what the cursor shows is still what a pinch would do.
+- **Validation:** `tests/physics/frameRate.test.ts` drives the hand with one sample per render frame against the
+  fixed 60 Hz step.
+
+  |                                                    | Before (HEAD)        | After                |
+  |----------------------------------------------------|----------------------|----------------------|
+  | Fingertip speed in free space, 30 fps (mean, sd)   | 5.01, 0.87           | 5.00, 0.00           |
+  | Poke: loose block 17-1 moved at 30 / 60 / 120 fps  | 2.84 / 2.89 / 2.89   | 2.89 / 2.89 / 2.89   |
+  | Extraction: 2-0 out at 30 / 60 / 120 fps           | 5.95 / 5.94 / 5.95   | 5.94 / 5.94 / 5.95   |
+
+  - G-1 and G-3 had already made outcomes mostly frame-rate independent: the capped fingertip and the PD grab
+    absorb the stutter. What remained was the 30 FPS stutter itself, which is now gone.
+  - The review's live check, a throttled-rAF run of the landmark harness, was not done. The sim covers the same
+    frame/step interleaving.

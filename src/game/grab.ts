@@ -211,11 +211,72 @@ function hasBlocksAbove(world: World, body: RigidBody): boolean {
 }
 
 /**
+ * The hand between render frames (P-4). Physics steps at a fixed 60 Hz while
+ * tracked samples arrive once per render frame, so each step eases the hand
+ * from where it was toward the latest sample over that frame's duration,
+ * instead of jumping on the first step and standing still on the next.
+ */
+class HandMotion {
+    private from: Vec3[] = [];
+    private to: Vec3[] = [];
+    private readonly current: Vec3[] = [];
+    private duration = 0;
+    private elapsed = 0;
+
+    /** Whether there is a hand to move */
+    get active(): boolean {
+        return this.to.length > 0;
+    }
+
+    /** A new sample, `dt` seconds after the previous one: ease toward it from where the hand is now. */
+    setFrame(joints: readonly Vec3[], dt: number): void {
+        if (!this.active) return this.jumpTo(joints);
+        this.from = this.current.map((p) => ({ ...p }));
+        this.to = joints.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+        this.duration = dt;
+        this.elapsed = 0;
+    }
+
+    /** Start at `joints` with no easing (tracking (re)acquired). */
+    jumpTo(joints: readonly Vec3[]): void {
+        this.to = joints.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+        this.from = this.to;
+        this.current.length = 0;
+        for (const p of this.to) this.current.push({ ...p });
+        this.duration = 0;
+        this.elapsed = 0;
+    }
+
+    clear(): void {
+        this.from = [];
+        this.to = [];
+        this.current.length = 0;
+    }
+
+    /** Advance by one physics step; returns the joints for that step. */
+    step(dt: number): readonly Vec3[] {
+        this.elapsed += dt;
+        const k = this.duration > 0 ? Math.min(1, this.elapsed / this.duration) : 1;
+        for (let i = 0; i < this.to.length; i++) {
+            const a = this.from[i], b = this.to[i], c = this.current[i];
+            c.x = a.x + (b.x - a.x) * k;
+            c.y = a.y + (b.y - a.y) * k;
+            c.z = a.z + (b.z - a.z) * k;
+        }
+        return this.current;
+    }
+}
+
+/**
  * Drives the hand joint bodies and owns the grab and the fingertip.
  * The joint bodies are supplied by the caller (React components in the app, the
  * headless scene in tests). They are kinematic and have no colliders (G-3):
  * the hand touches the tower only through the Fingertip, and through the held
  * block while carrying.
+ *
+ * Hand targets are set per physics step (P-4, HandMotion): the joint bodies,
+ * the soft grab's target and the fingertip's target all follow the same eased
+ * hand. Hover, grab and the cursor use the latest sample.
  *
  * Tracking loss (H-5): the hand freezes where it was for TRACKING_LOSS_GRACE_S,
  * so brief dropouts keep the grab. After that the grab is released and the hand
@@ -232,7 +293,13 @@ export class HandPhysics {
     private readonly world: World;
     private readonly rapier: Rapier;
     private readonly getBodies: () => (RigidBody | null)[];
+    /** Pinch point of the latest sample: hover, grab and the cursor */
     private readonly pinch: Vec3 = { x: 0, y: 0, z: 0 };
+    /** Pinch point of this physics step (eased between samples): the soft grab's target */
+    private readonly stepPinch: Vec3 = { x: 0, y: 0, z: 0 };
+    private readonly motion = new HandMotion();
+    /** Whether the fingertip should push, decided per sample */
+    private tipPushes = false;
     private readonly drop: Vec3 = { x: 0, y: 0, z: 0 };
     private hasDrop = false;
     private hover: CursorFeedback = NO_FEEDBACK;
@@ -271,6 +338,18 @@ export class HandPhysics {
      * error, so they stay correct whatever the render frame rate.
      */
     beforeStep(): void {
+        if (!this.parked && this.motion.active) {
+            const joints = this.motion.step(PHYSICS_TIMESTEP);
+            const bodies = this.getBodies();
+            joints.forEach((target, i) => bodies[i]?.setNextKinematicTranslation(target));
+            const t = joints[THUMB_TIP], i = joints[INDEX_TIP], dip = joints[INDEX_DIP];
+            if (t && i) {
+                this.stepPinch.x = (t.x + i.x) / 2;
+                this.stepPinch.y = (t.y + i.y) / 2;
+                this.stepPinch.z = (t.z + i.z) / 2;
+            }
+            if (this.tip && i && dip) this.tip.track(i, { x: i.x - dip.x, y: i.y - dip.y, z: i.z - dip.z }, this.tipPushes);
+        }
         this.tip?.beforeStep();
         const held = this.held;
         if (!held) return;
@@ -281,7 +360,7 @@ export class HandPhysics {
         const { proxy, mass, inertia } = held;
         const p = proxy.translation();
         const v = proxy.linvel();
-        const ex = this.pinch.x - p.x, ey = this.pinch.y - p.y, ez = this.pinch.z - p.z;
+        const ex = this.stepPinch.x - p.x, ey = this.stepPinch.y - p.y, ez = this.stepPinch.z - p.z;
         if (held.extracting && outsideFootprint(held.block.translation())) held.extracting = false;
         const behind = Math.hypot(ex, ey, ez) > (held.extracting ? GRAB_SLIP_DISTANCE : GRAB_CARRY_SLIP_DISTANCE);
         held.behindFor = behind ? held.behindFor + PHYSICS_TIMESTEP : 0;
@@ -386,11 +465,13 @@ export class HandPhysics {
         this.lostFor = 0;
 
         if (this.parked) {
-            // Re-acquired: teleport without velocity; colliders come back once clear.
+            // Re-acquired: teleport without velocity
             input.joints.forEach((target, i) => bodies[i]?.setTranslation(target, true));
+            this.motion.jumpTo(input.joints);
             this.parked = false;
         } else {
-            input.joints.forEach((target, i) => bodies[i]?.setNextKinematicTranslation(target));
+            // The joint bodies follow in beforeStep(), eased over this frame (P-4)
+            this.motion.setFrame(input.joints, dt);
         }
 
         // From this frame's hand, not the joint bodies, which only get there on the next step (H-6)
@@ -421,9 +502,9 @@ export class HandPhysics {
         // The fingertip pushes only with a pointing or relaxed hand: not while pinching or carrying (the held block is the contact), nor with an open palm (camera)
         const tip = input.joints[INDEX_TIP], dip = input.joints[INDEX_DIP];
         if (tip && dip) {
+            // Aimed every physics step in beforeStep(), along the eased hand
             this.tip ??= new Fingertip(this.world, this.rapier);
-            const push = !this.held && !input.pinching && !input.closing && !input.openPalm;
-            this.tip.track(tip, { x: tip.x - dip.x, y: tip.y - dip.y, z: tip.z - dip.z }, push);
+            this.tipPushes = !this.held && !input.pinching && !input.closing && !input.openPalm;
         }
     }
 
@@ -481,6 +562,7 @@ export class HandPhysics {
         const [x, y, z] = HAND_PARKING_POSITION;
         for (const body of bodies) body?.setTranslation({ x, y, z }, false);
         this.tip?.park();
+        this.motion.clear();
         this.parked = true;
     }
 
