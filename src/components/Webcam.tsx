@@ -1,58 +1,69 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 
 interface WebcamProps {
   onVideoReady: (video: HTMLVideoElement) => void
 }
 
+function stopTracks(stream: MediaStream) {
+  stream.getTracks().forEach((track) => track.stop())
+}
+
 export default function Webcam({ onVideoReady }: WebcamProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const isWebcamVisible = useGameStore((state) => state.isWebcamVisible)
   const [error, setError] = useState<string | null>(null)
-
-  const startWebcam = useCallback(async () => {
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      })
-
-      streamRef.current = stream
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play()
-          onVideoReady(videoRef.current!)
-        }
-      }
-    } catch (err) {
-      console.error('Error accessing webcam:', err)
-      setError('Camera access required')
-    }
-  }, [onVideoReady])
+  // Bumped by Retry to request the camera again
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    startWebcam()
+    // The request can resolve after unmount (exit during the permission prompt
+    // or a slow camera start, or StrictMode's double mount). A late stream is
+    // stopped at once so the camera never stays on (O-5).
+    let cancelled = false
+    let stream: MediaStream | null = null
+    const video = videoRef.current
+
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    }).then((s) => {
+      if (cancelled) {
+        stopTracks(s)
+        return
+      }
+      stream = s
+      if (!video) return
+      video.srcObject = s
+      video.onloadedmetadata = () => {
+        if (cancelled) return
+        video.play().catch(() => { /* interrupted by unmount */ })
+        onVideoReady(video)
+      }
+    }).catch((err) => {
+      if (cancelled) return
+      console.error('Error accessing webcam:', err)
+      setError('Camera access required')
+    })
 
     return () => {
-      console.log('Webcam cleanup running...')
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          track.stop()
-          console.log('Webcam track stopped:', track.label)
-        })
-        streamRef.current = null
+      cancelled = true
+      if (stream) stopTracks(stream)
+      if (video) {
+        video.onloadedmetadata = null
+        video.srcObject = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [attempt, onVideoReady])
+
+  const retry = () => {
+    setError(null)
+    setAttempt((n) => n + 1)
+  }
 
   return (
     <>
@@ -95,7 +106,7 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
           <h2>Camera access required</h2>
           <p>Please enable camera access to play.</p>
           <button
-            onClick={startWebcam}
+            onClick={retry}
             style={{
               marginTop: 20,
               padding: '10px 20px',

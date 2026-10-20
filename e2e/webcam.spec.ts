@@ -1,4 +1,4 @@
-import { test, expect, knownBug } from './fixtures'
+import { test, expect } from './fixtures'
 import type { Page } from '@playwright/test'
 
 function liveTracks(page: Page): Promise<number> {
@@ -10,7 +10,7 @@ function liveTracks(page: Page): Promise<number> {
 }
 
 test.describe('webcam lifecycle [O-5]', () => {
-  knownBug('exiting a game stops every camera track', async ({ page, startGame }) => {
+  test('exiting a game stops every camera track', async ({ page, startGame }) => {
     await startGame('CLASSIC')
     expect(await liveTracks(page)).toBeGreaterThan(0)
     await page.getByRole('button', { name: /exit/i }).click()
@@ -18,7 +18,7 @@ test.describe('webcam lifecycle [O-5]', () => {
     expect(await liveTracks(page)).toBe(0)
   })
 
-  knownBug('exiting before getUserMedia resolves stops the late stream', async ({ page }) => {
+  test('exiting before getUserMedia resolves stops the late stream', async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => { (window as unknown as { __e2eGumDelay: number }).__e2eGumDelay = 1500 })
     await page.getByRole('button', { name: /classic/i }).click()

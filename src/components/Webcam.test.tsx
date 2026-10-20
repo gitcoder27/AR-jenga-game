@@ -75,4 +75,28 @@ describe('Webcam Component', () => {
         expect(screen.queryByText(/Camera access required/i)).not.toBeInTheDocument()
     })
   })
+
+  // O-5: the camera must never stay on after the game is left
+  it('stops a stream that resolves after unmount', async () => {
+    const stop = vi.fn()
+    let resolve!: (stream: MediaStream) => void
+    getUserMediaMock.mockReturnValue(new Promise((r) => { resolve = r }))
+
+    const { unmount } = render(<Webcam onVideoReady={() => {}} />)
+    unmount()
+    resolve({ getTracks: () => [{ stop }] } as unknown as MediaStream)
+
+    await waitFor(() => expect(stop).toHaveBeenCalled())
+  })
+
+  it('stops the stream on unmount', async () => {
+    const stop = vi.fn()
+    getUserMediaMock.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream)
+
+    const { unmount } = render(<Webcam onVideoReady={() => {}} />)
+    await new Promise((r) => setTimeout(r, 0))
+    unmount()
+
+    expect(stop).toHaveBeenCalled()
+  })
 })

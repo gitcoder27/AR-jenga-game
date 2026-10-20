@@ -22,7 +22,19 @@ import SceneErrorBoundary from './components/SceneErrorBoundary'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 function App() {
-  const { detect, isReady } = useHandTracking()
+  // Created once, so the model loads while the menu is showing
+  const handTracking = useHandTracking()
+  const gameMode = useGameStore((state) => state.gameMode)
+
+  if (gameMode === 'MENU') {
+    return <StartScreen />
+  }
+  // Keyed by mode: leaving or switching modes drops the last tracking result,
+  // the (stopped) video element and the camera state (O-7).
+  return <Game key={gameMode} {...handTracking} />
+}
+
+function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const [cameraActive, setCameraActive] = useState(false)
   const [result, setResult] = useState<HandLandmarkerResult | null>(null)
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
@@ -30,7 +42,6 @@ function App() {
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
   const gameId = useGameStore((state) => state.gameId)
-  const gameMode = useGameStore((state) => state.gameMode)
   const resetGame = useGameStore((state) => state.resetGame)
 
   const handleVideoReady = useCallback((vid: HTMLVideoElement) => {
@@ -39,7 +50,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (isReady && videoElement && cameraActive && gameMode !== 'MENU') {
+    if (isReady && videoElement && cameraActive) {
       const loop = () => {
         const res = detect(videoElement, performance.now())
         if (res) setResult(res)
@@ -48,15 +59,11 @@ function App() {
       loop()
       return () => cancelAnimationFrame(requestRef.current)
     }
-  }, [isReady, videoElement, cameraActive, detect, gameMode])
-
-  if (gameMode === 'MENU') {
-    return <StartScreen />
-  }
+  }, [isReady, videoElement, cameraActive, detect])
 
   return (
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
-      <Webcam key={gameMode} onVideoReady={handleVideoReady} />
+      <Webcam onVideoReady={handleVideoReady} />
 
       <SceneErrorBoundary onRestart={resetGame}>
         <Canvas shadows camera={{ position: [0, 10, 20] }}>
