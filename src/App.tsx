@@ -51,9 +51,14 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
 
   useEffect(() => {
     if (isReady && videoElement && cameraActive) {
+      const { setTrackingStatus } = useGameStore.getState()
       const loop = () => {
         const res = detect(videoElement, performance.now())
-        if (res) setResult(res)
+        if (res) {
+          setResult(res)
+          const status = res.landmarks.length > 0 ? 'ready' : 'no-hand'
+          if (useGameStore.getState().trackingStatus !== status) setTrackingStatus(status)
+        }
         requestRef.current = requestAnimationFrame(loop)
       }
       loop()

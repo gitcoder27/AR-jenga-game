@@ -212,3 +212,69 @@
     animation: fadeOut 1s forwards 4s;
     /* Start fading after 4s */
 }
+/* Hand tracking status (H-9) */
+.hud-tracking-chip {
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    color: #8a9ba8;
+    background: rgba(0, 0, 0, 0.4);
+    white-space: nowrap;
+}
+
+.hud-tracking-chip[data-status='ready'] {
+    color: #00e5ff;
+}
+
+.hud-tracking-chip[data-status='no-hand'] {
+    color: #ffc107;
+}
+
+.hud-tracking-chip[data-status='error'] {
+    color: #ff5252;
+}
+
+.hud-tracking-cpu {
+    opacity: 0.8;
+}
+
+.hud-tracking-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(90vw, 460px);
+    box-sizing: border-box;
+    background: #111;
+    border: 2px solid #ff5252;
+    padding: 24px;
+    text-align: center;
+    pointer-events: auto;
+}
+
+.hud-tracking-error h2 {
+    color: #ff5252;
+    margin-top: 0;
+    letter-spacing: 2px;
+}
+
+.hud-tracking-error-detail {
+    font-family: monospace;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+    .hud-title-container {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+
+    .hud-tracking-chip {
+        font-size: 0.7rem;
+        white-space: normal;
+    }
+}

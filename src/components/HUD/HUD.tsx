@@ -1,6 +1,13 @@
 import React, { useEffect } from 'react';
-import { useGameStore } from '../../store/gameStore';
+import { useGameStore, type TrackingStatus } from '../../store/gameStore';
 import './HUD.css';
+
+const TRACKING_LABELS: Record<TrackingStatus, string> = {
+    loading: 'Loading hand tracking…',
+    error: 'Hand tracking unavailable',
+    'no-hand': 'Show your hand to the camera',
+    ready: 'Hand tracked',
+};
 
 export const HUD: React.FC = () => {
     const {
@@ -12,7 +19,11 @@ export const HUD: React.FC = () => {
         isWebcamVisible,
         setWebcamVisible,
         isInstructionsVisible,
-        setInstructionsVisible
+        setInstructionsVisible,
+        trackingStatus,
+        trackingError,
+        trackingDelegate,
+        retryTracking,
     } = useGameStore();
 
     useEffect(() => {
@@ -31,6 +42,15 @@ export const HUD: React.FC = () => {
                 <div className="hud-title-container">
                     <h1 onClick={returnToMenu} style={{ cursor: 'pointer' }}>ROBOTIC JENGA</h1>
                     <div className="hud-status-led" data-state={gameState}></div>
+                    <div
+                        className="hud-tracking-chip"
+                        data-status={trackingStatus}
+                        role="status"
+                        title={trackingDelegate === 'CPU' ? 'GPU unavailable: hand tracking is running on the CPU and may be slower' : undefined}
+                    >
+                        {TRACKING_LABELS[trackingStatus]}
+                        {trackingDelegate === 'CPU' && trackingStatus !== 'error' && <span className="hud-tracking-cpu"> · CPU</span>}
+                    </div>
                 </div>
                 <div className="hud-score">
                     <span className="label">SCORE</span>
@@ -65,6 +85,19 @@ export const HUD: React.FC = () => {
                     EXIT GAME
                 </button>
             </div>
+
+            {/* Hand tracking failed to start (H-9) */}
+            {trackingStatus === 'error' && (
+                <div className="hud-tracking-error" role="alert">
+                    <h2>Hand tracking failed to load</h2>
+                    <p>The game needs the hand-tracking model to see your hand.</p>
+                    {trackingError && <p className="hud-tracking-error-detail">{trackingError}</p>}
+                    <div className="hud-modal-actions">
+                        <button className="hud-reset-button" onClick={retryTracking}>RETRY</button>
+                        <button className="hud-menu-button" onClick={returnToMenu}>MAIN MENU</button>
+                    </div>
+                </div>
+            )}
 
             {/* Game Over Modal */}
             {gameState === 'GAME_OVER' && (

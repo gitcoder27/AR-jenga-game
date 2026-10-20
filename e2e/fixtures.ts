@@ -13,8 +13,10 @@ import type * as Driver from '../src/test/e2eDriver'
 export const MEDIAPIPE_STUB = `
 export const FilesetResolver = { forVisionTasks: async () => ({}) };
 export const HandLandmarker = {
-  createFromOptions: async () => {
+  createFromOptions: async (_vision, options) => {
     if (window.__e2eModelFail) throw new Error('e2e: model blocked');
+    if (window.__e2eGpuFail && options.baseOptions.delegate === 'GPU') throw new Error('e2e: GPU delegate unavailable');
+    window.__e2eDelegate = options.baseOptions.delegate;
     return {
       detectForVideo: () => {
         window.__e2eDetectCalls = (window.__e2eDetectCalls || 0) + 1;
@@ -73,6 +75,11 @@ export function measureFps(page: Page, ms = 1000): Promise<number> {
   )
 }
 
+export interface Options {
+  /** 'stub' replaces MediaPipe with the scripted hand; 'real' loads the actual WASM and model */
+  mediaPipe: 'stub' | 'real'
+}
+
 export interface Fixtures {
   /** Page errors (uncaught exceptions) collected during the test */
   pageErrors: Error[]
@@ -88,15 +95,16 @@ export async function installMediaPipeStub(page: Page): Promise<void> {
   )
 }
 
-export const test = base.extend<Fixtures>({
+export const test = base.extend<Fixtures & Options>({
+  mediaPipe: ['stub', { option: true }],
   pageErrors: async ({ page }, use) => {
     const errors: Error[] = []
     page.on('pageerror', (e) => errors.push(e))
     await use(errors)
   },
-  page: async ({ page }, use) => {
+  page: async ({ page, mediaPipe }, use) => {
     await page.addInitScript(INIT_SCRIPT)
-    await installMediaPipeStub(page)
+    if (mediaPipe === 'stub') await installMediaPipeStub(page)
     await use(page)
   },
   driver: async ({ page }, use) => {
