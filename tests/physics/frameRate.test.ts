@@ -6,9 +6,11 @@ import { blockAxis, frontPinchPoint, rebaseline } from './scenarios';
 
 const FRAME_RATES = [30, 60, 120];
 
+// Identical blocks (C-6): the extraction is of a fixed block, which in the
+// game's tower may be one of the tight ones
 async function settledScene(): Promise<Scene> {
-    const scene = await createScene({ seed: 1 });
-    scene.stepFor(2);
+    const scene = await createScene({ seed: 1, uniformBlocks: true });
+    scene.settle();
     rebaseline(scene);
     return scene;
 }

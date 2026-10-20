@@ -1,6 +1,5 @@
 import { test, expect } from './fixtures'
 import { carryTo, frontOf, grabBlock, release, storeState } from './helpers'
-import { TUTORIAL_TARGET } from '../src/game/tutorial'
 
 const TOP_FACE = 18 * 1.5
 
@@ -16,6 +15,8 @@ test('the first Classic game walks through a move to a score of 1 [O-1]', async 
   await startGame('CLASSIC')
   const card = page.getByRole('region', { name: 'Tutorial' })
   const step = () => card.getAttribute('data-step')
+  // Level 4's loose block (C-6)
+  const TUTORIAL_TARGET = await driver((d) => d.tutorialTarget())
 
   await expect(card).toContainText('SHOW YOUR HAND')
   await expect(page.getByTestId('webcam-video')).toBeVisible()

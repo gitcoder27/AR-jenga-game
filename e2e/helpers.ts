@@ -112,3 +112,11 @@ export async function storeState(driver: Driver) {
     }
   })
 }
+
+/**
+ * Id of `level`'s loose block in the current tower (C-6). The tests grab these:
+ * a tight block can hold fast against grabBlock's tug.
+ */
+export function looseBlock(driver: Driver, level: number): Promise<string> {
+  return driver((d, l) => d.looseBlock(l), level)
+}

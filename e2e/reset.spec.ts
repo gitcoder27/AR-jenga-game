@@ -1,12 +1,14 @@
 import { test, expect } from './fixtures'
-import { frontOf, grabBlock, release } from './helpers'
+import { frontOf, grabBlock, looseBlock, release } from './helpers'
 
-const ID = '2-0'
+// Level 2's loose block, set once the game (and its tower) has started (C-6)
+let ID = ''
 
 test.describe('reset while holding', () => {
   test('grab → reset → release 20 times without page errors [G-8]', async ({ page, driver, startGame, pageErrors }) => {
     test.setTimeout(300_000)
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     // grabBlock confirms the block is really held before the first reset.
     await grabBlock(page, driver, ID)
     const pinch = await frontOf(driver, ID)

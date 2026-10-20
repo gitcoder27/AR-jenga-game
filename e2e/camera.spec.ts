@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { carryTo, dist, frontOf, grabBlock, storeState } from './helpers'
+import { carryTo, dist, frontOf, grabBlock, looseBlock, storeState } from './helpers'
 import type { PoseName } from '../src/test/handPoses'
 import { CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE, CAMERA_TARGET } from '../src/game/config'
 
@@ -52,10 +52,11 @@ test('an open palm held still enters camera mode, the hand then turns the view, 
 // The review's H-2 check: letting go and moving the opened hand away must not turn the view.
 test('opening the hand to let go and moving it away never turns the view [H-2]', async ({ page, driver, startGame }) => {
   await startGame('SANDBOX')
-  const { hand } = await grabBlock(page, driver, '2-0')
+  const id = await looseBlock(driver, 2)
+  const { hand } = await grabBlock(page, driver, id)
   const out = { ...hand, z: hand.z + 5 }
   await carryTo(page, driver, out, 1200)
-  expect((await storeState(driver)).heldBlockId).toBe('2-0')
+  expect((await storeState(driver)).heldBlockId).toBe(id)
   const start = await driver((d) => d.cameraPosition())
 
   // Wide open, then away at a moderate pace (about 0.07 frame widths/s in the image)
@@ -151,6 +152,6 @@ test('orbit and zoom are limited, panning is off, and RESET VIEW restores the de
 
   await page.getByRole('button', { name: 'SETTINGS' }).click()
   await page.getByRole('button', { name: /reset view/i }).click()
-  await page.waitForTimeout(500)
-  expect(dist(await driver((d) => d.cameraPosition()), start)).toBeLessThan(0.01)
+  // The orbit controls' damping eases it home at the frame rate: 0.0102 after a fixed 500 ms in one slow run
+  await expect.poll(async () => dist(await driver((d) => d.cameraPosition()), start), { timeout: 5000 }).toBeLessThan(0.01)
 })

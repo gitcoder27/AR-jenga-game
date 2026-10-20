@@ -6,10 +6,14 @@ import { grabAt, rebaseline } from './scenarios';
 const TOP_ID = `${TOWER_LEVELS - 1}-0`;
 const UP = { x: 0, y: 1, z: 0 };
 
-/** Grab the centre top block from above and lift it 4 units clear of the tower. */
+/**
+ * Grab the centre top block from above and lift it 4 units clear of the tower.
+ * Identical blocks (C-6): the lift shoves its neighbours 0.4–0.5 sideways even
+ * then, and in this seed's varied tower that tipped the short one off.
+ */
 async function holdAboveTower(): Promise<{ scene: Scene; carry: { x: number; y: number; z: number } }> {
-    const scene = await createScene({ seed: 3 });
-    scene.stepFor(1);
+    const scene = await createScene({ seed: 3, uniformBlocks: true });
+    scene.settle();
     const block = scene.block(TOP_ID);
     const p = block.body.translation();
     const pinch = { x: p.x, y: p.y + 0.75 + 0.3, z: p.z };

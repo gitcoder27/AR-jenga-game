@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useGameStore, type GameStore } from './store/gameStore'
 import type { ReactNode } from 'react'
 import { storeWith } from './test/mockStore'
+import { GRAVITY } from './game/config'
 
 // Mock components
 vi.mock('./components/Webcam', () => ({
@@ -127,12 +128,12 @@ describe('App', () => {
         expect(screen.getByTestId('studio-room')).toBeInTheDocument()
     })
 
-    it('wraps scene in Physics with correct gravity in game mode', () => {
+    it('wraps scene in Physics with the shared gravity (P-2) in game mode', () => {
         mockUseGameStore.mockImplementation(storeWith({ ...defaultState, gameMode: 'CLASSIC' }))
         render(<App />)
         const physics = screen.getByTestId('physics')
         expect(physics).toBeInTheDocument()
-        expect(physics).toHaveAttribute('data-gravity', JSON.stringify([0, -9.81, 0]))
+        expect(physics).toHaveAttribute('data-gravity', JSON.stringify(GRAVITY))
     })
 
     it('shows game over overlay when game is over', () => {

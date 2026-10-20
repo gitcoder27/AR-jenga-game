@@ -1,4 +1,5 @@
 import { BLOCK_HALF_EXTENTS, TOWER_FOOTPRINT } from './config';
+import { createRng, generateTowerLayout, looseBlockId } from './towerLayout';
 
 /**
  * The guided first run (O-1), in Classic mode: see the hand, calibrate depth,
@@ -8,13 +9,20 @@ export type TutorialStep = 'camera' | 'calibrate' | 'touch' | 'grab' | 'pull' | 
 
 export const TUTORIAL_STEPS: readonly TutorialStep[] = ['camera', 'calibrate', 'touch', 'grab', 'pull', 'place', 'done'];
 
-/** The glowing block: a centre block, low enough to reach, end face toward the default camera */
-export const TUTORIAL_TARGET = '4-0';
+/** The glowing block is this level's loose one (C-6): low enough to reach, end faces toward the default camera */
+export const TUTORIAL_LEVEL = 4;
+
+let cached: { seed: number; id: string } | null = null;
+/** Id of the glowing block in the tower built from `towerSeed` */
+export function tutorialTarget(towerSeed: number): string {
+    if (cached?.seed !== towerSeed) cached = { seed: towerSeed, id: looseBlockId(generateTowerLayout(createRng(towerSeed)), TUTORIAL_LEVEL) };
+    return cached.id;
+}
 
 export const TUTORIAL_TEXT: Record<TutorialStep, { title: string; body: string }> = {
     camera: { title: 'SHOW YOUR HAND', body: 'Hold one hand up in front of the webcam, palm facing it. The preview shows what the camera sees.' },
     calibrate: { title: 'CALIBRATE YOUR REACH', body: 'Five seconds: your hand near the webcam, then far. Your comfortable range then spans the scene.' },
-    touch: { title: 'TOUCH THE GLOWING BLOCK', body: 'Move your hand to its near end. The block turns cyan when a pinch would grab it. Watch the depth gauge on the right.' },
+    touch: { title: 'TOUCH THE GLOWING BLOCK', body: "It's a loose one: they're the ones to take. Move your hand to its near end. The block turns cyan when a pinch would grab it. Watch the depth gauge on the right." },
     grab: { title: 'PINCH, THEN LET GO', body: 'Pinch thumb and index finger to grab it (it turns green), then open your fingers to let go.' },
     pull: { title: 'PULL IT OUT', body: 'Pinch it again and draw it slowly straight out toward you. A yank slips out of your fingers.' },
     place: { title: 'PUT IT ON TOP', body: 'Lift it above the tower and let go over the top. A ghost shows where it will land; it scores once the tower settles.' },
@@ -28,6 +36,8 @@ export interface TutorialSnapshot {
     hoveredBlockId: string | null;
     heldBlockId: string | null;
     score: number;
+    /** The glowing block's id */
+    targetId: string;
 }
 
 /**
@@ -43,7 +53,7 @@ export function advanceTutorial(step: TutorialStep, now: TutorialSnapshot, befor
         case 'calibrate':
             return now.calibrationStatus === 'done' && before.calibrationStatus !== 'done' ? 'touch' : step;
         case 'touch':
-            return now.hoveredBlockId === TUTORIAL_TARGET || now.heldBlockId !== null ? 'grab' : step;
+            return now.hoveredBlockId === now.targetId || now.heldBlockId !== null ? 'grab' : step;
         case 'grab':
             return before.heldBlockId !== null && now.heldBlockId === null ? 'pull' : step;
         default:

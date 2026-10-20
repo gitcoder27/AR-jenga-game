@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures'
-import { carryTo, grabBlock, release, storeState } from './helpers'
+import { carryTo, grabBlock, looseBlock, release, storeState } from './helpers'
 
-const ID = '2-0'
+// Level 2's loose block, set once the game (and its tower) has started (C-6)
+let ID = ''
 const TOP_FACE = 18 * 1.5
 
 // C-1 / C-3: the core loop. Extract a block, put it on top, let the tower settle: +1.
@@ -11,6 +12,7 @@ const TOP_FACE = 18 * 1.5
 test('a full move (extract, place on top, settle) scores 1 [C-1, C-3]', async ({ page, driver, startGame }) => {
   test.setTimeout(240_000)
   await startGame('CLASSIC')
+  ID = await looseBlock(driver, 2)
   const block = (await driver((d) => d.blockPositions()))[ID]
   const { hand } = await grabBlock(page, driver, ID)
   await expect.poll(async () => (await storeState(driver)).movePhase).toBe('HOLDING')

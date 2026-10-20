@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useGameStore, type GameStore } from '../../store/gameStore';
-import { advanceTutorial, TUTORIAL_STEPS, TUTORIAL_TEXT, type TutorialSnapshot } from '../../game/tutorial';
+import { advanceTutorial, tutorialTarget, TUTORIAL_STEPS, TUTORIAL_TEXT, type TutorialSnapshot } from '../../game/tutorial';
 
 const snapshot = (s: GameStore): TutorialSnapshot => ({
     trackingStatus: s.trackingStatus,
@@ -8,6 +8,7 @@ const snapshot = (s: GameStore): TutorialSnapshot => ({
     hoveredBlockId: s.hoveredBlockId,
     heldBlockId: s.heldBlockId,
     score: s.score,
+    targetId: tutorialTarget(s.towerSeed),
 });
 
 /** Steps shown as "STEP n OF 6" ('done' isn't one) */

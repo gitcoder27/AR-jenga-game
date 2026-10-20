@@ -10,7 +10,10 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import type { RigidBody, World } from '@dimforge/rapier3d-compat';
 import {
     BLOCK_FRICTION,
-    BLOCK_HALF_EXTENTS,
+    BLOCK_HEIGHT,
+    BLOCK_LENGTH,
+    BLOCK_WIDTH,
+    CONTACT_NATURAL_FREQUENCY,
     FLOOR_FRICTION,
     FLOOR_HALF_EXTENTS,
     FLOOR_POSITION,
@@ -25,7 +28,7 @@ import {
     TABLE_POSITION,
     THUMB_TIP,
 } from '../../src/game/config';
-import { createRng, generateTowerLayout, type BlockLayout } from '../../src/game/towerLayout';
+import { createRng, generateTowerLayout, levelCenterY, type BlockLayout } from '../../src/game/towerLayout';
 import { HandPhysics, type BlockUserData, type HandInput, type Vec3 } from '../../src/game/grab';
 
 let ready: Promise<void> | null = null;
@@ -56,10 +59,15 @@ export interface Scene {
     afterStep: ((scene: Scene) => void) | null;
     step(beforeStep?: (scene: Scene) => void): void;
     stepFor(seconds: number, beforeStep?: (scene: Scene) => void): void;
+    /**
+     * Step until every block is asleep (a new tower settles onto its loose
+     * blocks, C-6: 2.5–4.5 s), at most `maxSeconds`. Returns the time taken.
+     */
+    settle(maxSeconds?: number): number;
     free(): void;
 }
 
-/** Same values @react-three/rapier 2.2 <Physics> writes into the world. */
+/** Same values @react-three/rapier 2.2 <Physics> writes into the world (and the app's contact stiffness). */
 function applyR3RIntegrationDefaults(world: World): void {
     world.integrationParameters.numSolverIterations = 4;
     world.integrationParameters.numInternalPgsIterations = 1;
@@ -68,7 +76,7 @@ function applyR3RIntegrationDefaults(world: World): void {
     world.integrationParameters.maxCcdSubsteps = 1;
     world.integrationParameters.normalizedPredictionDistance = 0.002;
     world.lengthUnit = 1;
-    world.integrationParameters.contact_natural_frequency = 30;
+    world.integrationParameters.contact_natural_frequency = CONTACT_NATURAL_FREQUENCY;
 }
 
 function createFixedBox(world: World, halfExtents: number[], position: number[], friction: number, name: string): RigidBody {
@@ -93,7 +101,8 @@ function createBlock(world: World, layout: BlockLayout): RigidBody {
     );
     // Same as <Block userData={{ blockId }}> in the app.
     body.userData = { blockId: layout.id } satisfies BlockUserData;
-    const desc = RAPIER.ColliderDesc.cuboid(...BLOCK_HALF_EXTENTS)
+    const [w, h, l] = layout.size;
+    const desc = RAPIER.ColliderDesc.cuboid(w / 2, h / 2, l / 2)
         .setFriction(BLOCK_FRICTION)
         .setRestitution(RESTITUTION)
         .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
@@ -121,7 +130,11 @@ export function eulerToQuaternion(x: number, y: number, z: number): { x: number;
     };
 }
 
-export async function createScene({ seed = 1 }: { seed?: number } = {}): Promise<Scene> {
+/**
+ * `uniformBlocks` builds the tower as it was before the size variance (C-6):
+ * every block the nominal size, every level on the grid. For comparisons only.
+ */
+export async function createScene({ seed = 1, uniformBlocks = false }: { seed?: number; uniformBlocks?: boolean } = {}): Promise<Scene> {
     await initRapier();
     const world = new RAPIER.World({ x: GRAVITY[0], y: GRAVITY[1], z: GRAVITY[2] });
     applyR3RIntegrationDefaults(world);
@@ -130,7 +143,12 @@ export async function createScene({ seed = 1 }: { seed?: number } = {}): Promise
     const floor = createFixedBox(world, FLOOR_HALF_EXTENTS, FLOOR_POSITION, FLOOR_FRICTION, 'floor');
     const table = createFixedBox(world, TABLE_HALF_EXTENTS, TABLE_POSITION, TABLE_FRICTION, 'table');
 
-    const blocks: SceneBlock[] = generateTowerLayout(createRng(seed)).map((layout) => {
+    const layouts = generateTowerLayout(createRng(seed)).map((layout): BlockLayout =>
+        uniformBlocks
+            ? { ...layout, loose: false, size: [BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_LENGTH], position: [layout.position[0], levelCenterY(layout.level), layout.position[2]] }
+            : layout,
+    );
+    const blocks: SceneBlock[] = layouts.map((layout) => {
         const body = createBlock(world, layout);
         const t = body.translation();
         return { ...layout, body, spawn: { x: t.x, y: t.y, z: t.z } };
@@ -168,6 +186,11 @@ export async function createScene({ seed = 1 }: { seed?: number } = {}): Promise
         stepFor(seconds, beforeStep) {
             const n = Math.round(seconds / PHYSICS_TIMESTEP);
             for (let i = 0; i < n; i++) scene.step(beforeStep);
+        },
+        settle(maxSeconds = 8) {
+            const start = scene.time;
+            while (scene.time - start < maxSeconds && !scene.blocks.every((b) => b.body.isSleeping())) scene.step();
+            return scene.time - start;
         },
         free() {
             eventQueue.free();

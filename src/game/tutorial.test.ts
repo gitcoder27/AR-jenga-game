@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { BLOCK_HALF_EXTENTS, TOWER_FOOTPRINT } from './config';
-import { advanceTutorial, isPulledOut, TUTORIAL_TARGET, type TutorialSnapshot } from './tutorial';
+import { createRng, generateTowerLayout } from './towerLayout';
+import { advanceTutorial, isPulledOut, tutorialTarget, TUTORIAL_LEVEL, type TutorialSnapshot } from './tutorial';
 
-const base: TutorialSnapshot = { trackingStatus: 'no-hand', calibrationStatus: 'idle', hoveredBlockId: null, heldBlockId: null, score: 0 };
+const base: TutorialSnapshot = { trackingStatus: 'no-hand', calibrationStatus: 'idle', hoveredBlockId: null, heldBlockId: null, score: 0, targetId: '4-1' };
 const s = (over: Partial<TutorialSnapshot>): TutorialSnapshot => ({ ...base, ...over });
 
 describe('tutorial steps [O-1]', () => {
     it('walks camera → calibrate → touch → grab → pull', () => {
         expect(advanceTutorial('camera', s({ trackingStatus: 'ready' }), base)).toBe('calibrate');
         expect(advanceTutorial('calibrate', s({ calibrationStatus: 'done' }), s({ calibrationStatus: 'far' }))).toBe('touch');
-        expect(advanceTutorial('touch', s({ hoveredBlockId: TUTORIAL_TARGET }), base)).toBe('grab');
+        expect(advanceTutorial('touch', s({ hoveredBlockId: '4-1' }), base)).toBe('grab');
         expect(advanceTutorial('grab', s({ heldBlockId: null }), s({ heldBlockId: '4-0' }))).toBe('pull');
     });
 
@@ -36,5 +37,13 @@ describe('tutorial steps [O-1]', () => {
         expect(isPulledOut({ x: 0, z: 0 })).toBe(false);
         expect(isPulledOut({ x: 0, z: TOWER_FOOTPRINT + BLOCK_HALF_EXTENTS[2] })).toBe(true);
         expect(isPulledOut({ x: -(TOWER_FOOTPRINT + BLOCK_HALF_EXTENTS[2]), z: 1 })).toBe(true);
+    });
+
+    it("the glowing block is the tutorial level's loose block (C-6)", () => {
+        for (const seed of [1, 2, 3, 99]) {
+            const id = tutorialTarget(seed);
+            const block = generateTowerLayout(createRng(seed)).find((b) => b.id === id)!;
+            expect(block).toMatchObject({ level: TUTORIAL_LEVEL, loose: true });
+        }
     });
 });

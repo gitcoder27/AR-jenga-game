@@ -26,7 +26,7 @@ import SceneErrorBoundary from './components/SceneErrorBoundary'
 import { DepthGauge, DepthGaugeSync } from './components/DepthGauge'
 import { DepthGaugeView } from './components/depthGaugeView'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { CAMERA_FOV, CAMERA_POSITION } from './game/config'
+import { CAMERA_FOV, CAMERA_POSITION, CONTACT_NATURAL_FREQUENCY, GRAVITY } from './game/config'
 
 function App() {
   // Created once, so the model loads while the menu is showing
@@ -99,7 +99,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
 
       <SceneErrorBoundary onRestart={resetGame}>
         <Canvas shadows camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}>
-          <Physics gravity={[0, -9.81, 0]}>
+          <Physics gravity={GRAVITY} contactNaturalFrequency={CONTACT_NATURAL_FREQUENCY}>
             <color attach="background" args={['#111']} />
             <Lighting />
             <EnvironmentSetup />

@@ -84,6 +84,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
    - Drag with the mouse to orbit, or scroll to zoom. The view can't go under the table or zoom out of reach.
    - **SETTINGS → RESET VIEW** restores the default framing.
 5. **Rules**:
+   - **Loose blocks**: Every level has one block a fraction shorter than the other two. It carries nothing, so it slides out easily; the other two are held tight and drag the tower if you pull them. Probe with a fingertip: the loose one moves.
    - **Classic**: Take a block out of the tower and put it on top. It scores once the tower settles. The game ends when a block falls from the tower, or when the block you're moving falls off the table. Leaving a Classic game in play (**EXIT GAME** or the title) asks first.
    - **Sandbox**: No score or game over. **RESET TOWER** rebuilds the tower.
 

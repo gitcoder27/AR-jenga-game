@@ -1,11 +1,13 @@
 import { test, expect } from './fixtures'
-import { carryTo, dist, frontOf, grabBlock, movedBlocks, release, storeState } from './helpers'
+import { carryTo, dist, frontOf, grabBlock, looseBlock, movedBlocks, release, storeState } from './helpers'
 
-const ID = '2-0'
+// Level 2's loose block, set once the game (and its tower) has started (C-6)
+let ID = ''
 
 test.describe('grab → carry → release', () => {
   test('the pinched block follows the hand and stays put after release', async ({ page, driver, startGame, pageErrors }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const { hand } = await grabBlock(page, driver, ID)
     const start = (await driver((d) => d.blockPositions()))[ID]
 
@@ -26,6 +28,7 @@ test.describe('grab → carry → release', () => {
 
   test('heldBlockId is set during a carry and cleared after release [C-2]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const { hand } = await grabBlock(page, driver, ID)
     const out = { ...hand, z: hand.z + 5 }
     await carryTo(page, driver, out, 1200)
@@ -36,6 +39,7 @@ test.describe('grab → carry → release', () => {
 
   test('hovering next to a block sets hoveredBlockId [F-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const pinch = await frontOf(driver, ID)
     await driver((d, a) => d.setHand('tuckedReady', a), { ...pinch, z: pinch.z + 3 })
     await page.waitForTimeout(1500)
@@ -47,6 +51,7 @@ test.describe('grab → carry → release', () => {
   // moves 0.18–0.38, so the threshold is the review's sim 6b one (0.5), as in tests/physics/pull.test.ts.
   test('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const { hand } = await grabBlock(page, driver, ID)
     const before = await driver((d) => d.blockPositions())
     await carryTo(page, driver, { ...hand, z: hand.z + 6 }, 3000, 2500)

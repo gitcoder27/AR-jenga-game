@@ -8,9 +8,13 @@ import { pullBlock, rebaseline } from './scenarios';
 const CENTRE = '8-0';
 const EDGE = '8-1';
 
+// The grab's mechanics (G-1, G-2) are tuned and checked on identical blocks,
+// each carrying a third of its level. In the game's tower (C-6) a level's two
+// full-height blocks carry half each, and pulling one of those drags the level
+// above by design: looseBlocks.test.ts checks the loose ones come out.
 async function pull(id: string, speed: number, jitter = 0, jitterSeed = 1) {
-    const scene = await createScene({ seed: 1 });
-    scene.stepFor(2);
+    const scene = await createScene({ seed: 1, uniformBlocks: true });
+    scene.settle();
     rebaseline(scene);
     const result = pullBlock(scene, id, speed, 9, 2, jitter, createRng(jitterSeed));
     scene.free();
@@ -60,11 +64,20 @@ describe('pulling a level-8 block 9 units along its length', () => {
         });
     }
 
-    it('a yank (30 u/s) slips out of the fingers instead of being dragged with unlimited force [G-1]', async () => {
-        const r = await pull(CENTRE, 30);
+    // Under gravity ×2 (P-2) the grip's cap (in g) is twice the force, so a 30 u/s
+    // yank of a level-8 block now comes out cleanly (blocks above shift 0.06)
+    // instead of slipping; at 1 g it slipped. Either way the tower isn't dragged,
+    // which is what G-1 is for. A faster yank still slips.
+    it.each([30, 60])('a yank (%i u/s) never drags the tower [G-1, P-2]', async (speed) => {
+        const r = await pull(CENTRE, speed);
         expect(r.grabbed).toBe(true);
-        expect(r.stillHeld).toBe(false);
         expect(r.maxShiftAbove).toBeLessThan(0.5);
+        expect(r.fellAbove).toBe(0);
+    });
+
+    it('a 60 u/s yank slips out of the fingers instead of being dragged with unlimited force [G-1]', async () => {
+        const r = await pull(CENTRE, 60);
+        expect(r.stillHeld).toBe(false);
     });
 });
 
@@ -78,7 +91,8 @@ describe('the soft grab can extract any block with a careful pull', () => {
     };
     it.each(['2-0', '2-1', '1-0'])('%s comes out at 4 u/s without disturbing the tower', extractsCleanly);
     // The lightly loaded level under the top drags level 17 along (shift ≈ 4.2;
-    // the rigid grab: 8.7). Inherited from the contact solver, not the grab;
-    // revisit with the gravity / tolerance tuning (P-2, C-6).
+    // the rigid grab: 8.7). Inherited from the contact solver, not the grab.
+    // Gravity ×2 and the block variance (P-2, C-6) didn't cure it: see
+    // looseBlocks.test.ts for the same drag at levels 12–15.
     knownBug('16-0 comes out at 4 u/s without disturbing the tower', () => extractsCleanly('16-0'));
 });

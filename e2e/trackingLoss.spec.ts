@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures'
-import { dist, grabBlock, movedBlocks, storeState, waitForRest } from './helpers'
+import { dist, grabBlock, looseBlock, movedBlocks, storeState, waitForRest } from './helpers'
 
-const ID = '2-0'
+// Level 2's loose block, set once the game (and its tower) has started (C-6)
+let ID = ''
 
 // The block is held just after grabBlock's small tug, still in its slot. A longer
 // carry can't be used yet: while the block is under the level above, the rigid
@@ -23,6 +24,7 @@ test.describe('tracking loss while holding [H-5]', () => {
 
   test('a 3-frame dropout leaves the tower intact and does not yank the block', async ({ page, driver, startGame, pageErrors }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const before = await holdSettled(page, driver)
     const after = await dropout(page, driver, 3)
 
@@ -35,6 +37,7 @@ test.describe('tracking loss while holding [H-5]', () => {
 
   test('a dropout shorter than the grace period keeps the grab', async ({ page, driver, startGame, pageErrors }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const before = await holdSettled(page, driver)
     // 150 ms: e.g. 4–5 frames of a 30 FPS camera, within the 0.25 s grace
     await driver((d) => d.dropFor(150))
@@ -49,6 +52,7 @@ test.describe('tracking loss while holding [H-5]', () => {
 
   test('a dropout longer than the grace period releases without yanking anything [G-4]', async ({ page, driver, startGame, pageErrors }) => {
     await startGame('SANDBOX')
+    ID = await looseBlock(driver, 2)
     const before = await holdSettled(page, driver)
     // ~1.2 s at the ~12 FPS SwiftShader detection rate: well past the 0.25 s grace.
     // The grab must end while the hand is still lost, and the hand coming back

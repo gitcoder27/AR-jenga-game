@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { carryTo, release, STANDOFF } from './helpers'
+import { carryTo, looseBlock, release, STANDOFF } from './helpers'
 
 const HALF_LENGTH = 3.75
 const TOP_FACE = 18 * 1.5
@@ -10,7 +10,8 @@ const NEW_LEVEL_Y = TOP_FACE + 0.75
 test('a block from an odd level, let go over the top, snaps into the next slot turned to fit [C-3, G-6]', async ({ page, driver, startGame }) => {
   test.setTimeout(240_000)
   await startGame('SANDBOX')
-  const id = '7-1'
+  // Level 7's loose block (C-6): a tight one can hold fast against the pull
+  const id = await looseBlock(driver, 7)
   const b = (await driver((d) => d.blockPositions()))[id]
   // Level 7 runs along X: look at it from +X and grab its end face head-on, like the even-level tests do from +Z
   await driver((d) => d.setOrbitAzimuth(Math.PI / 2))

@@ -6,7 +6,7 @@ import { blockAxis, frontPinchPoint, grabAt, rebaseline } from './scenarios';
 
 async function settledScene(): Promise<Scene> {
     const scene = await createScene({ seed: 1 });
-    scene.stepFor(2);
+    scene.settle();
     rebaseline(scene);
     return scene;
 }

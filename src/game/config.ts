@@ -21,9 +21,34 @@ export const BLOCK_GAP = 0.05;
 export const TOWER_FOOTPRINT = 1.5 * BLOCK_WIDTH + BLOCK_GAP;
 export const TOWER_JITTER_POSITION = 0.05;
 export const TOWER_JITTER_ROTATION = 0.02;
+/*
+ * Block size variance (C-6). Real blocks differ by fractions of a millimetre,
+ * so some carry the level above and some are loose: finding those is the game.
+ * In each level one block is short by up to this fraction of its height; the
+ * other two are exactly BLOCK_HEIGHT, which keeps the level grid. Seeded with
+ * the tower, so a seed is always the same tower.
+ */
+export const TOWER_HEIGHT_VARIANCE = 0.005;
+/** …and by at least this share of it: less is taken up by contact compression, and it isn't loose */
+export const TOWER_MIN_SHORTFALL = 0.25;
+export const TOWER_WIDTH_VARIANCE = 0.01;
 
-export const GRAVITY: Vec3Tuple = [0, -9.81, 0];
+/*
+ * Gravity ×2 (P-2). The world is ~100× real scale, so under real gravity the
+ * tower fell like a 27 m structure, in slow motion. ×2.5 broke the idle and
+ * tracking-loss suites; ×2 passes them (DECISIONS.md).
+ */
+export const GRAVITY_SCALE = 2;
+export const GRAVITY: Vec3Tuple = [0, -9.81 * GRAVITY_SCALE, 0];
 export const PHYSICS_TIMESTEP = 1 / 60;
+/*
+ * Contact stiffness (Hz; @react-three/rapier's default is 30). Rapier's soft
+ * contacts sink in proportion to the load. Under twice the gravity, a level
+ * carried unevenly (one loose block, C-6) tilted, and the tilts added up to a
+ * visible lean. 60 halves the sink at the same solver cost; above it, with 4
+ * solver iterations, the tower jitters.
+ */
+export const CONTACT_NATURAL_FREQUENCY = 60;
 
 /*
  * Contact friction (G-2). Wood on wood is about 0.3–0.5; with 1.0, pulling a

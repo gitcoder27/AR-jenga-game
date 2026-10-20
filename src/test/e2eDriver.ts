@@ -10,6 +10,8 @@
 import { _roots } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/gameStore';
+import { createRng, generateTowerLayout, looseBlockId } from '../game/towerLayout';
+import { tutorialTarget as tutorialTargetFor } from '../game/tutorial';
 import { worldToLandmark } from '../tracking/mapping';
 import { handSizeForDepth } from '../utils/depth';
 import { buildLandmarks, poseHandSize, type Landmark, type PoseName } from './handPoses';
@@ -108,6 +110,16 @@ export function moveHand(pose: PoseName, to: Vec3, ms: number): Promise<void> {
         };
         tick();
     });
+}
+
+/** Id of `level`'s loose block in the current tower (C-6) */
+export function looseBlock(level: number): string {
+    return looseBlockId(generateTowerLayout(createRng(useGameStore.getState().towerSeed)), level);
+}
+
+/** Id of the tutorial's glowing block in the current tower (O-1) */
+export function tutorialTarget(): string {
+    return tutorialTargetFor(useGameStore.getState().towerSeed);
 }
 
 export function store() {

@@ -570,3 +570,80 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   - GitHub's 4-vCPU x86 runners are expected to be at least as fast, but this hasn't been run there.
   - The first CI run should be checked for timing failures before the suite is made a required check.
 
+### Gravity, contact stiffness and loose blocks (P-2, C-6)
+
+- **Gravity ×2** (`GRAVITY_SCALE` in `config.ts`). `App.tsx` now uses the shared `GRAVITY` instead of its own
+  hard-coded value.
+  - Everything gravity drives takes 1/√g as long, so ×2 makes falls 0.71× as long. The review's 5.3 s topple
+    becomes about 3.7 s. Its ×2.5 figure, 3.3 s, fits the same scaling. My sim topple setup didn't bring the top
+    down, so this is the scaling, not a new measurement.
+  - **×2.5 was tried first and rejected:**
+    - The idle top sank 0.11 (bound 0.1), from soft-contact compression.
+    - A 3-frame tracking dropout shoved the tower.
+    - Scoring and placement tests failed.
+  - **At ×2,** with the changes below, the physics suite passes.
+  - **The yank test changed.** The grip's cap is in g, because the friction holding a loaded block scales with g.
+    So under ×2 a 30 u/s yank of a level-8 block no longer slips. It comes out cleanly instead: the blocks above
+    move 0.06 or less and nothing falls. At 1 g it slipped, also without dragging the tower.
+
+    The test now checks that outcome (no drag) at 30 and 60 u/s, and that a 60 u/s yank still slips.
+- **Contact stiffness 60 Hz** (`CONTACT_NATURAL_FREQUENCY`; @react-three/rapier's default is 30). The app's
+  `<Physics>` and the headless scene both use it.
+  - Rapier's soft contacts sink in proportion to load. Under twice the gravity, a level carried unevenly (one loose
+    block) tilted, and the tilts added up: 0.17–0.25 of lean at the top.
+  - 60 Hz halves the sink and the lean, at the same 4 solver iterations.
+  - With 4 iterations, 90 Hz and above made the tower jitter (lean 0.5–1.4). 120 Hz needs 8 iterations, double the
+    solver cost; not taken.
+- **Block variance (C-6).** In each level, one block in a random slot is short by 0.125–0.5% of its height. The
+  other two are full height, on the level grid. Seeded with the tower; the jitter of earlier seeds is unchanged.
+  The width also varies, up to 1% narrower, for looks.
+  - **Why one short block, not three random heights:** a level resting on a single tallest block tips, and the
+    tower leaned up to 0.43.
+  - **Why 0.5%, not the review's ±1–2%:** the gap above a loose block lets it pitch as it's pulled. Past halfway it
+    rose into the gap and levered the cross block above it out. Careful 4 u/s pulls of loose blocks (levels 1–15,
+    seeds 1 and 3):
+
+    | Variance | Collapses (of 30) |
+    |---|---|
+    | 2% | 3 |
+    | 1% | 1 |
+    | 0.5% | 0 |
+
+    Two grab changes didn't help, so neither was kept:
+    - holding the block up against sag;
+    - a 2.5× stiffer orientation hold.
+  - **Measured** (`tests/physics/looseBlocks.test.ts`):
+    - Identical blocks: each carried 30–37% of its level's load. The fingertip, which pushes with at most a
+      block's weight, pushed none of 90 out.
+    - With the variance: 12 of 90 push out cleanly (levels 1–15, seeds 1–2), and every seed has 5 or more levels
+      with a block carrying under 5% of the load.
+    - Every loose block in levels 1–11 (seeds 1–3) comes out at 4 u/s without moving the tower 0.5.
+    - The review asked for 1–3 per level. This gives one per level by design, and about a third of them are loose
+      enough for the fingertip alone.
+  - **The flip side, by design:** in a level with a loose block, the other two carry half the level each, not a
+    third. Pulling one of those drags the level above, and the tightest low ones (2-0 or 1-0 in seed 1) don't come
+    out at all. That's the game: find the loose one.
+    - The mechanism tests that pull a fixed block now run on identical blocks (`createScene({ uniformBlocks:
+      true })`), each with a comment saying so: pull, frame rate, grab query, moves, tracking loss.
+    - The real tower is covered by the loose-block tests.
+    - The E2E specs grab each level's loose block (`looseBlock(driver, level)`).
+    - The tutorial's glowing block is level 4's loose one; the card says it's a loose one.
+  - **Settling:** a new tower now takes 3–4.5 s to come to rest, against 2.5 s before. The tests that compare
+    against a settled tower wait for every block to sleep (`scene.settle()`). The idle suite checks the settling
+    (the top stays within 0.3 of its layout) and the creep (under 0.1 over 30 s) separately.
+- **Known, not fixed:**
+  - **Upper-level drag.** Near the top, few levels press on the block above, so a careful pull drags them, loose
+    block or not.
+
+    | | 1 g, 30 Hz (before) | ×2, 60 Hz (after) |
+    |---|---|---|
+    | Levels 11–14 | 0.5–1.0 | 0.04–1.1 |
+    | Level 15 | 1.1–1.3 | 2.1–2.9 |
+
+    This is the inherited 16-0 bug in the same class. A known-bug test now covers levels 12–15. It needs
+    contact-solver work, not tuning.
+  - **A straight lift of a top-centre block** shoves its neighbours 0.4–0.5 sideways, even on identical blocks. In
+    one seed's varied tower that tipped the short neighbour off. The H-5 tracking-loss tests lift on identical
+    blocks.
+  - **Difficulty presets from the seed** (the review's suggestion) are not done.
+

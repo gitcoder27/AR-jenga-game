@@ -7,9 +7,11 @@ import { createRulesMonitor } from './appRules';
 
 const TOP_FACE = TOWER_LEVELS * BLOCK_HEIGHT;
 
+// Identical blocks (C-6): the moves extract fixed blocks, which in the game's
+// tower may be tight ones. The rules don't depend on block sizes.
 async function settledScene(seed: number): Promise<Scene> {
-    const scene = await createScene({ seed });
-    scene.stepFor(2);
+    const scene = await createScene({ seed, uniformBlocks: true });
+    scene.settle();
     rebaseline(scene);
     return scene;
 }

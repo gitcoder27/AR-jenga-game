@@ -51,9 +51,10 @@ function placeFingertips(p: Vec3): void {
     scene.step();
 }
 
+// The query's geometry is checked against nominal blocks (C-6 makes some 0.5–2% shorter)
 beforeAll(async () => {
-    scene = await createScene({ seed: 7 });
-    scene.stepFor(2);
+    scene = await createScene({ seed: 7, uniformBlocks: true });
+    scene.settle();
     rebaseline(scene);
     samples = samplePoints(scene.blocks, SAMPLES, 99);
 });
@@ -97,8 +98,8 @@ describe('cursor feedback matches what a pinch would grab [F-1, F-2]', () => {
 
 describe('sticky pinch [G-4]', () => {
     it('pinching in empty air and then sweeping into a block does not grab it', async () => {
-        const s = await createScene({ seed: 2 });
-        s.stepFor(1);
+        const s = await createScene({ seed: 2, uniformBlocks: true });
+        s.settle();
         const block = s.block('5-0');
         const axis = blockAxis(block);
         const pinch = frontPinchPoint(block);
@@ -118,8 +119,8 @@ describe('sticky pinch [G-4]', () => {
     });
 
     it('a hand that appears already pinching next to a block does not grab until it reopens', async () => {
-        const s = await createScene({ seed: 2 });
-        s.stepFor(1);
+        const s = await createScene({ seed: 2, uniformBlocks: true });
+        s.settle();
         const block = s.block('5-0');
         const axis = blockAxis(block);
         const pinch = frontPinchPoint(block);
@@ -130,8 +131,8 @@ describe('sticky pinch [G-4]', () => {
     });
 
     it('a hand that reappears pinched does not grab, even through the gesture debounce', async () => {
-        const s = await createScene({ seed: 2 });
-        s.stepFor(1);
+        const s = await createScene({ seed: 2, uniformBlocks: true });
+        s.settle();
         const block = s.block('5-0');
         const axis = blockAxis(block);
         const pinch = frontPinchPoint(block);
@@ -148,8 +149,8 @@ describe('sticky pinch [G-4]', () => {
     });
 
     it('a pinch closing on a block grabs it (open → closing → pinching)', async () => {
-        const s = await createScene({ seed: 2 });
-        s.stepFor(1);
+        const s = await createScene({ seed: 2, uniformBlocks: true });
+        s.settle();
         const block = s.block('5-0');
         const axis = blockAxis(block);
         const pinch = frontPinchPoint(block);
