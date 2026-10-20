@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore, type TrackingStatus } from '../../store/gameStore';
 import type { FoulReason, MovePhase } from '../../game/moves';
-import { CalibrationOverlay, DepthPanel } from './DepthControls';
+import { CalibrationOverlay, SettingsPanel } from './Settings';
 import { depthHint } from './depthHint';
 import './HUD.css';
 
@@ -40,7 +40,6 @@ export const HUD: React.FC = () => {
         trackingError,
         trackingDelegate,
         retryTracking,
-        resetView,
         movePhase,
         placementTarget,
         foulReason,
@@ -49,7 +48,7 @@ export const HUD: React.FC = () => {
         heldBlockId,
         depthSettings,
     } = useGameStore();
-    const [depthOpen, setDepthOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const moveHint = placementTarget !== null && movePhase === 'HOLDING' ? 'LET GO TO PLACE IT' : MOVE_HINTS[movePhase];
 
     // Keyboard fallback for camera mode (H-2)
@@ -136,19 +135,15 @@ export const HUD: React.FC = () => {
                     aria-pressed={isCameraMode}
                     title="Turn the view with your hand (C)"
                 >
-                    TURN VIEW (C)
+                    TURN VIEW<span className="hud-key-hint"> (C)</span>
                 </button>
 
                 <button
-                    className={`hud-button ${depthOpen ? 'active' : ''}`}
-                    onClick={() => setDepthOpen(!depthOpen)}
-                    aria-expanded={depthOpen}
+                    className={`hud-button ${settingsOpen ? 'active' : ''}`}
+                    onClick={() => setSettingsOpen(!settingsOpen)}
+                    aria-expanded={settingsOpen}
                 >
-                    DEPTH
-                </button>
-
-                <button className="hud-button" onClick={resetView}>
-                    RESET VIEW
+                    SETTINGS
                 </button>
 
                 <button className="hud-button exit-game" onClick={returnToMenu}>
@@ -156,7 +151,7 @@ export const HUD: React.FC = () => {
                 </button>
             </div>
 
-            {depthOpen && <DepthPanel onClose={() => setDepthOpen(false)} />}
+            {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
             <CalibrationOverlay />
 
             {/* Hand tracking failed to start (H-9) */}

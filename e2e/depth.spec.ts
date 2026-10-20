@@ -19,7 +19,7 @@ async function handDistance(driver: import('./fixtures').Fixtures['driver']): Pr
 // H-4: hold near, then far; those sizes become the ends of the depth range.
 test('calibrating near then far sets the depth range [H-4]', async ({ page, driver, startGame }) => {
   await startGame('SANDBOX')
-  await page.getByRole('button', { name: 'DEPTH' }).click()
+  await page.getByRole('button', { name: 'SETTINGS' }).click()
   await page.getByRole('button', { name: /calibrate/i }).click()
   await expect(page.getByText(/as near the webcam/i)).toBeVisible()
   await driver((d) => d.setHandInImage('relaxed', 0.3, 0.5, 0.5))
@@ -45,7 +45,7 @@ test('reach-in flips which way the hand moves in depth [H-3]', async ({ page, dr
   await driver((d) => d.setHandInImage('relaxed', 0.3, 0.5, 0.45))
   await page.waitForTimeout(1500)
   const mirror = await handDistance(driver)
-  await page.getByRole('button', { name: 'DEPTH' }).click()
+  await page.getByRole('button', { name: 'SETTINGS' }).click()
   await page.getByRole('button', { name: 'INTO THE SCENE' }).click()
   await page.waitForTimeout(1500)
   const reachIn = await handDistance(driver)

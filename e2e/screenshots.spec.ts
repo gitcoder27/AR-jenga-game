@@ -25,8 +25,8 @@ test.describe('screenshots', () => {
       await page.waitForTimeout(500)
       await shot('1-start')
 
-      // 1280×720 renders at ~2 FPS in SwiftShader
-      await startGame('CLASSIC', { minFps: vp.width > 1000 ? 1 : 8 })
+      // SwiftShader: 1280×720 renders at ~2 FPS, 390×844 at ~5
+      await startGame('CLASSIC', { minFps: vp.width > 1000 ? 1 : 4 })
       await page.waitForTimeout(6000) // instructions overlay fades
       await shot('2-game-no-hand')
 

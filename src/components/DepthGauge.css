@@ -1,7 +1,7 @@
 /* Depth gauge (H-3): right edge, between the score and the camera preview */
 .depth-gauge {
     position: absolute;
-    right: 16px;
+    right: var(--inset-right);
     top: 50%;
     transform: translateY(-50%);
     display: flex;
@@ -45,4 +45,11 @@
     margin-top: -2px;
     background: #00e5ff;
     box-shadow: 0 0 6px #00e5ff;
+}
+
+/* Short screens: clear of the score above and the camera preview below (M-5) */
+@media (max-height: 500px) {
+    .depth-gauge-track {
+        height: 24vh;
+    }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
+import './Webcam.css'
 
 interface WebcamProps {
   onVideoReady: (video: HTMLVideoElement) => void
@@ -71,21 +72,8 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
       <video
         ref={videoRef}
         data-testid="webcam-video"
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          right: 20,
-          width: 240,
-          height: 135,
-          border: '2px solid #00e5ff',
-          borderRadius: '8px',
-          zIndex: 150,
-          transform: 'scaleX(-1)', // Mirror
-          display: isWebcamVisible && !error ? 'block' : 'none',
-          pointerEvents: 'none',
-          objectFit: 'cover',
-          boxShadow: '0 0 20px rgba(0, 229, 255, 0.3)'
-        }}
+        className="webcam-preview"
+        style={{ display: isWebcamVisible && !error ? 'block' : 'none' }}
         playsInline
       />
       {error && (

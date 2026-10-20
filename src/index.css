@@ -1,3 +1,32 @@
+/*
+ * Layout shared by the HUD and the camera preview (M-5): safe-area insets
+ * (notches, home indicator), the bottom bar's height and the preview's width.
+ */
+:root {
+  --inset-top: max(16px, env(safe-area-inset-top));
+  --inset-right: max(16px, env(safe-area-inset-right));
+  --inset-bottom: max(16px, env(safe-area-inset-bottom));
+  --inset-left: max(16px, env(safe-area-inset-left));
+  --hud-button-height: 40px;
+  --hud-bar-rows: 1;
+  --hud-bar-height: calc(var(--hud-bar-rows) * var(--hud-button-height) + (var(--hud-bar-rows) - 1) * 8px);
+  --preview-width: clamp(120px, 22vw, 240px);
+}
+
+/* Phones in portrait: the bar takes two rows of three, under the preview */
+@media (max-width: 699px) {
+  :root {
+    --hud-bar-rows: 2;
+  }
+}
+
+/* Short screens (phones in landscape): a slimmer bar */
+@media (max-height: 500px) {
+  :root {
+    --hud-button-height: 32px;
+  }
+}
+
 body {
   margin: 0;
   padding: 0;

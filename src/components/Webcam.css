@@ -1,0 +1,23 @@
+/* The camera preview (M-5): bottom right, beside the HUD's bottom bar, or above it on narrow screens */
+.webcam-preview {
+  position: absolute;
+  right: var(--inset-right);
+  bottom: var(--inset-bottom);
+  width: var(--preview-width);
+  aspect-ratio: 16 / 9;
+  height: auto;
+  box-sizing: border-box;
+  border: 2px solid #00e5ff;
+  border-radius: 8px;
+  z-index: 150;
+  transform: scaleX(-1); /* Mirror */
+  pointer-events: none;
+  object-fit: cover;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+}
+
+@media (max-width: 699px) {
+  .webcam-preview {
+    bottom: calc(var(--inset-bottom) + var(--hud-bar-height) + 12px);
+  }
+}

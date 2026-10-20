@@ -11,11 +11,12 @@ const CALIBRATION_TEXT: Record<Exclude<CalibrationStatus, 'idle'>, string> = {
 };
 
 /**
- * Depth settings panel (H-3, H-4): which way the hand moves in depth, and the
- * 5-second near/far calibration.
+ * Settings panel: the view (RESET VIEW, M-5 moved it here from the bar), which
+ * way the hand moves in depth (H-3), and the 5-second near/far calibration (H-4).
  */
-export const DepthPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const depthSettings = useGameStore((s) => s.depthSettings);
+    const resetView = useGameStore((s) => s.resetView);
     const heldBlockId = useGameStore((s) => s.heldBlockId);
     const setReachIn = useGameStore((s) => s.setReachIn);
     const startCalibration = useGameStore((s) => s.startCalibration);
@@ -23,9 +24,13 @@ export const DepthPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { reachIn, calibration } = depthSettings;
 
     return (
-        <div className="hud-depth-panel" role="dialog" aria-label="Depth settings">
-            <p className="hud-depth-label">MOVING YOUR HAND TOWARD THE WEBCAM MOVES IT:</p>
-            <div className="hud-depth-choice">
+        <div className="hud-settings-panel" role="dialog" aria-label="Settings">
+            <p className="hud-settings-label">VIEW</p>
+            <div className="hud-settings-row">
+                <button className="hud-button" onClick={resetView}>RESET VIEW</button>
+            </div>
+            <p className="hud-settings-label">MOVING YOUR HAND TOWARD THE WEBCAM MOVES IT:</p>
+            <div className="hud-settings-row">
                 <button className={`hud-button ${!reachIn ? 'active' : ''}`} aria-pressed={!reachIn} onClick={() => setReachIn(false)}>
                     TOWARD YOU
                 </button>
@@ -33,10 +38,10 @@ export const DepthPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     INTO THE SCENE
                 </button>
             </div>
-            <p className="hud-depth-label">
+            <p className="hud-settings-label">
                 RANGE: {calibration ? 'CALIBRATED' : 'DEFAULT'}
             </p>
-            <div className="hud-depth-choice">
+            <div className="hud-settings-row">
                 <button
                     className="hud-button"
                     disabled={heldBlockId !== null}
@@ -53,7 +58,7 @@ export const DepthPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </button>
                 )}
             </div>
-            <button className="hud-depth-close" onClick={onClose} aria-label="Close depth settings">×</button>
+            <button className="hud-settings-close" onClick={onClose} aria-label="Close settings">×</button>
         </div>
     );
 };

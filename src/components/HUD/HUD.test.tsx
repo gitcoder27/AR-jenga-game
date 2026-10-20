@@ -88,11 +88,11 @@ describe('HUD', () => {
   });
 
   describe('depth [H-3, H-4]', () => {
-    it('the DEPTH panel sets the direction and starts calibration', () => {
+    it('the SETTINGS panel sets the depth direction and starts calibration', () => {
       overrides = {};
       render(<HUD />);
-      fireEvent.click(screen.getByRole('button', { name: 'DEPTH' }));
-      expect(screen.getByRole('dialog', { name: /depth settings/i })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'SETTINGS' }));
+      expect(screen.getByRole('dialog', { name: /settings/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'TOWARD YOU' })).toHaveAttribute('aria-pressed', 'true');
       screen.getByRole('button', { name: 'INTO THE SCENE' }).click();
       expect(mockSetReachIn).toHaveBeenCalledWith(true);

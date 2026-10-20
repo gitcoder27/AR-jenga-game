@@ -15,7 +15,8 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: 20px;
+    gap: 12px;
+    padding: var(--inset-top) var(--inset-right) 12px var(--inset-left);
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
     pointer-events: auto;
     /* Allow clicking title/score if needed */
@@ -29,8 +30,9 @@
 
 .hud-title-container h1 {
     margin: 0;
-    font-size: 1.5rem;
-    letter-spacing: 2px;
+    font-size: clamp(1rem, 4.2vw, 1.5rem);
+    letter-spacing: clamp(1px, 0.4vw, 2px);
+    white-space: nowrap;
     text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
 }
 
@@ -58,12 +60,14 @@
 }
 
 .hud-score .value {
-    font-size: 2rem;
+    font-size: clamp(1.4rem, 5vw, 2rem);
     font-weight: bold;
 }
 
 .hud-instructions {
     position: absolute;
+    max-width: calc(100% - var(--inset-left) - var(--inset-right));
+    box-sizing: border-box;
     top: 15%;
     /* Higher up */
     left: 50%;
@@ -86,21 +90,60 @@
 
 .hud-bottom-controls {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: var(--inset-bottom);
+    left: var(--inset-left);
+    /* Beside the camera preview, which sits at the bottom right (M-5) */
+    max-width: calc(100% - var(--inset-left) - var(--inset-right) - var(--preview-width) - 16px);
     pointer-events: auto;
     display: flex;
-    gap: 15px;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .hud-button {
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid #00e5ff;
     color: #00e5ff;
-    padding: 10px 20px;
+    min-height: var(--hud-button-height);
+    padding: 0 16px;
+    font-size: 0.85rem;
+    white-space: nowrap;
     cursor: pointer;
     font-family: inherit;
     transition: all 0.2s;
+}
+
+/* Phones in portrait: two rows of three across the bottom, the preview above (M-5) */
+@media (max-width: 699px) {
+    .hud-bottom-controls {
+        right: var(--inset-right);
+        max-width: none;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .hud-button {
+        padding: 0 6px;
+        font-size: 0.7rem;
+        white-space: normal;
+        letter-spacing: 0;
+    }
+
+    .hud-key-hint {
+        display: none;
+    }
+}
+
+/* Short screens (phones in landscape): a slimmer bar */
+@media (max-height: 500px) {
+    .hud-button {
+        padding: 0 10px;
+        font-size: 0.7rem;
+    }
+
+    .hud-top-bar {
+        padding-bottom: 6px;
+    }
 }
 
 .hud-button.sandbox-reset {
@@ -149,20 +192,24 @@
 .hud-modal {
     background: #111;
     border: 2px solid #ff0000;
-    padding: 40px;
+    width: min(480px, calc(100% - var(--inset-left) - var(--inset-right)));
+    box-sizing: border-box;
+    max-height: calc(100% - var(--inset-top) - var(--inset-bottom));
+    overflow-y: auto;
+    padding: clamp(16px, 5vmin, 40px);
     text-align: center;
     box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
 }
 
 .hud-modal h2 {
     color: #ff0000;
-    font-size: 2.5rem;
+    font-size: clamp(1.3rem, 6vw, 2.5rem);
     margin-top: 0;
     letter-spacing: 4px;
 }
 
 .hud-final-score {
-    margin: 30px 0;
+    margin: clamp(10px, 4vh, 30px) 0;
 }
 
 .hud-final-score .label {
@@ -172,14 +219,15 @@
 }
 
 .hud-final-score .value {
-    font-size: 4rem;
+    font-size: clamp(2.2rem, 10vmin, 4rem);
     font-weight: bold;
     color: #00e5ff;
 }
 
 .hud-modal-actions {
     display: flex;
-    gap: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
     justify-content: center;
 }
 
@@ -188,8 +236,8 @@
     background: transparent;
     border: 1px solid #00e5ff;
     color: #00e5ff;
-    padding: 15px 30px;
-    font-size: 1.2rem;
+    padding: 12px 20px;
+    font-size: clamp(0.9rem, 3vw, 1.2rem);
     cursor: pointer;
     font-family: inherit;
 }
@@ -269,7 +317,7 @@
     overflow-wrap: anywhere;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 699px) {
     .hud-title-container {
         flex-wrap: wrap;
         row-gap: 6px;
@@ -283,7 +331,7 @@
 
 .hud-move-hint {
     position: absolute;
-    top: 72px;
+    top: calc(var(--inset-top) + 60px);
     left: 50%;
     transform: translateX(-50%);
     max-width: calc(100vw - 32px);
@@ -318,12 +366,14 @@
     opacity: 0.85;
 }
 
-/* Depth settings (H-3, H-4) */
-.hud-depth-panel {
+/* Settings: view and depth (H-3, H-4), above the bottom bar (M-5) */
+.hud-settings-panel {
     position: absolute;
-    bottom: 76px;
-    left: 20px;
-    max-width: calc(100vw - 40px);
+    bottom: calc(var(--inset-bottom) + var(--hud-bar-height) + 12px);
+    left: var(--inset-left);
+    max-width: calc(100% - var(--inset-left) - var(--inset-right));
+    max-height: calc(100% - var(--inset-bottom) - var(--hud-bar-height) - 12px - var(--inset-top));
+    overflow-y: auto;
     box-sizing: border-box;
     padding: 14px 40px 14px 16px;
     background: rgba(0, 0, 0, 0.85);
@@ -332,20 +382,24 @@
     pointer-events: auto;
 }
 
-.hud-depth-label {
+.hud-settings-label {
     margin: 0 0 8px;
     font-size: 0.8rem;
     letter-spacing: 1px;
 }
 
-.hud-depth-choice {
+.hud-settings-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
 }
 
-.hud-depth-close {
+.hud-settings-row .hud-button {
+    padding: 0 12px;
+}
+
+.hud-settings-close {
     position: absolute;
     top: 6px;
     right: 8px;

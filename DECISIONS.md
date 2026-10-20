@@ -446,3 +446,37 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
       middle.
   - The review's playtests (time to first touch, depth reversals, mirror vs. reach-in with 5+ people) need people.
 - The DEPTH button makes six in the bottom bar. M-5 (#12) owns that layout.
+
+### Responsive layout (M-5)
+
+- **The landmark→world mapping part of #12 (M-4)** was done in Phase 1: the frustum-based mapping in `tracking/mapping.ts`.
+- **Shared layout variables** in `index.css`:
+  - safe-area insets (`viewport-fit=cover` added);
+  - the bottom bar's height (1 row, or 2 below 700 px; slimmer buttons below 500 px tall);
+  - the camera preview's width, `clamp(120px, 22vw, 240px)`.
+
+  The HUD and the preview, which lives outside the HUD, place themselves by these variables.
+- **The bottom bar:**
+  - It went from 6 buttons to 4–5. **SETTINGS** opens one panel holding RESET VIEW, the depth direction and
+    calibration (H-3, H-4).
+  - On wide screens it wraps within the space left of the preview.
+  - Below 700 px it becomes a 3-column grid across the bottom, with the preview above it, and the "(C)" key hint is
+    hidden.
+- **The start screen:**
+  - `clamp()` sizes for the title (in vw and vh), the subtitle, the buttons and the footer.
+  - The mode buttons stack below 700 px.
+  - The content scrolls rather than clipping if it ever has to.
+  - In the stacked column the buttons are `flex: none`. With `flex: 1 1 0` and `overflow: hidden` they collapsed to
+    60 px, and their labels overflowed.
+- **The modal, panels and gauge** are sized to the viewport less the insets. The gauge is 24vh tall on short
+  screens, to clear the score and the preview.
+- **Validation:**
+  - `e2e/layout.spec.ts`, at 1280×720, 390×844 and 844×390. Nothing on the start screen or the HUD (with the camera
+    preview, the gauge and the settings panel open) is outside the viewport. No control overlaps another, the
+    preview, the title, the score or the gauge, and no button's label overflows it.
+  - Before: `docs/screenshots/before-m5/`. At 390 the start screen and EXIT GAME are clipped, and at 844×390 the
+    preview covers RESET VIEW, EXIT GAME and the gauge. After: `docs/screenshots/after-m5/`.
+- **Edge-to-edge reach** at the three viewports is unchanged from Phase 1. The mapping is the same, and the screenshot
+  spec's hand-at-the-edges shots show it.
+- **The screenshot spec's phone FPS floor dropped from 8 to 4.** SwiftShader at 390×844 ran at about 5–6 FPS here,
+  with or without these changes (measured both ways). The screenshots don't need a frame rate.

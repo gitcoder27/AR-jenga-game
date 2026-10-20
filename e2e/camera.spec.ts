@@ -149,6 +149,7 @@ test('orbit and zoom are limited, panning is off, and RESET VIEW restores the de
   const target = await driver((d) => d.orbitTarget())
   expect(dist(target, { x: tx, y: ty, z: tz })).toBeLessThan(0.01)
 
+  await page.getByRole('button', { name: 'SETTINGS' }).click()
   await page.getByRole('button', { name: /reset view/i }).click()
   await page.waitForTimeout(500)
   expect(dist(await driver((d) => d.cameraPosition()), start)).toBeLessThan(0.01)

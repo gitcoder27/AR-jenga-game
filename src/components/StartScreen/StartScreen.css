@@ -8,16 +8,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    padding: var(--inset-top) var(--inset-right) var(--inset-bottom) var(--inset-left);
     z-index: 1000;
     color: #00e5ff;
     font-family: 'Courier New', Courier, monospace;
-    overflow: hidden;
+    overflow: auto;
 }
 
 .start-content {
     text-align: center;
-    max-width: 800px;
-    padding: 40px;
+    width: min(800px, 100%);
+    box-sizing: border-box;
+    max-height: 100%;
+    overflow-y: auto;
+    margin: auto;
+    padding: clamp(16px, 5vmin, 40px);
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(0, 229, 255, 0.2);
     backdrop-filter: blur(10px);
@@ -26,42 +32,47 @@
 }
 
 .start-header {
-    margin-bottom: 60px;
+    margin-bottom: clamp(16px, 6vh, 60px);
 }
 
 .glitch-title {
-    font-size: 4rem;
+    /* Fits a 390 px phone: the review measured it 141 px past the left edge (M-5) */
+    font-size: clamp(1.8rem, min(8.5vw, 11vh), 4rem);
     font-weight: 900;
-    letter-spacing: 12px;
+    letter-spacing: clamp(3px, 1.4vw, 12px);
     position: relative;
     text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
     margin-bottom: 10px;
 }
 
 .start-subtitle {
-    font-size: 1rem;
-    letter-spacing: 4px;
+    font-size: clamp(0.7rem, 2.6vw, 1rem);
+    letter-spacing: clamp(1px, 0.8vw, 4px);
     opacity: 0.7;
 }
 
 .mode-selection {
     display: flex;
-    gap: 30px;
+    gap: clamp(12px, 3vw, 30px);
     justify-content: center;
-    margin-bottom: 60px;
+    margin-bottom: clamp(16px, 6vh, 60px);
 }
+
+
 
 .start-button {
     background: transparent;
     border: 1px solid #00e5ff;
     color: #00e5ff;
-    padding: 30px 40px;
+    padding: clamp(14px, 4vh, 30px) clamp(16px, 4vw, 40px);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 280px;
+    flex: 1 1 0;
+    max-width: 340px;
+    min-width: 0;
     position: relative;
     overflow: hidden;
 }
@@ -74,7 +85,7 @@
 }
 
 .btn-glitch-content {
-    font-size: 1.5rem;
+    font-size: clamp(1.05rem, 3.5vw, 1.5rem);
     font-weight: bold;
     letter-spacing: 2px;
     margin-bottom: 8px;
@@ -97,9 +108,13 @@
 }
 
 .start-footer {
-    font-size: 0.8rem;
+    font-size: clamp(0.65rem, 2.2vw, 0.8rem);
     opacity: 0.5;
-    letter-spacing: 2px;
+    letter-spacing: clamp(0px, 0.4vw, 2px);
+}
+
+.start-footer p {
+    margin: 0;
 }
 
 /* Animations */
@@ -113,4 +128,18 @@
 
 .start-content {
     animation: flicker 5s infinite;
+}
+
+/* Stacked below 700 px (M-5) */
+@media (max-width: 699px) {
+    .mode-selection {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .start-button {
+        /* Not flex 1 1 0 in a column: with overflow hidden it would collapse to nothing */
+        flex: none;
+        width: 100%;
+    }
 }
