@@ -25,9 +25,9 @@ test('a block from an odd level, let go over the top, snaps into the next slot t
   await page.waitForTimeout(1200)
   await expect.poll(async () => driver((d) => d.store().heldBlockId)).toBe(id)
 
-  // Out briskly along its length, up, over the top, then down a little off-centre
+  // Out carefully along its length (a yank slips, G-1), up, over the top, then down a little off-centre
   const out = { ...pinch, x: pinch.x + 8 }
-  await carryTo(page, driver, out, 700, 600)
+  await carryTo(page, driver, out, 2000, 600)
   const offset = { x: pinch.x - b.x, y: pinch.y - b.y, z: pinch.z - b.z }
   const handFor = (c: { x: number; y: number; z: number }) => ({ x: c.x + offset.x, y: c.y + offset.y, z: c.z + offset.z })
   await carryTo(page, driver, handFor({ x: b.x + 8, y: TOP_FACE + 4, z: b.z }), 1500, 600)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { useFrame, useThree } from '@react-three/fiber'
-import { RigidBody, type RapierRigidBody, useRapier } from '@react-three/rapier'
+import { RigidBody, type RapierRigidBody, useBeforePhysicsStep, useRapier } from '@react-three/rapier'
 import { calculateDepth } from '../utils/depth'
 import { adaptiveLerp, calculateVelocity } from '../utils/smoothing'
 import useGesture from '../hooks/useGesture'
@@ -120,6 +120,9 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, con
     }, [handPhysics])
     // Velocity tracking for adaptive smoothing
     const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
+
+    // The soft grab's forces follow the pinch point every physics step (G-1)
+    useBeforePhysicsStep(() => handPhysics.beforeStep())
 
     useFrame((_, delta) => {
         if (!result || !result.landmarks || result.landmarks.length === 0) {

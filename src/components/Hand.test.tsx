@@ -41,6 +41,7 @@ vi.mock('@react-three/rapier', async (importOriginal) => {
         }),
         useRapier: vi.fn(),
         useFixedJoint: vi.fn(),
+        useBeforePhysicsStep: vi.fn(),
     }
 })
 
@@ -63,13 +64,24 @@ describe('Hand Component', () => {
         intersectionWithShape: vi.fn(),
         intersectionsWithShape: vi.fn(),
         castRay: vi.fn().mockReturnValue(null),
-        createImpulseJoint: vi.fn(),
+        createImpulseJoint: vi.fn().mockReturnValue({ setContactsEnabled: vi.fn() }),
         removeImpulseJoint: vi.fn(),
+        // The soft grab's proxy body (G-1)
+        createRigidBody: vi.fn().mockReturnValue({ handle: 99 }),
+        removeRigidBody: vi.fn(),
         getRigidBody: vi.fn(),
         forEachRigidBody: vi.fn(),
     }
+    const proxyDesc = {
+        setTranslation: () => proxyDesc,
+        setRotation: () => proxyDesc,
+        setGravityScale: () => proxyDesc,
+        setCanSleep: () => proxyDesc,
+        setAdditionalMassProperties: () => proxyDesc,
+    }
     const mockRapier = {
         Ball: vi.fn(),
+        RigidBodyDesc: { dynamic: () => proxyDesc },
         JointData: {
             fixed: vi.fn().mockReturnValue({}),
         },
@@ -125,6 +137,7 @@ describe('Hand Component', () => {
             setAngularDamping: vi.fn(),
             translation: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }),
             rotation: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0, w: 1 }),
+            mass: vi.fn().mockReturnValue(1),
             userData: { blockId: '2-0' },
         }
         const mockCollider = {

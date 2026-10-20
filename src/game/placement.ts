@@ -1,10 +1,8 @@
 import type { RigidBody, World } from '@dimforge/rapier3d-compat';
-import { BLOCK_GAP, BLOCK_HEIGHT, BLOCK_WIDTH, BLOCKS_PER_LEVEL } from './config';
+import { BLOCK_GAP, BLOCK_HEIGHT, BLOCK_WIDTH, BLOCKS_PER_LEVEL, TOWER_FOOTPRINT } from './config';
 import { blockIdOf, type Vec3 } from './grab';
 import { isLevelRotated, levelCenterY } from './towerLayout';
 
-/** Half-extent of the tower's square footprint. */
-const FOOTPRINT = 1.5 * BLOCK_WIDTH + BLOCK_GAP;
 const SPACING = BLOCK_WIDTH + BLOCK_GAP;
 /** The assist engages when the held block's centre is within this horizontal distance of the slot… */
 export const ASSIST_RADIUS = BLOCK_WIDTH * 1.2;
@@ -51,7 +49,7 @@ export function findPlacementSlot(world: World, near: Vec3, exclude: RigidBody |
     world.forEachRigidBody((body) => {
         if (body === exclude || !body.isEnabled() || blockIdOf(body) === null) return;
         const t = body.translation();
-        if (Math.max(Math.abs(t.x), Math.abs(t.z)) > FOOTPRINT) return;
+        if (Math.max(Math.abs(t.x), Math.abs(t.z)) > TOWER_FOOTPRINT) return;
         const { level, slot } = levelAndSlot(t);
         if (!byLevel.has(level)) byLevel.set(level, new Set());
         byLevel.get(level)!.add(slot);

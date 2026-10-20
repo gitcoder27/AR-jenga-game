@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { knownBug } from './knownBug';
 import { BLOCK_LENGTH } from '../../src/game/config';
 import { createRng } from '../../src/game/towerLayout';
 import { createScene } from './scene';
+import { knownBug } from './knownBug';
 import { pullBlock, rebaseline } from './scenarios';
 
 const CENTRE = '8-0';
@@ -47,22 +47,38 @@ describe('pulling a level-8 block 9 units along its length', () => {
         expect(r.fellAbove).toBe(0);
     });
 
-    // Sim 6: the rigid grab passes every jitter sample to the block with unlimited force.
-    // Measured at friction 0.45 / 0.6: max shift above 1.1 to 12.4 over 3 noise seeds.
+    // Sim 6: the old rigid grab passed every jitter sample to the block with unlimited
+    // force (max shift above 1.1 to 12.4 over 3 noise seeds). The soft grab filters it.
     for (const id of [CENTRE, EDGE]) {
-        knownBug(`careful pull (6 u/s) of ${id} with ±0.15 tracking jitter shifts the blocks above by < 0.5 [G-1]`, async () => {
+        it(`careful pull (6 u/s) of ${id} with ±0.15 tracking jitter shifts the blocks above by < 0.5 and extracts it [G-1]`, async () => {
             for (const seed of [1, 2, 3]) {
                 const r = await pull(id, 6, 0.15, seed);
                 expect(r.maxShiftAbove, `jitter seed ${seed}`).toBeLessThan(0.5);
                 expect(r.fellAbove).toBe(0);
+                expect(r.extracted, `jitter seed ${seed}`).toBeGreaterThan(BLOCK_LENGTH);
             }
         });
     }
 
-    knownBug('a yank (30 u/s) slips out of the fingers instead of being dragged with unlimited force [G-1]', async () => {
+    it('a yank (30 u/s) slips out of the fingers instead of being dragged with unlimited force [G-1]', async () => {
         const r = await pull(CENTRE, 30);
         expect(r.grabbed).toBe(true);
         expect(r.stillHeld).toBe(false);
         expect(r.maxShiftAbove).toBeLessThan(0.5);
     });
+});
+
+// G-1: the grip's force cap must still be strong enough for the most loaded blocks.
+describe('the soft grab can extract any block with a careful pull', () => {
+    const extractsCleanly = async (id: string) => {
+        const r = await pull(id, 4);
+        expect(r.extracted).toBeGreaterThan(BLOCK_LENGTH);
+        expect(r.stillHeld).toBe(true);
+        expect(r.maxShiftAbove).toBeLessThan(0.5);
+    };
+    it.each(['2-0', '2-1', '1-0'])('%s comes out at 4 u/s without disturbing the tower', extractsCleanly);
+    // The lightly loaded level under the top drags level 17 along (shift ≈ 4.2;
+    // the rigid grab: 8.7). Inherited from the contact solver, not the grab;
+    // revisit with the gravity / tolerance tuning (P-2, C-6).
+    knownBug('16-0 comes out at 4 u/s without disturbing the tower', () => extractsCleanly('16-0'));
 });

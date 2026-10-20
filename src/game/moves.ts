@@ -1,10 +1,8 @@
 import type { RigidBody, World } from '@dimforge/rapier3d-compat';
-import { BLOCK_HEIGHT, BLOCK_WIDTH, BLOCK_GAP, BLOCKS_PER_LEVEL } from './config';
+import { BLOCK_HEIGHT, BLOCKS_PER_LEVEL, TOWER_FOOTPRINT } from './config';
 import { blockIdOf } from './grab';
 import { levelCenterY } from './towerLayout';
 
-/** Half-extent of the tower's square footprint. */
-export const TOWER_FOOTPRINT = 1.5 * BLOCK_WIDTH + BLOCK_GAP;
 /** A tower block whose centre drops this far below its level has fallen (C-4). */
 export const FOUL_DROP = BLOCK_HEIGHT / 2;
 /** …or whose centre is this far outside the footprint (past the edge, an unheld block tips off). */

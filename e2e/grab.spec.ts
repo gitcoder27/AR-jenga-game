@@ -1,4 +1,4 @@
-import { test, expect, flakyKnownBug } from './fixtures'
+import { test, expect } from './fixtures'
 import { carryTo, dist, frontOf, grabBlock, movedBlocks, release, storeState } from './helpers'
 
 const ID = '2-0'
@@ -10,7 +10,7 @@ test.describe('grab → carry → release', () => {
     const start = (await driver((d) => d.blockPositions()))[ID]
 
     const out = { ...hand, z: hand.z + 5 }
-    await carryTo(page, driver, out, 600)
+    await carryTo(page, driver, out, 1200)
     const carried = (await driver((d) => d.blockPositions()))[ID]
     expect(carried.z - start.z).toBeGreaterThan(3.5)
 
@@ -28,7 +28,7 @@ test.describe('grab → carry → release', () => {
     await startGame('SANDBOX')
     const { hand } = await grabBlock(page, driver, ID)
     const out = { ...hand, z: hand.z + 5 }
-    await carryTo(page, driver, out, 600)
+    await carryTo(page, driver, out, 1200)
     expect((await storeState(driver)).heldBlockId).toBe(ID)
     await release(page, driver, out)
     expect((await storeState(driver)).heldBlockId).toBeNull()
@@ -43,8 +43,8 @@ test.describe('grab → carry → release', () => {
     await expect.poll(async () => (await storeState(driver)).hoveredBlockId, { timeout: 8000 }).toBe(ID)
   })
 
-  // Toppled 3 of 3 repeats with the item-1 framing, but passed once: flaky until the soft grab (G-1) lands.
-  flakyKnownBug('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
+  // Toppled 3 of 3 with the rigid grab; passes 4 of 4 with the soft grab (G-1).
+  test('a careful pull (≈2 units/s) does not topple the tower [G-1]', async ({ page, driver, startGame }) => {
     await startGame('SANDBOX')
     const { hand } = await grabBlock(page, driver, ID)
     const before = await driver((d) => d.blockPositions())

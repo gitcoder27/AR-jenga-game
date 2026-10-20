@@ -39,7 +39,7 @@ describe('move lifecycle and scoring [C-1]', () => {
     it('a block let go beside the tower does not score', async () => {
         const scene = await settledScene(2);
         const rules = createRulesMonitor(scene);
-        const pull = pullBlock(scene, '8-0', 15, 9, 0.5);
+        const pull = pullBlock(scene, '8-0', 6, 9, 0.5);
         expect(pull.grabbed).toBe(true);
         const at = scene.hand.pinchPoint!;
         scene.stepFor(0.2, () => scene.hand.update(handInput(at, false), PHYSICS_TIMESTEP));
@@ -64,7 +64,7 @@ describe('move lifecycle and scoring [C-1]', () => {
     it('dropping the moved block off the table is a foul', async () => {
         const scene = await settledScene(4);
         const rules = createRulesMonitor(scene);
-        const pull = pullBlock(scene, '8-0', 15, 9, 0.5);
+        const pull = pullBlock(scene, '8-0', 6, 9, 0.5);
         expect(pull.grabbed).toBe(true);
         const axis = blockAxis(scene.block('8-0'));
         const from = scene.hand.pinchPoint!;

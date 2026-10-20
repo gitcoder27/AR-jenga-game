@@ -17,6 +17,8 @@ export const TOWER_LEVELS = 18;
 export const BLOCKS_PER_LEVEL = 3;
 export const TOWER_BLOCK_COUNT = TOWER_LEVELS * BLOCKS_PER_LEVEL;
 export const BLOCK_GAP = 0.05;
+/** Half-extent of the tower's square footprint */
+export const TOWER_FOOTPRINT = 1.5 * BLOCK_WIDTH + BLOCK_GAP;
 export const TOWER_JITTER_POSITION = 0.05;
 export const TOWER_JITTER_ROTATION = 0.02;
 
@@ -59,7 +61,26 @@ export const HAND_JOINT_COUNT = 21;
 export const HAND_JOINT_RADIUS = 0.05;
 export const HAND_PARKING_POSITION: Vec3Tuple = [0, -100, 0];
 export const GRAB_RADIUS = 0.5;
-export const HELD_BLOCK_DAMPING = 2;
+/*
+ * Soft grab (G-1): a proxy at the pinch point, fixed to the block, chased by a
+ * critically damped PD controller with a force cap, so a block held fast by the
+ * tower slips out of the fingers instead of dragging the tower along.
+ */
+/** Natural frequency of the position controller (Hz) */
+export const GRAB_FREQUENCY = 6;
+/** Natural frequency of the orientation controller (Hz) */
+export const GRAB_ANGULAR_FREQUENCY = 4;
+/** Force cap, as an acceleration of the held block in g (holding its weight up included) */
+export const GRAB_MAX_ACCELERATION = 20;
+/**
+ * The block slips out when it falls this far behind the pinch point while it is
+ * being drawn out of the tower: a yank loses the block instead of dragging the tower.
+ */
+export const GRAB_SLIP_DISTANCE = 1.5;
+/** …and this far once it is out, so a brisk carry at a low frame rate doesn't drop it. */
+export const GRAB_CARRY_SLIP_DISTANCE = 3;
+/** Mass of the proxy "fingertip" body */
+export const GRAB_PROXY_MASS = 1;
 /** A pinch only grabs within this long of closing; pinching in the air never grabs later (G-4). */
 export const GRAB_ONSET_WINDOW_S = 0.15;
 /** Hold the hand still this long after tracking drops out before letting go (H-5). */

@@ -106,12 +106,12 @@ export function carry(scene: Scene, from: Vec3, to: Vec3, speed: number, back: V
 }
 
 /**
- * Pull `id` out with a brisk 9-unit pull, lift it over the tower and bring
+ * Pull `id` out with a careful 9-unit pull (6 u/s), lift it over the tower and bring
  * its centre to `centre` (keeping the grab offset). Returns the hand position.
  * `beforeStep` runs before every physics step, e.g. the placement assist.
  */
 export function extractAndCarryTo(scene: Scene, id: string, centre: Vec3, liftY: number, beforeStep?: () => void): Vec3 {
-    const pull = pullBlock(scene, id, 15, 9, 0.5);
+    const pull = pullBlock(scene, id, 6, 9, 0.5);
     if (!pull.grabbed || !pull.stillHeld) throw new Error(`could not extract ${id}`);
     const axis = blockAxis(scene.block(id));
     const hand = { ...scene.hand.pinchPoint! };

@@ -157,3 +157,48 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
 - **Slow-motion beat skipped.** The review's optional 1–2 s slow-motion before the modal is not done.
 - The game-over modal says why the game ended ("A block fell from the tower" or "The block you were moving
   fell off the table"). A HUD line says what to do next in the move.
+
+### Soft grab (G-1)
+
+- **The hand drives a dynamic proxy, not the block.** On grab, a small dynamic body (mass 1, no gravity) is
+  fixed to the block at the pinch point, with contacts between the two off. Every physics step, a critically
+  damped PD controller (6 Hz linear, 4 Hz angular) pushes the proxy towards the pinch point and the grab-time
+  orientation. The kinematic hand joints never touch the held block's dynamics.
+  - The force is capped at mass × 20 g, and the torque is capped to match.
+  - If the pinch gets more than 1.5 units from the grip point while the block is still in the tower, the block
+    slips out and the grab ends. Once the block is out, the limit is 3 units, so a brisk carry at a low frame rate
+    doesn't drop it. The 1.5 is what protects the tower: with 3 or 4 everywhere, the capped force pushes for
+    longer, and 8–14 physics tests fail because the tower gets dragged.
+  - The review suggested a force cap of a few g. With 4–12 g, loaded lower blocks slipped before they moved;
+    20 g is the lowest cap that extracts every level in the tests.
+  - The controller runs in `useBeforePhysicsStep` (headless: `hand.beforeStep()`), so it follows the physics
+    rate, not the render rate.
+- **Extraction assist.** This is a deviation from the review, which only asks for the PD controller. A block
+  grabbed with blocks above it starts in "extracting" mode until its centre leaves the footprint:
+  - Only the force along its long axis is applied, with no lift and no gravity compensation, so it slides out
+    resting on its supports.
+  - Without this, any upward pinch error lifts the block into the level above and drags it along.
+  - A block with nothing above it (the top level, or one being carried) gets the full 3D controller and gravity
+    compensation.
+- **Careful pulls are slower in the tests.** Physics helpers pull at 6 u/s (was 15). The E2E outward pulls take
+  1.2–2 s (were 0.6–0.7 s, about 12 u/s). A yank out of the tower now slips, which is the point. At SwiftShader's
+  ~12 FPS, the hand target jumps about 1 unit per frame at 12 u/s, so the lag passes 1.5 within 11 steps.
+- **Gravity ×2 is not in this commit.** With gravity doubled, five pull tests failed (16-0's shift went from
+  4.2 to 21.9), so it is deferred to the P-2 tuning item, where it gets its own pass.
+- **Known bug: 16-0** (the level under the top) still drags level 17 at 4 u/s: shift 4.2, against 8.7 with the
+  rigid grab. The contact solver lets the lightly loaded top level creep, and the grab doesn't cause it.
+
+  Rigid grab vs soft grab, seed 1, max shift of the blocks above:
+
+  | Block | 2 u/s rigid | 2 u/s soft | 4 u/s rigid | 4 u/s soft | 6 u/s rigid | 6 u/s soft |
+  |-------|-------------|------------|-------------|------------|-------------|------------|
+  | 16-0  | 8.85 | 9.69 | 8.69 | 4.20 | 8.44 | 1.60 |
+  | 16-1  | 31.0 | 2.58 | 8.74 | 1.95 | 2.07 | 0.92 |
+  | 1-0   | 0.43 | 0.15 | 0.13 | 0.10 | 0.06 | 0.09 |
+  | 2-0   | 0.48 | 0.12 | 0.08 | 0.06 | 0.03 | 0.05 |
+  | 8-0   | 6.49 | 0.54 | 1.45 | 0.37 | 0.21 | 0.29 |
+  | 8-1   | 0.22 | 0.06 | 0.04 | 0.27 | 0.03 | 0.24 |
+
+  At 2 u/s the rigid grab moved the whole tower for 1-0, 2-0 and 8-0, so a low shift there is not a clean pull.
+  The soft grab is a big improvement on slow pulls. At 6 u/s it is about even, slightly worse on some edge
+  blocks. These are simulated scripted pulls; hand-tracking feel is not measured.

@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { RigidBody } from '@dimforge/rapier3d-compat';
-import { BLOCK_GAP, BLOCK_HEIGHT, BLOCK_WIDTH } from '../../src/game/config';
+import { BLOCK_HEIGHT, BLOCK_LENGTH, TOWER_FOOTPRINT as FOOTPRINT } from '../../src/game/config';
 import { createScene, type Scene, type SceneBlock } from './scene';
 import { add, blockAxis, pullBlock, rebaseline } from './scenarios';
 import { createRulesMonitor } from './appRules';
 
-/** Half-extent of the tower's square footprint. */
-const FOOTPRINT = 1.5 * BLOCK_WIDTH + BLOCK_GAP;
 const FOUL_LATENCY = 0.5;
 
 /**
@@ -90,11 +88,11 @@ describe('collapse-to-foul latency', () => {
         scene.free();
     });
 
-    it('a clean brisk extraction of a held block never fouls', async () => {
+    it('a clean careful extraction of a held block never fouls', async () => {
         const scene = await settledScene(1);
         const monitor = createRulesMonitor(scene);
-        const result = pullBlock(scene, '8-0', 15);
-        expect(result.grabbed).toBe(true);
+        const result = pullBlock(scene, '8-0', 6);
+        expect(result.extracted).toBeGreaterThan(BLOCK_LENGTH);
         expect(monitor.tracker.movingId).toBe('8-0');
         expect(monitor.check()).toBe(false);
         scene.free();

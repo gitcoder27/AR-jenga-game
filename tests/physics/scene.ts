@@ -160,6 +160,8 @@ export async function createScene({ seed = 1 }: { seed?: number } = {}): Promise
         time: 0,
         step(beforeStep) {
             beforeStep?.(scene);
+            // Same as Hand's useBeforePhysicsStep
+            hand.beforeStep();
             world.timestep = PHYSICS_TIMESTEP;
             world.step(eventQueue);
             scene.time += PHYSICS_TIMESTEP;

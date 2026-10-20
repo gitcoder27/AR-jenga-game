@@ -1,14 +1,22 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
 import type { ImpulseJoint, RigidBody, World } from '@dimforge/rapier3d-compat';
-import * as THREE from 'three';
 import type { Collider } from '@dimforge/rapier3d-compat';
 import {
+    BLOCK_HEIGHT,
+    BLOCK_LENGTH,
+    GRAB_ANGULAR_FREQUENCY,
+    GRAB_FREQUENCY,
+    GRAB_MAX_ACCELERATION,
     GRAB_ONSET_WINDOW_S,
+    GRAB_PROXY_MASS,
     GRAB_RADIUS,
+    GRAB_SLIP_DISTANCE,
+    GRAB_CARRY_SLIP_DISTANCE,
+    GRAVITY,
     HAND_PARKING_POSITION,
-    HELD_BLOCK_DAMPING,
     INDEX_TIP,
     THUMB_TIP,
+    TOWER_FOOTPRINT,
     TRACKING_LOSS_GRACE_S,
 } from './config';
 
@@ -117,8 +125,79 @@ function forEachCollider(body: RigidBody, fn: (collider: Collider) => void): voi
     for (let i = 0; i < body.numColliders(); i++) fn(body.collider(i));
 }
 
+type Quat = { x: number; y: number; z: number; w: number };
+
+function quatMultiply(a: Quat, b: Quat): Quat {
+    return {
+        w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+        x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+        y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+        z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+    };
+}
+
+function quatConjugate(q: Quat): Quat {
+    return { x: -q.x, y: -q.y, z: -q.z, w: q.w };
+}
+
+/** Rotation vector (axis × angle) that turns `from` into `to`, the short way round. */
+function rotationError(from: Quat, to: Quat): Vec3 {
+    let d = quatMultiply(to, quatConjugate(from));
+    if (d.w < 0) d = { x: -d.x, y: -d.y, z: -d.z, w: -d.w };
+    const sin = Math.hypot(d.x, d.y, d.z);
+    if (sin < 1e-9) return { x: 0, y: 0, z: 0 };
+    const angle = 2 * Math.atan2(sin, d.w);
+    return { x: (d.x / sin) * angle, y: (d.y / sin) * angle, z: (d.z / sin) * angle };
+}
+
+const GRAVITY_MAGNITUDE = Math.hypot(...GRAVITY);
+
+/** A block's long axis (its local +Z) in world space. */
+function blockAxis(q: Quat): Vec3 {
+    return { x: 2 * (q.x * q.z + q.w * q.y), y: 2 * (q.y * q.z - q.w * q.x), z: 1 - 2 * (q.x * q.x + q.y * q.y) };
+}
+
 /**
- * Drives the kinematic hand joint bodies and owns the grab joint.
+ * The soft grab (G-1): a massless-feeling "finger" proxy, fixed to the block at
+ * the pinch point, chased toward the pinch by a critically damped PD
+ * controller. Its force is capped at GRAB_MAX_ACCELERATION × the block's
+ * weight-free mass, so a block held fast by the tower doesn't drag the tower
+ * along with unlimited force; if the block falls GRAB_SLIP_DISTANCE behind the
+ * hand while it is being extracted (GRAB_CARRY_SLIP_DISTANCE once out), it slips
+ * out of the fingers.
+ */
+interface SoftGrab {
+    proxy: RigidBody;
+    joint: ImpulseJoint;
+    block: RigidBody;
+    /** Proxy + block */
+    mass: number;
+    inertia: number;
+    targetRotation: Quat;
+    /**
+     * Being drawn out from under other blocks: pulled along its length only and
+     * left resting on its supports, until its centre leaves the footprint.
+     */
+    extracting: boolean;
+}
+
+const outsideFootprint = (t: Vec3) => Math.max(Math.abs(t.x), Math.abs(t.z)) >= TOWER_FOOTPRINT;
+
+/** Whether any block inside the footprint sits higher than the top face of `body`. */
+function hasBlocksAbove(world: World, body: RigidBody): boolean {
+    const t = body.translation();
+    if (outsideFootprint(t)) return false;
+    let found = false;
+    world.forEachRigidBody((other) => {
+        if (found || other === body || blockIdOf(other) === null) return;
+        const o = other.translation();
+        if (!outsideFootprint(o) && o.y > t.y + BLOCK_HEIGHT / 2) found = true;
+    });
+    return found;
+}
+
+/**
+ * Drives the kinematic hand joint bodies and owns the grab.
  * The bodies are supplied by the caller (React components in the app, the
  * headless scene in tests).
  *
@@ -129,9 +208,7 @@ function forEachCollider(body: RigidBody, fn: (collider: Collider) => void): voi
  * clear of every block, so the hand never sweeps through or spawns inside the tower.
  */
 export class HandPhysics {
-    private joint: ImpulseJoint | null = null;
-    private grabbed: RigidBody | null = null;
-    private previousDamping = { linear: 0, angular: 0 };
+    private held: SoftGrab | null = null;
     private parked = true;
     private lostFor = 0;
     /** Seconds the current pinch has been closed while tracked */
@@ -164,7 +241,77 @@ export class HandPhysics {
     }
 
     get heldBody(): RigidBody | null {
-        return this.grabbed;
+        return this.held?.block ?? null;
+    }
+
+    /**
+     * Drive the held block toward the pinch point. Call before every physics
+     * step (useBeforePhysicsStep): the forces are recomputed from the current
+     * error, so they stay correct whatever the render frame rate.
+     */
+    beforeStep(): void {
+        const held = this.held;
+        if (!held) return;
+        if (!isLiveBody(this.world, held.block) || !isLiveBody(this.world, held.proxy)) {
+            this.release();
+            return;
+        }
+        const { proxy, mass, inertia } = held;
+        const p = proxy.translation();
+        const v = proxy.linvel();
+        const ex = this.pinch.x - p.x, ey = this.pinch.y - p.y, ez = this.pinch.z - p.z;
+        if (held.extracting && outsideFootprint(held.block.translation())) held.extracting = false;
+        if (Math.hypot(ex, ey, ez) > (held.extracting ? GRAB_SLIP_DISTANCE : GRAB_CARRY_SLIP_DISTANCE)) {
+            // The block is stuck or the hand moved too fast: it slips out of the fingers
+            this.release();
+            return;
+        }
+
+        const w = 2 * Math.PI * GRAB_FREQUENCY;
+        const k = mass * w * w, c = 2 * mass * w;
+        let fx: number, fy: number, fz: number;
+        if (held.extracting) {
+            // Still in the tower: slide it along its length and let it rest on its
+            // supports. Lifting it would carry the blocks above along (extraction assist).
+            const a = blockAxis(held.block.rotation());
+            const e = ex * a.x + ey * a.y + ez * a.z;
+            const va = v.x * a.x + v.y * a.y + v.z * a.z;
+            const f = k * e - c * va;
+            fx = f * a.x;
+            fy = f * a.y;
+            fz = f * a.z;
+        } else {
+            // Out: carry it, holding its weight up
+            fx = k * ex - c * v.x - mass * GRAVITY[0];
+            fy = k * ey - c * v.y - mass * GRAVITY[1];
+            fz = k * ez - c * v.z - mass * GRAVITY[2];
+        }
+        // Capped like a real grip
+        const fMax = mass * GRAB_MAX_ACCELERATION * GRAVITY_MAGNITUDE;
+        const f = Math.hypot(fx, fy, fz);
+        if (f > fMax) {
+            fx *= fMax / f;
+            fy *= fMax / f;
+            fz *= fMax / f;
+        }
+        proxy.resetForces(true);
+        proxy.addForce({ x: fx, y: fy, z: fz }, true);
+
+        // Keep the orientation it was grabbed with (the placement assist turns it on release)
+        const wa = 2 * Math.PI * GRAB_ANGULAR_FREQUENCY;
+        const e = rotationError(proxy.rotation(), held.targetRotation);
+        const av = proxy.angvel();
+        const ka = inertia * wa * wa, ca = 2 * inertia * wa;
+        let tx = ka * e.x - ca * av.x, ty = ka * e.y - ca * av.y, tz = ka * e.z - ca * av.z;
+        const tMax = fMax * GRAB_SLIP_DISTANCE * 2;
+        const t = Math.hypot(tx, ty, tz);
+        if (t > tMax) {
+            tx *= tMax / t;
+            ty *= tMax / t;
+            tz *= tMax / t;
+        }
+        proxy.resetTorques(true);
+        proxy.addTorque({ x: tx, y: ty, z: tz }, true);
     }
 
     /** True until the first tracked frame after a tracking loss. */
@@ -187,7 +334,7 @@ export class HandPhysics {
 
     /** Pinching but not holding: the pinch closed on nothing and won't grab until reopened (G-4). */
     get pinchMissed(): boolean {
-        return !this.parked && !this.joint && this.pinchTime > 0 && (!this.armed || this.pinchTime > GRAB_ONSET_WINDOW_S);
+        return !this.parked && !this.held && this.pinchTime > 0 && (!this.armed || this.pinchTime > GRAB_ONSET_WINDOW_S);
     }
 
     /** Hover feedback at the pinch point this frame. Empty while holding or parked. */
@@ -201,8 +348,8 @@ export class HandPhysics {
      */
     update(input: HandInput | null, dt: number): void {
         const bodies = this.getBodies();
-        // The held block was removed underneath us (tower remount on reset): the joint went with it.
-        if (this.joint && !isLiveJoint(this.world, this.joint)) this.forget();
+        // The held block was removed underneath us (tower remount on reset): drop the proxy too.
+        if (this.held && !isLiveBody(this.world, this.held.block)) this.release();
 
         if (!input) {
             this.onTrackingLost(bodies, dt);
@@ -228,7 +375,7 @@ export class HandPhysics {
             this.pinch.x = (t.x + i.x) / 2;
             this.pinch.y = (t.y + i.y) / 2;
             this.pinch.z = (t.z + i.z) / 2;
-            if (!this.joint) feedback = queryCursorFeedback(this.world, this.rapier, this.pinch);
+            if (!this.held) feedback = queryCursorFeedback(this.world, this.rapier, this.pinch);
             this.updateDropPoint();
         }
 
@@ -236,20 +383,20 @@ export class HandPhysics {
             // Grab only as the pinch closes (G-4): a pinch made in the air, or one the
             // hand was already making when tracking (re)started, never grabs later.
             const onset = this.armed && this.pinchTime <= GRAB_ONSET_WINDOW_S;
-            if (!this.joint && onset && feedback.candidate && thumbTip) this.grab(thumbTip, feedback.candidate.body);
+            if (!this.held && onset && feedback.candidate) this.grab(feedback.candidate.body);
             this.pinchTime += dt;
         } else {
             this.release();
             this.pinchTime = 0;
             if (!input.closing) this.armed = true;
         }
-        this.setHover(this.joint ? NO_FEEDBACK : feedback);
+        this.setHover(this.held ? NO_FEEDBACK : feedback);
     }
 
     private updateDropPoint(): void {
         const ray = new this.rapier.Ray(this.pinch, { x: 0, y: -1, z: 0 });
         // Skip the hand itself (kinematic) and the block it carries
-        const hit = this.world.castRay(ray, 100, true, this.rapier.QueryFilterFlags.EXCLUDE_KINEMATIC, undefined, undefined, this.grabbed ?? undefined);
+        const hit = this.world.castRay(ray, 100, true, this.rapier.QueryFilterFlags.EXCLUDE_KINEMATIC, undefined, undefined, this.held?.block);
         this.hasDrop = hit !== null;
         if (hit) {
             this.drop.x = this.pinch.x;
@@ -266,25 +413,22 @@ export class HandPhysics {
     }
 
     /**
-     * Let go of the held block. Safe after the block (and so the joint) was
+     * Let go of the held block and remove the proxy. Safe after the block was
      * removed from the world, e.g. by a reset remounting the tower (G-8).
      */
     release(): void {
-        if (!this.joint) return;
-        if (isLiveJoint(this.world, this.joint)) this.world.removeImpulseJoint(this.joint, true);
-        if (this.grabbed && isLiveBody(this.world, this.grabbed)) {
-            this.grabbed.setLinearDamping(this.previousDamping.linear);
-            this.grabbed.setAngularDamping(this.previousDamping.angular);
-            this.grabbed.wakeUp();
-        }
+        const held = this.held;
+        if (!held) return;
+        if (isLiveJoint(this.world, held.joint)) this.world.removeImpulseJoint(held.joint, true);
+        if (isLiveBody(this.world, held.proxy)) this.world.removeRigidBody(held.proxy);
+        if (isLiveBody(this.world, held.block)) held.block.wakeUp();
         this.forget();
     }
 
-    /** Drop the grab without touching Rapier. Call when the world's blocks were replaced. */
+    /** Drop the grab without touching Rapier, e.g. when the world itself is going away. */
     forget(): void {
-        const wasHolding = this.grabbed !== null;
-        this.joint = null;
-        this.grabbed = null;
+        const wasHolding = this.held !== null;
+        this.held = null;
         if (wasHolding) this.onHeldChange?.(null);
     }
 
@@ -322,31 +466,34 @@ export class HandPhysics {
             });
         }
     }
-    private grab(thumbTip: RigidBody, body: RigidBody): void {
-        const thumbPos = thumbTip.translation();
-        this.previousDamping = { linear: body.linearDamping(), angular: body.angularDamping() };
-        body.setLinearDamping(HELD_BLOCK_DAMPING);
-        body.setAngularDamping(HELD_BLOCK_DAMPING);
-
-        const thumbRot = thumbTip.rotation();
-        const bodyTrans = body.translation();
-        const bodyRot = body.rotation();
-        const tPos = new THREE.Vector3(thumbPos.x, thumbPos.y, thumbPos.z);
-        const tQuat = new THREE.Quaternion(thumbRot.x, thumbRot.y, thumbRot.z, thumbRot.w);
-        const bPos = new THREE.Vector3(bodyTrans.x, bodyTrans.y, bodyTrans.z);
-        const bQuat = new THREE.Quaternion(bodyRot.x, bodyRot.y, bodyRot.z, bodyRot.w);
-        const invTQuat = tQuat.clone().invert();
-        const relativePos = bPos.clone().sub(tPos).applyQuaternion(invTQuat);
-        const relativeRot = invTQuat.clone().multiply(bQuat);
-
-        const params = this.rapier.JointData.fixed(
-            { x: relativePos.x, y: relativePos.y, z: relativePos.z },
-            { x: relativeRot.x, y: relativeRot.y, z: relativeRot.z, w: relativeRot.w },
-            { x: 0, y: 0, z: 0 },
-            IDENTITY_ROTATION,
+    /** Fix a proxy to the block at the pinch point and start driving it (see SoftGrab). */
+    private grab(body: RigidBody): void {
+        const { rapier, world } = this;
+        const at = this.pinch;
+        const rotation = body.rotation();
+        const proxy = world.createRigidBody(
+            rapier.RigidBodyDesc.dynamic()
+                .setTranslation(at.x, at.y, at.z)
+                .setRotation(rotation)
+                .setGravityScale(0)
+                .setCanSleep(false)
+                .setAdditionalMassProperties(GRAB_PROXY_MASS, { x: 0, y: 0, z: 0 }, { x: 0.05, y: 0.05, z: 0.05 }, IDENTITY_ROTATION),
         );
-        this.joint = this.world.createImpulseJoint(params, thumbTip, body, true);
-        this.grabbed = body;
+        // Block-local position of the pinch point: the proxy stays fixed there
+        const t = body.translation();
+        const inv = quatConjugate(rotation);
+        const r = quatMultiply(quatMultiply(inv, { x: at.x - t.x, y: at.y - t.y, z: at.z - t.z, w: 0 }), rotation);
+        const joint = world.createImpulseJoint(
+            rapier.JointData.fixed({ x: 0, y: 0, z: 0 }, IDENTITY_ROTATION, { x: r.x, y: r.y, z: r.z }, IDENTITY_ROTATION),
+            proxy,
+            body,
+            true,
+        );
+        joint.setContactsEnabled(false);
+        const mass = body.mass() + GRAB_PROXY_MASS;
+        // Moment of inertia about the pinch point, roughly: the block's own (about its long axis's normal) plus m·r²
+        const inertia = body.mass() * ((BLOCK_LENGTH ** 2 + BLOCK_HEIGHT ** 2) / 12 + Math.hypot(r.x, r.y, r.z) ** 2);
+        this.held = { proxy, joint, block: body, mass, inertia, targetRotation: { ...rotation }, extracting: hasBlocksAbove(world, body) };
         body.wakeUp();
         this.onHeldChange?.(blockIdOf(body));
     }
