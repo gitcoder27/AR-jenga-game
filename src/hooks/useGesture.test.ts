@@ -14,7 +14,7 @@ describe('useGesture', () => {
   it('returns IDLE state when no landmarks are provided', () => {
     const { result } = renderHook(() => useGesture(undefined))
     expect(result.current.isPinching).toBe(false)
-    expect(result.current.isClosedFist).toBe(false)
+    expect(result.current.isOpenPalm).toBe(false)
     expect(result.current.gestureState).toBe('IDLE')
     expect(result.current.confidence).toBe(0)
     expect(result.current.pinchPoint).toBe(null)
@@ -63,7 +63,7 @@ describe('useGesture', () => {
       const { result } = renderHook(() => useGesture(buildLandmarks('relaxed', 0.35, 0.5, 0.5)))
 
       expect(result.current.gestureState).toBe('IDLE')
-      expect(result.current.isClosedFist).toBe(false)
+      expect(result.current.isOpenPalm).toBe(false)
     });
   });
 

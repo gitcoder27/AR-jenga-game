@@ -1,10 +1,11 @@
 import { render } from '@testing-library/react'
 import Tower from './Tower'
 import { describe, it, expect, vi } from 'vitest'
+import type { MockProps } from '../test/mockProps'
 
 // Mock Block to just be a placeholder
 vi.mock('./Block', () => ({
-    default: ({ position, rotation }: any) => (
+    default: ({ position, rotation }: { position: number[]; rotation: number[] }) => (
         <div 
             data-testid="block" 
             data-position={position.join(',')}
@@ -15,7 +16,7 @@ vi.mock('./Block', () => ({
 
 // Mock Drei components including Instances
 vi.mock('@react-three/drei', () => ({
-    Instances: ({ children }: any) => <div data-testid="instances">{children}</div>,
+    Instances: ({ children }: MockProps) => <div data-testid="instances">{children}</div>,
     Instance: () => <div data-testid="instance" />,
     RoundedBox: () => <div data-testid="rounded-box-def" />,
 }))

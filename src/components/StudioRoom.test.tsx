@@ -4,7 +4,7 @@ import { StudioRoom } from './StudioRoom';
 
 // Mock Drei's Backdrop to render a div
 vi.mock('@react-three/drei', () => ({
-  Backdrop: (props: any) => <div data-testid="backdrop" {...props} />,
+  Backdrop: (props: Record<string, unknown>) => <div data-testid="backdrop" {...props} />,
 }));
 
 describe('StudioRoom', () => {

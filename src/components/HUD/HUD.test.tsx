@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { HUD } from './HUD';
+import type { MockSelector } from '../../test/mockProps';
 
 // Mock store
 const mockReturnToMenu = vi.fn();
 
 vi.mock('../../store/gameStore', () => ({
-  useGameStore: (selector?: any) => {
+  useGameStore: (selector?: MockSelector) => {
     const state = {
       score: 10,
       gameState: 'PLAYING',
@@ -31,7 +32,7 @@ describe('HUD', () => {
 
   it('renders instructions initially', () => {
     render(<HUD />);
-    expect(screen.getByText('PINCH TO GRAB')).toBeInTheDocument();
+    expect(screen.getByText('PINCH THUMB + INDEX TO GRAB')).toBeInTheDocument();
   });
 
   it('renders EXIT GAME button and calls returnToMenu on click', () => {

@@ -4,6 +4,8 @@ import * as useGestureHook from '../hooks/useGesture'
 import * as rapier from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
 import Hand from './Hand'
+import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
+import type { ReactNode } from 'react'
 
 vi.mock('@react-three/fiber', () => ({
     useFrame: vi.fn(),
@@ -18,11 +20,11 @@ vi.mock('@react-three/fiber', () => ({
 
 
 vi.mock('@react-three/rapier', async (importOriginal) => {
-    const actual = await importOriginal() as any
+    const actual = await importOriginal<typeof import('@react-three/rapier')>()
     const React = await import('react')
     return {
         ...actual,
-        RigidBody: React.forwardRef(({ children, type }: any, ref: any) => {
+        RigidBody: React.forwardRef<unknown, { children?: ReactNode; type?: string }>(({ children, type }, ref) => {
             React.useImperativeHandle(ref, () => ({
                 translation: () => ({ x: 0, y: 0, z: 0 }),
                 rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
@@ -73,13 +75,12 @@ describe('Hand Component', () => {
         vi.mocked(useGestureHook.default).mockReturnValue({
             isPinching: false,
             isOpenPalm: false,
-            isClosedFist: false,
             gestureState: 'IDLE',
             confidence: 0,
             pinchPoint: null,
             metrics: null,
         })
-        vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as any)
+        vi.mocked(rapier.useRapier).mockReturnValue({ world: mockWorld, rapier: mockRapier } as unknown as ReturnType<typeof rapier.useRapier>)
 
         mockWorld.intersectionWithShape.mockClear()
         mockWorld.intersectionsWithShape.mockClear()
@@ -95,15 +96,14 @@ describe('Hand Component', () => {
         const openHand = {
             isPinching: false,
             isOpenPalm: false,
-            isClosedFist: false,
             gestureState: 'IDLE' as const,
             confidence: 0,
             pinchPoint: null,
             metrics: null,
         }
-        const result = { landmarks: [Array(21).fill({ x: 0, y: 0, z: 0 })] } as any
+        const result = { landmarks: [Array(21).fill({ x: 0, y: 0, z: 0 })] } as unknown as HandLandmarkerResult
         const useFrameMock = vi.mocked(useFrame)
-        const runFrame = () => useFrameMock.mock.calls.at(-1)![0]({} as any, 1 / 60)
+        const runFrame = () => useFrameMock.mock.calls.at(-1)![0]({} as never, 1 / 60)
 
         // Open hand first: a pinch only grabs as it closes (G-4)
         vi.mocked(useGestureHook.default).mockReturnValue(openHand)

@@ -1,9 +1,10 @@
 import { render } from '@testing-library/react'
 import Table from './Table'
 import { describe, it, expect, vi } from 'vitest'
+import type { MockProps } from '../test/mockProps'
 
 vi.mock('@react-three/rapier', () => ({
-    RigidBody: ({ children, type, name }: any) => (
+    RigidBody: ({ children, type, name }: MockProps) => (
         <div data-testid="table-rb" data-type={type} data-name={name}>
             {children}
         </div>

@@ -30,7 +30,7 @@ const CONNECTIONS = [
 
 export default function Hand({ result, aspect = 1 }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const { isPinching, isClosedFist, confidence, gestureState } = useGesture(result?.landmarks?.[0], aspect)
+    const { isPinching, isOpenPalm, confidence, gestureState } = useGesture(result?.landmarks?.[0], aspect)
 
     // We keep the component mounted to avoid "pop-in" at [0,0,0]
     // but we hide the visuals if no result
@@ -39,13 +39,13 @@ export default function Hand({ result, aspect = 1 }: HandProps) {
     // Determine hand color based on gesture state
     const getHandColor = () => {
         if (isPinching) return '#00e5ff'; // Cyan for pinch
-        if (isClosedFist) return '#ff9800'; // Orange for closed fist
+        if (isOpenPalm) return '#ff9800'; // Orange for open palm (camera control)
         return '#cccccc'; // Default gray
     };
 
     const getBoneColor = () => {
         if (isPinching) return '#00e5ff';
-        if (isClosedFist) return '#ff9800';
+        if (isOpenPalm) return '#ff9800';
         return '#888888';
     };
 
@@ -82,12 +82,12 @@ export default function Hand({ result, aspect = 1 }: HandProps) {
                 />
             ))}
 
-            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isPinchForming={gestureState === 'PINCH_READY'} isClosedFist={isClosedFist} confidence={confidence} />
+            <UpdateLogic result={result} refs={refs} isPinching={isPinching} isPinchForming={gestureState === 'PINCH_READY'} isOpenPalm={isOpenPalm} confidence={confidence} />
         </group>
     )
 }
 
-function UpdateLogic({ result, refs, isPinching, isPinchForming, isClosedFist, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isPinchForming: boolean, isClosedFist: boolean, confidence: number }) {
+function UpdateLogic({ result, refs, isPinching, isPinchForming, isOpenPalm, confidence }: { result: HandLandmarkerResult | null, refs: React.MutableRefObject<(RapierRigidBody | null)[]>, isPinching: boolean, isPinchForming: boolean, isOpenPalm: boolean, confidence: number }) {
     const { world, rapier } = useRapier()
     const { camera } = useThree()
     // Mirror the grab (C-2) and the hover target (F-1) into the store
@@ -144,7 +144,7 @@ function UpdateLogic({ result, refs, isPinching, isPinchForming, isClosedFist, c
             return next
         })
 
-        handPhysics.update({ joints, pinching: isPinching, closing: isPinchForming, openPalm: isClosedFist }, delta)
+        handPhysics.update({ joints, pinching: isPinching, closing: isPinchForming, openPalm: isOpenPalm }, delta)
     })
-    return <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isClosedFist={isClosedFist} confidence={confidence} />
+    return <DepthCursor handPhysics={handPhysics} isPinching={isPinching} isOpenPalm={isOpenPalm} confidence={confidence} />
 }

@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import StartScreen from './StartScreen';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useGameStore } from '../../store/gameStore';
+import { storeWith } from '../../test/mockStore';
 
 vi.mock('../../store/gameStore', () => ({
     useGameStore: vi.fn()
@@ -11,9 +12,7 @@ describe('StartScreen', () => {
     const mockStartGame = vi.fn();
 
     beforeEach(() => {
-        vi.mocked(useGameStore).mockImplementation((selector: any) => {
-            return selector({ startGame: mockStartGame });
-        });
+        vi.mocked(useGameStore).mockImplementation(storeWith({ startGame: mockStartGame }));
         mockStartGame.mockClear();
     });
 

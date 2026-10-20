@@ -6,18 +6,21 @@ import * as THREE from 'three'
 import { useGameStore } from '../store/gameStore'
 import { BLOCK_FRICTION, BLOCK_HALF_EXTENTS, RESTITUTION } from '../game/config'
 import type { BlockUserData } from '../game/grab'
+import { blockShade } from '../game/towerLayout'
 
 interface BlockProps {
     id: string
     position: [number, number, number]
     rotation: [number, number, number]
+    /** Tower seed, for this block's wood shade */
+    seed?: number
 }
 
 // Highlight color for hovered blocks
 const HIGHLIGHT_COLOR = new THREE.Color('#00e5ff')
 const HIGHLIGHT_INTENSITY = 0.4
 
-export default function Block({ id, position, rotation }: BlockProps) {
+export default function Block({ id, position, rotation, seed = 1 }: BlockProps) {
     const setGameState = useGameStore((state) => state.setGameState)
     const isHeld = useGameStore((state) => state.heldBlockId === id)
     const isMoving = useGameStore((state) => state.movingBlockId === id)
@@ -29,13 +32,8 @@ export default function Block({ id, position, rotation }: BlockProps) {
 
     const userData = useMemo<BlockUserData>(() => ({ blockId: id }), [id])
 
-    // Generate random shade variation per block
-    const baseColor = useMemo(() => {
-        const base = new THREE.Color("#E3C099")
-        // Vary HSL slightly: Lightness +/- 10%
-        base.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2)
-        return base
-    }, [])
+    // Shade variation per block: lightness +/- 10%, reproducible from the tower seed
+    const baseColor = useMemo(() => new THREE.Color("#E3C099").offsetHSL(0, 0, blockShade(seed, id)), [seed, id])
 
     // Interpolated color for smooth highlight transition
     const currentColor = useMemo(() => {

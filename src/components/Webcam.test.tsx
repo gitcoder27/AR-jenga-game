@@ -21,7 +21,7 @@ describe('Webcam Component', () => {
   })
 
   it('renders a video element', () => {
-    getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as any)
+    getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as unknown as MediaStream)
 
     render(<Webcam onVideoReady={() => {}} />)
     const videoElement = screen.getByTestId('webcam-video')
@@ -29,7 +29,7 @@ describe('Webcam Component', () => {
   })
 
   it('requests camera permissions on mount', () => {
-    const mockStream = { getTracks: () => [] } as any
+    const mockStream = { getTracks: () => [] } as unknown as MediaStream
     getUserMediaMock.mockResolvedValue(mockStream)
 
     render(<Webcam onVideoReady={() => {}} />)
@@ -65,7 +65,7 @@ describe('Webcam Component', () => {
     })
 
     // Second attempt succeeds
-    getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as any)
+    getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as unknown as MediaStream)
 
     const retryButton = screen.getByText(/Retry/i)
     fireEvent.click(retryButton)

@@ -20,7 +20,6 @@ export interface GestureHookResult {
   isPinching: boolean;
   isOpenPalm: boolean;
   // Legacy compatibility
-  isClosedFist: boolean;  // Now maps to isOpenPalm for camera control
   // Enhanced state
   gestureState: GestureState;
   confidence: number;
@@ -57,7 +56,6 @@ export default function useGesture(landmarks: Point3D[] | undefined, aspect = 1)
       return {
         isPinching: false,
         isOpenPalm: false,
-        isClosedFist: false,
         gestureState: 'IDLE' as GestureState,
         confidence: 0,
         pinchPoint: null,
@@ -109,7 +107,6 @@ export default function useGesture(landmarks: Point3D[] | undefined, aspect = 1)
     return {
       isPinching: isPinchingNow,
       isOpenPalm,
-      isClosedFist: isOpenPalm,  // Map to isClosedFist for existing camera control code
       gestureState: newState,
       confidence,
       pinchPoint,

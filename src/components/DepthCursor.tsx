@@ -9,7 +9,7 @@ interface DepthCursorProps {
   /** Source of the pinch point and the grab candidate; the cursor shows exactly what a pinch would do. */
   handPhysics: HandPhysics;
   isPinching: boolean;
-  isClosedFist: boolean;
+  isOpenPalm: boolean;
   confidence: number;
 }
 
@@ -27,7 +27,7 @@ const COLORS = {
  * candidate HandPhysics grabs with (F-1, F-2). Position and the proximity pulse
  * are applied imperatively; React re-renders only when the hover target changes.
  */
-export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinching, isClosedFist, confidence }) => {
+export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinching, isOpenPalm, confidence }) => {
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
   const missedRef = useRef<THREE.Mesh>(null);
@@ -70,14 +70,14 @@ export const DepthCursor: React.FC<DepthCursorProps> = ({ handPhysics, isPinchin
 
   // Determine cursor color based on state
   const getCursorColor = () => {
-    if (isClosedFist) return COLORS.palm;
+    if (isOpenPalm) return COLORS.palm;
     if (isPinching) return COLORS.grabbing;
     if (isInRange) return COLORS.inRange;
     return COLORS.idle;
   };
 
   const cursorColor = getCursorColor();
-  const cursorOpacity = isPinching ? 0.95 : isClosedFist ? 0.85 : isInRange ? 0.8 : 0.65;
+  const cursorOpacity = isPinching ? 0.95 : isOpenPalm ? 0.85 : isInRange ? 0.8 : 0.65;
 
   return (
     <>

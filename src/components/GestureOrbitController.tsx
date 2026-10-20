@@ -14,13 +14,13 @@ interface GestureOrbitControllerProps {
 const SENSITIVITY = 15; // Adjustment factor for orbit speed
 
 export default function GestureOrbitController({ result, controlsRef, aspect = 1 }: GestureOrbitControllerProps) {
-    const { isClosedFist } = useGesture(result?.landmarks?.[0], aspect);
+    const { isOpenPalm } = useGesture(result?.landmarks?.[0], aspect);
     const previousPalmPos = useRef<{ x: number; y: number } | null>(null);
 
     useFrame(() => {
         if (!controlsRef.current) return;
 
-        if (isClosedFist && result?.landmarks?.[0]) {
+        if (isOpenPalm && result?.landmarks?.[0]) {
             const currentPalm = result.landmarks[0][0]; // Wrist position (landmark 0)
 
             if (previousPalmPos.current) {

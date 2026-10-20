@@ -9,7 +9,7 @@ export type GameMode = 'MENU' | 'CLASSIC' | 'SANDBOX'
 export type TrackingStatus = 'loading' | 'error' | 'no-hand' | 'ready'
 export type TrackingDelegate = 'GPU' | 'CPU'
 
-interface GameStore {
+export interface GameStore {
     gameMode: GameMode
     gameState: GameState
     score: number
@@ -23,6 +23,8 @@ interface GameStore {
     /** Block a pinch would grab right now (same id format as heldBlockId) */
     hoveredBlockId: string | null
     gameId: number
+    /** Seeds the tower's layout jitter and block shades; new for every game */
+    towerSeed: number
     isWebcamVisible: boolean
     isInstructionsVisible: boolean
     trackingStatus: TrackingStatus
@@ -48,6 +50,8 @@ interface GameStore {
     resetView: () => void
 }
 
+const newTowerSeed = () => Math.floor(Math.random() * 2 ** 31)
+
 export const useGameStore = create<GameStore>((set) => ({
     gameMode: 'MENU',
     gameState: 'PLAYING',
@@ -56,6 +60,7 @@ export const useGameStore = create<GameStore>((set) => ({
     movingBlockId: null,
     hoveredBlockId: null,
     gameId: 0,
+    towerSeed: 1,
     isWebcamVisible: false,
     isInstructionsVisible: false,
     trackingStatus: 'loading',
@@ -71,6 +76,7 @@ export const useGameStore = create<GameStore>((set) => ({
         heldBlockId: null,
         movingBlockId: null,
         hoveredBlockId: null,
+        towerSeed: newTowerSeed(),
         isInstructionsVisible: true
     }),
     returnToMenu: () => set({ gameMode: 'MENU', gameState: 'PLAYING', heldBlockId: null, movingBlockId: null, hoveredBlockId: null }),
@@ -89,6 +95,7 @@ export const useGameStore = create<GameStore>((set) => ({
         movingBlockId: null,
         hoveredBlockId: null,
         gameId: state.gameId + 1,
+        towerSeed: newTowerSeed(),
         isInstructionsVisible: state.gameMode === 'CLASSIC'
     })),
     setTrackingStatus: (trackingStatus, trackingError = null) => set({ trackingStatus, trackingError }),

@@ -1,13 +1,15 @@
 import { render, fireEvent } from '@testing-library/react'
 import Block from './Block'
+import { BLOCK_FRICTION } from '../game/config'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { MockProps, MockSelector } from '../test/mockProps'
 
 const mockSetGameState = vi.fn()
 let mockHeldBlockId: string | null = null
 let mockMovingBlockId: string | null = null
 
 vi.mock('../store/gameStore', () => ({
-    useGameStore: (selector: any) => selector({
+    useGameStore: (selector: MockSelector) => selector({
         setGameState: mockSetGameState,
         heldBlockId: mockHeldBlockId,
         movingBlockId: mockMovingBlockId,
@@ -22,7 +24,7 @@ vi.mock('@react-three/fiber', () => ({
 }))
 
 vi.mock('@react-three/rapier', () => ({
-    RigidBody: ({ children, type, mass, friction, restitution, onCollisionEnter, name, canSleep }: any) => (
+    RigidBody: ({ children, type, mass, friction, restitution, onCollisionEnter, name, canSleep }: MockProps & { onCollisionEnter?: (e: unknown) => void }) => (
         <div
             data-testid="block-rb"
             data-type={type}
@@ -31,16 +33,16 @@ vi.mock('@react-three/rapier', () => ({
             data-restitution={restitution}
             data-name={name}
             data-can-sleep={canSleep}
-            onClick={() => onCollisionEnter && onCollisionEnter({ other: { rigidBodyObject: { name: 'floor' } } })}
+            onClick={() => onCollisionEnter?.({ other: { rigidBodyObject: { name: 'floor' } } })}
         >
             {children}
         </div>
     ),
-    CuboidCollider: ({ args }: any) => <div data-testid="cuboid-collider" data-args={JSON.stringify(args)} />,
+    CuboidCollider: ({ args }: MockProps) => <div data-testid="cuboid-collider" data-args={JSON.stringify(args)} />,
 }))
 
 vi.mock('@react-three/drei', () => ({
-    Instance: ({ color }: any) => (
+    Instance: ({ color }: MockProps) => (
         <div data-testid="block-instance" data-color={color ? 'has-color' : 'no-color'} />
     )
 }))
@@ -57,7 +59,7 @@ describe('Block', () => {
         const rb = getByTestId('block-rb')
         expect(rb).toHaveAttribute('data-type', 'dynamic')
         expect(rb).toHaveAttribute('data-mass', '2')
-        expect(rb).toHaveAttribute('data-friction', '1')
+        expect(rb).toHaveAttribute('data-friction', String(BLOCK_FRICTION))
         expect(rb).toHaveAttribute('data-restitution', '0')
         expect(rb).toHaveAttribute('data-can-sleep', 'true')
 

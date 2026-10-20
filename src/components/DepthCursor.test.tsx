@@ -18,7 +18,7 @@ function fakeHand(pinchPoint: Vec3 | null, feedback: CursorFeedback = NO_FEEDBAC
 
 function renderCursor(hand: HandPhysics) {
   vi.mocked(useFrame).mockClear();
-  return render(<DepthCursor handPhysics={hand} isPinching={false} isClosedFist={false} confidence={0} />);
+  return render(<DepthCursor handPhysics={hand} isPinching={false} isOpenPalm={false} confidence={0} />);
 }
 
 describe('DepthCursor', () => {
@@ -34,12 +34,12 @@ describe('DepthCursor', () => {
 
   it('shows the grab sphere only when pinching while a block is in range', () => {
     const hand = fakeHand({ x: 0, y: 0, z: 0 });
-    const { container, rerender } = render(<DepthCursor handPhysics={hand} isPinching isClosedFist={false} confidence={1} />);
+    const { container, rerender } = render(<DepthCursor handPhysics={hand} isPinching isOpenPalm={false} confidence={1} />);
     const meshes = () => container.querySelectorAll('mesh').length;
     const outOfRange = meshes();
 
     act(() => useGameStore.getState().setHoveredBlockId('2-0'));
-    rerender(<DepthCursor handPhysics={hand} isPinching isClosedFist={false} confidence={1} />);
+    rerender(<DepthCursor handPhysics={hand} isPinching isOpenPalm={false} confidence={1} />);
     // In range: the secondary ring and the grab sphere appear.
     expect(meshes()).toBe(outOfRange + 2);
   });

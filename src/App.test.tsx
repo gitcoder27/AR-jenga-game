@@ -1,7 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import App from './App'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useGameStore } from './store/gameStore'
+import { useGameStore, type GameStore } from './store/gameStore'
+import type { ReactNode } from 'react'
+import { storeWith } from './test/mockStore'
 
 // Mock components
 vi.mock('./components/Webcam', () => ({
@@ -30,7 +32,7 @@ vi.mock('./store/gameStore', () => ({
 
 // Mock R3F
 vi.mock('@react-three/fiber', () => ({
-    Canvas: ({ children }: any) => <div data-testid="canvas">{children}</div>,
+    Canvas: ({ children }: { children?: ReactNode }) => <div data-testid="canvas">{children}</div>,
     useFrame: vi.fn(),
     extend: vi.fn(),
 }))
@@ -42,7 +44,7 @@ vi.mock('@react-three/drei', () => ({
 
 // Mock Rapier
 vi.mock('@react-three/rapier', () => ({
-    Physics: ({ children, gravity }: any) => (
+    Physics: ({ children, gravity }: { children?: ReactNode; gravity?: number[] }) => (
         <div data-testid="physics" data-gravity={JSON.stringify(gravity)}>
             {children}
         </div>
@@ -78,7 +80,7 @@ describe('App', () => {
     const mockResetGame = vi.fn()
     const mockUseGameStore = vi.mocked(useGameStore)
 
-    const defaultState = {
+    const defaultState: Partial<GameStore> = {
         gameState: 'PLAYING',
         gameMode: 'MENU',
         score: 0,
@@ -94,9 +96,7 @@ describe('App', () => {
 
     beforeEach(() => {
         // Default mock behavior
-        mockUseGameStore.mockImplementation((selector: any) => {
-            return selector ? selector(defaultState) : defaultState
-        })
+        mockUseGameStore.mockImplementation(storeWith(defaultState))
         mockResetGame.mockClear()
     })
 
@@ -107,10 +107,7 @@ describe('App', () => {
     })
 
     it('renders environment components in game mode', () => {
-        mockUseGameStore.mockImplementation((selector: any) => {
-            const state = { ...defaultState, gameMode: 'CLASSIC' }
-            return selector ? selector(state) : state
-        })
+        mockUseGameStore.mockImplementation(storeWith({ ...defaultState, gameMode: 'CLASSIC' }))
         render(<App />)
         expect(screen.getByTestId('lighting')).toBeInTheDocument()
         expect(screen.getByTestId('environment-setup')).toBeInTheDocument()
@@ -118,10 +115,7 @@ describe('App', () => {
     })
 
     it('wraps scene in Physics with correct gravity in game mode', () => {
-        mockUseGameStore.mockImplementation((selector: any) => {
-            const state = { ...defaultState, gameMode: 'CLASSIC' }
-            return selector ? selector(state) : state
-        })
+        mockUseGameStore.mockImplementation(storeWith({ ...defaultState, gameMode: 'CLASSIC' }))
         render(<App />)
         const physics = screen.getByTestId('physics')
         expect(physics).toBeInTheDocument()
@@ -129,10 +123,7 @@ describe('App', () => {
     })
 
     it('shows game over overlay when game is over', () => {
-        mockUseGameStore.mockImplementation((selector: any) => {
-            const state = { ...defaultState, gameState: 'GAME_OVER', gameMode: 'CLASSIC' }
-            return selector ? selector(state) : state
-        })
+        mockUseGameStore.mockImplementation(storeWith({ ...defaultState, gameState: 'GAME_OVER', gameMode: 'CLASSIC' }))
 
         render(<App />)
         expect(screen.getByText('TOWER COLLAPSED')).toBeInTheDocument()
@@ -140,10 +131,7 @@ describe('App', () => {
     })
 
     it('resets game when reset button clicked', () => {
-        mockUseGameStore.mockImplementation((selector: any) => {
-            const state = { ...defaultState, gameState: 'GAME_OVER', gameMode: 'CLASSIC' }
-            return selector ? selector(state) : state
-        })
+        mockUseGameStore.mockImplementation(storeWith({ ...defaultState, gameState: 'GAME_OVER', gameMode: 'CLASSIC' }))
 
         render(<App />)
         const btn = screen.getByText('RE-INITIALIZE')

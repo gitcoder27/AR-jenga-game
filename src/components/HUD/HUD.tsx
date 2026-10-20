@@ -62,8 +62,10 @@ export const HUD: React.FC = () => {
             {/* Instructions Overlay */}
             {isInstructionsVisible && (
                 <div className="hud-instructions fade-out">
-                    <p>PINCH TO GRAB</p>
-                    <p>STEADY HAND TO MOVE</p>
+                    <p>PINCH THUMB + INDEX TO GRAB</p>
+                    <p>OPEN YOUR FINGERS TO RELEASE</p>
+                    <p>HAND NEARER THE CAMERA = NEARER TO YOU</p>
+                    <p>SWEEP AN OPEN PALM TO TURN THE VIEW</p>
                 </div>
             )}
 

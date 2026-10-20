@@ -7,7 +7,7 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
 
 | Topic | Decision | Status |
 |---|---|---|
-| H-3 depth mapping | Keep the "mirror" mapping as the default. Add a settings toggle for "reach-in", fix the README, and add a depth gauge. | Pending (README in Phase 1 #11; toggle and gauge in Phase 2) |
+| H-3 depth mapping | Keep the "mirror" mapping as the default. Add a settings toggle for "reach-in", fix the README, and add a depth gauge. | README fixed (Phase 1 #11); toggle and gauge pending (Phase 2) |
 | H-2 camera mode | Hold an open palm still for 400 ms to enter camera mode. Show a visible mode indicator, turn hand colliders off in camera mode, and add a HUD toggle plus a keyboard fallback. | Pending (Phase 2 #10) |
 | G-1 grab | A dynamic proxy body driven by a PD controller, with a force cap and slip release. Start at block↔block friction 0.45, block↔table 0.6 and gravity ×2, then tune until the physics tests pass. | Pending (Phase 2 #4; friction in Phase 1 #10) |
 | Asset hosting | Self-host the HDR, the MediaPipe model and the WASM matching the npm package version. Don't commit large binaries unless unavoidable. | Done (see "Self-hosting" below) |
@@ -82,3 +82,18 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
 - The game view is a `Game` component keyed by mode. Leaving or switching modes drops the last tracking result,
   the video element and the camera state. `useHandTracking` stays in `App`, so the model loads while the menu is
   showing.
+
+### Housekeeping (Q-1, Q-3)
+
+- **Seeded tower randomness.** React's purity lint flagged `Math.random()` in render (block shade and layout
+  jitter). The store now keeps a `towerSeed`, renewed on every start and reset. The tower layout and each block's
+  shade derive from it, so a render is repeatable and each new game still gets a fresh tower.
+- **Test mocks are typed.** The `no-explicit-any` errors were all in test mocks. `src/test/mockStore.ts`
+  (`storeWith`) and `src/test/mockProps.ts` replace the ad hoc `any` selectors and props.
+- **Friction assertions read the config.** The Block and Floor unit tests asserted friction 1, which went stale
+  with the G-2 friction change (that commit left them failing; fixed here). They now compare against
+  `BLOCK_FRICTION` and `FLOOR_FRICTION`.
+- **Dead code removed.** `utils/coordinates.ts` and `utils/math.ts` (and their tests) were only used by tests and
+  disagreed with the real mapping in `tracking/mapping.ts`.
+- **Branding.** "Robotic Jenga" everywhere (in-game title, page title, README). The README says what the app
+  does today, including that placements don't score until C-1.

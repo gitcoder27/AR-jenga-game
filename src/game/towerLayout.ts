@@ -17,6 +17,17 @@ export interface BlockLayout {
     rotation: Vec3Tuple;
 }
 
+/**
+ * Lightness offset (−0.1…0.1) for a block's wood shade, from the tower seed and
+ * the block id. A hash rather than another draw from the layout RNG, so towers
+ * keep the same geometry for a given seed.
+ */
+export function blockShade(seed: number, id: string): number {
+    let h = seed >>> 0;
+    for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x9e3779b1);
+    return (createRng(h)() - 0.5) * 0.2;
+}
+
 /** Small deterministic PRNG (mulberry32) so towers are reproducible from a seed. */
 export function createRng(seed: number): () => number {
     let a = seed >>> 0;

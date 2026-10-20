@@ -1,6 +1,6 @@
-# AR Jenga Game 🧱🖐️
+# Robotic Jenga 🧱🖐️
 
-A web-based Augmented Reality Jenga game that allows you to interact with a 3D Jenga tower using hand gestures through your webcam. Built with React, Three.js, and MediaPipe.
+Robotic Jenga is a web-based augmented reality Jenga game that allows you to interact with a 3D Jenga tower using hand gestures through your webcam. Built with React, Three.js, and MediaPipe.
 
 ![Project Status](https://img.shields.io/badge/status-active-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -16,7 +16,8 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
 - **Gesture Control**:
   - **Move**: Your virtual hand mimics your real hand's position in real-time.
   - **Grab**: Pinch your thumb and index finger together to grab and hold blocks.
-  - **Depth Control**: Move your hand closer to the camera to push the virtual hand forward (Z-axis), and pull back to retract it.
+  - **Depth**: Works like a mirror. Bring your hand closer to the webcam and the virtual hand comes toward you; move it away and the virtual hand moves toward the tower.
+  - **Camera**: Sweep an open palm to orbit the view, or drag with the mouse.
 - **Interactive Gameplay**: Carefully remove blocks from the tower and stack them on top without toppling the structure.
 - **Immersive Environment**: Features a 3D studio room environment, dynamic lighting, shadows, and high-quality block materials.
 - **HUD**: Heads-Up Display showing your score and current game status.
@@ -45,6 +46,8 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
    npm install
    ```
 
+   The MediaPipe WASM, hand model and studio HDR are served from `public/`, not from third-party CDNs. `npm run dev` and `npm run build` fetch them on first run (`npm run assets`), so the first run needs network access.
+
 ## 🎮 How to Run
 
 1. **Start the development server**
@@ -60,46 +63,59 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
 
 ## 🕹️ Controls
 
-1. **Positioning**: Ensure you are in a well-lit room and your hand is clearly visible to the webcam.
-2. **Movement**:
-   - **X/Y Axis**: Move your hand left, right, up, or down to move the virtual hand.
-   - **Z Axis (Depth)**: Move your hand **closer** to the camera to reach **forward** into the scene. Move your hand **away** to pull **back**.
-3. **Actions**:
-   - **Push**: Simply move your hand into blocks to nudge them.
-   - **Grab**: Pinch your **Thumb** and **Index Finger** together to grab a block. Keep pinching to hold it.
-   - **Release**: Open your fingers to release the block.
+1. **Set up**: Use a well-lit room and keep your hand clearly visible to the webcam. The chip in the top bar shows the tracking state (loading, no hand, tracking).
+2. **Move**:
+   - **Left, right, up, down**: Move your hand and the virtual hand follows, mirrored like a reflection.
+   - **Depth (mirror)**: Bring your hand **closer to the webcam** to bring the virtual hand **toward you**. Move your hand **away from the webcam** to reach **into the scene**, toward the tower.
+3. **Act**:
+   - **Push**: Move the hand into a block to nudge it.
+   - **Grab**: Open your hand near a block, then pinch your **thumb** and **index finger**. The block under the pinch turns cyan when it can be grabbed and green while you hold it. A pinch that closes on nothing shows a red ring; open your hand and try again.
+   - **Release**: Open your fingers. A marker on the surface below shows where a held block will land.
+4. **Camera**:
+   - Sweep an **open palm** (all fingers spread) to orbit the view.
+   - Drag with the mouse to orbit, or scroll to zoom. The view can't go under the table or zoom out of reach.
+   - **RESET VIEW** restores the default framing.
+5. **Rules**:
+   - **Classic**: Take blocks out of the tower and stack them on top. The game ends when any block other than the one you last moved touches the floor. Placements don't score yet: the score stays at 0 until the classic-rules work (GAME_REVIEW.md C-1) lands.
+   - **Sandbox**: No score or game over. **RESET TOWER** rebuilds the tower.
 
 ## 📂 Project Structure
 
 ```
 src/
 ├── components/       # UI and 3D components
-│   ├── HUD/          # Heads-Up Display components
-│   ├── materials/    # Three.js materials
-│   ├── Hand.tsx      # Virtual hand tracking and rendering
-│   ├── Tower.tsx     # Jenga tower logic and generation
-│   ├── Block.tsx     # Individual block component with physics
-│   ├── Webcam.tsx    # Webcam feed integration
-│   └── ...           # Environment components (Floor, Table, StudioRoom)
-├── hooks/            # Custom hooks
-│   ├── useHandTracking.ts # MediaPipe integration logic
-│   └── useGesture.ts      # Pinch detection logic
-├── store/            # Global state management
-│   └── gameStore.ts  # Game state (score, game over, etc.)
-├── utils/            # Helper functions
-│   ├── coordinates.ts # Mapping 2D webcam coords to 3D world
-│   ├── depth.ts       # Z-axis depth calculation
-│   └── smoothing.ts   # Movement smoothing (Lerp)
-└── App.tsx           # Main application entry point
+│   ├── HUD/          # Heads-up display: score, tracking status, buttons
+│   ├── StartScreen/  # Mode selection
+│   ├── Hand.tsx      # Virtual hand: landmarks → kinematic bodies
+│   ├── DepthCursor.tsx # Pinch cursor, grab feedback and drop marker
+│   ├── Tower.tsx     # Seeded tower layout
+│   ├── Block.tsx     # One block: physics body and floor rule
+│   └── ...           # Webcam, camera controls, environment (Table, Floor, StudioRoom)
+├── game/             # Game logic shared by components and tests
+│   ├── config.ts     # Physics, camera and grab constants
+│   ├── grab.ts       # Grab candidate query and hand physics (grab, release, tracking loss)
+│   ├── rules.ts      # Win and loss rules
+│   └── towerLayout.ts # Seeded block layout
+├── hooks/            # useHandTracking (MediaPipe), useGesture (gesture state)
+├── store/            # gameStore.ts: game, tracking and view state (Zustand)
+├── tracking/         # Landmark → world mapping; self-hosted asset paths
+├── utils/            # Depth, gesture classification, smoothing
+├── test/             # Test helpers: hand poses, e2e driver, store mocks
+└── App.tsx           # Application root
+tests/physics/        # Headless Rapier physics tests
+e2e/                  # Playwright tests with a scripted hand
+scripts/fetch-assets.mjs # Self-hosts the MediaPipe WASM, hand model and HDR
 ```
 
 ## 🧪 Testing
 
-Run the test suite using Vitest:
-
 ```bash
-npm run test
+npm test          # unit tests and headless physics tests (Vitest)
+npm run test:e2e  # browser tests with a scripted hand (Playwright, fake webcam)
+npm run lint
 ```
+
+The E2E suite replaces MediaPipe with a stub that plays scripted hand poses, so it needs no webcam. Tests for known, not-yet-fixed bugs run as expected failures; set `SHOW_KNOWN_BUGS=1` to run them as normal tests.
 
 ## 📄 License
 

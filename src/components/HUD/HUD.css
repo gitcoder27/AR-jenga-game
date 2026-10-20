@@ -71,14 +71,16 @@
     text-align: center;
     background: rgba(0, 0, 0, 0.6);
     border: 1px solid #00e5ff;
-    padding: 20px 40px;
+    padding: 16px 32px;
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
     pointer-events: none;
     box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
 }
 
 .hud-instructions p {
     margin: 5px 0;
-    font-size: 1.2rem;
+    font-size: clamp(0.75rem, 2.6vw, 1.1rem);
     letter-spacing: 1px;
 }
 
