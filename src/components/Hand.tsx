@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, type RapierRigidBody, useRapier } from '@react-three/rapier'
@@ -9,6 +9,7 @@ import { HandBone } from './HandBone'
 import { HandPhysics } from '../game/grab'
 import { HAND_PARKING_POSITION } from '../game/config'
 import { landmarkToWorld } from '../tracking/mapping'
+import { useGameStore } from '../store/gameStore'
 
 interface HandProps {
     result: HandLandmarkerResult | null
@@ -87,6 +88,9 @@ function UpdateLogic({ result, refs, isPinching, isClosedFist }: { result: HandL
     const { world, rapier } = useRapier()
     const { camera } = useThree()
     const handPhysics = useMemo(() => new HandPhysics(world, rapier, () => refs.current), [world, rapier, refs])
+    const gameId = useGameStore((state) => state.gameId)
+    // A reset remounts the tower, removing the held block and its joint (G-8).
+    useEffect(() => handPhysics.forget(), [gameId, handPhysics])
     // Velocity tracking for adaptive smoothing
     const prevPositionsRef = useRef<Map<number, { x: number; y: number; z: number }>>(new Map())
 

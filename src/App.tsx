@@ -19,6 +19,7 @@ import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
 import GestureOrbitController from './components/GestureOrbitController'
 import GameRules from './components/GameRules'
+import SceneErrorBoundary from './components/SceneErrorBoundary'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
 
   const gameId = useGameStore((state) => state.gameId)
   const gameMode = useGameStore((state) => state.gameMode)
+  const resetGame = useGameStore((state) => state.resetGame)
 
   const handleVideoReady = useCallback((vid: HTMLVideoElement) => {
     setCameraActive(true)
@@ -57,25 +59,27 @@ function App() {
     <div className="app-container" style={{ width: '100vw', height: '100vh', position: 'relative', background: '#000' }}>
       <Webcam key={gameMode} onVideoReady={handleVideoReady} />
 
-      <Canvas shadows camera={{ position: [0, 10, 20] }}>
-        <Physics gravity={[0, -9.81, 0]}>
-          <color attach="background" args={['#111']} />
-          <Lighting />
-          <EnvironmentSetup />
-          <StudioRoom />
+      <SceneErrorBoundary onRestart={resetGame}>
+        <Canvas shadows camera={{ position: [0, 10, 20] }}>
+          <Physics gravity={[0, -9.81, 0]}>
+            <color attach="background" args={['#111']} />
+            <Lighting />
+            <EnvironmentSetup />
+            <StudioRoom />
 
-          <Floor />
-          <Table />
-          <Tower key={gameId} />
-          <GameRules />
-          <Hand result={result} />
-          <DepthCursor result={result} />
+            <Floor />
+            <Table />
+            <Tower key={gameId} />
+            <GameRules />
+            <Hand result={result} />
+            <DepthCursor result={result} />
 
-          <OrbitControls ref={orbitControlsRef} />
-          <GestureOrbitController result={result} controlsRef={orbitControlsRef} />
-          <gridHelper args={[20, 20]} />
-        </Physics>
-      </Canvas>
+            <OrbitControls ref={orbitControlsRef} />
+            <GestureOrbitController result={result} controlsRef={orbitControlsRef} />
+            <gridHelper args={[20, 20]} />
+          </Physics>
+        </Canvas>
+      </SceneErrorBoundary>
 
       <HUD />
     </div>

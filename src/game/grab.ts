@@ -67,6 +67,18 @@ export interface HandInput {
     openPalm: boolean;
 }
 
+/*
+ * Rapier's JS lookup tables are keyed by arena slot only, so a stale handle
+ * resolves to whatever object reuses that slot. Compare identity, not just existence.
+ */
+function isLiveBody(world: World, body: RigidBody): boolean {
+    return world.getRigidBody(body.handle) === body;
+}
+
+function isLiveJoint(world: World, joint: ImpulseJoint): boolean {
+    return world.getImpulseJoint(joint.handle) === joint;
+}
+
 function forEachCollider(body: RigidBody, fn: (collider: Collider) => void): void {
     for (let i = 0; i < body.numColliders(); i++) fn(body.collider(i));
 }
@@ -113,6 +125,8 @@ export class HandPhysics {
      */
     update(input: HandInput | null, dt: number): void {
         const bodies = this.getBodies();
+        // The held block was removed underneath us (tower remount on reset): the joint went with it.
+        if (this.joint && !isLiveJoint(this.world, this.joint)) this.forget();
 
         if (!input) {
             this.onTrackingLost(bodies, dt);
@@ -136,16 +150,25 @@ export class HandPhysics {
         }
     }
 
+    /**
+     * Let go of the held block. Safe after the block (and so the joint) was
+     * removed from the world, e.g. by a reset remounting the tower (G-8).
+     */
     release(): void {
         if (!this.joint) return;
-        this.world.removeImpulseJoint(this.joint, true);
-        this.joint = null;
-        if (this.grabbed) {
+        if (isLiveJoint(this.world, this.joint)) this.world.removeImpulseJoint(this.joint, true);
+        if (this.grabbed && isLiveBody(this.world, this.grabbed)) {
             this.grabbed.setLinearDamping(this.previousDamping.linear);
             this.grabbed.setAngularDamping(this.previousDamping.angular);
             this.grabbed.wakeUp();
-            this.grabbed = null;
         }
+        this.forget();
+    }
+
+    /** Drop the grab without touching Rapier. Call when the world's blocks were replaced. */
+    forget(): void {
+        this.joint = null;
+        this.grabbed = null;
     }
 
     private onTrackingLost(bodies: (RigidBody | null)[], dt: number): void {

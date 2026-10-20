@@ -1,10 +1,10 @@
-import { test, expect, knownBug } from './fixtures'
+import { test, expect } from './fixtures'
 import { frontOf, grabBlock, release } from './helpers'
 
 const ID = '2-0'
 
 test.describe('reset while holding', () => {
-  knownBug('grab → reset → release 20 times without page errors [G-8]', async ({ page, driver, startGame, pageErrors }) => {
+  test('grab → reset → release 20 times without page errors [G-8]', async ({ page, driver, startGame, pageErrors }) => {
     test.setTimeout(300_000)
     await startGame('SANDBOX')
     // grabBlock confirms the block is really held before the first reset.
