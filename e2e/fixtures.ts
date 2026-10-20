@@ -74,7 +74,7 @@ export interface Fixtures {
   /** Run a function from src/test/e2eDriver.ts in the page */
   driver: <R, A = undefined>(fn: (d: DriverModule, arg: A) => R | Promise<R>, arg?: A) => Promise<R>
   /** Click a start-screen mode and wait until the hand tracker and tower are live */
-  startGame: (mode: 'CLASSIC' | 'SANDBOX') => Promise<void>
+  startGame: (mode: 'CLASSIC' | 'SANDBOX', options?: { minFps?: number }) => Promise<void>
 }
 
 export async function installMediaPipeStub(page: Page): Promise<void> {
@@ -103,14 +103,14 @@ export const test = base.extend<Fixtures>({
     )
   },
   startGame: async ({ page, driver }, use) => {
-    await use(async (mode) => {
+    await use(async (mode, { minFps = MIN_STEADY_FPS } = {}) => {
       await page.goto('/')
       await page.getByRole('button', { name: mode === 'CLASSIC' ? /classic/i : /sandbox/i }).click()
       // Tower mounted and detection loop running
       await expect.poll(() => driver((d) => Object.keys(d.blockPositions()).length), { timeout: 60_000 }).toBe(54)
       await expect.poll(() => driver((d) => d.detectCalls()), { timeout: 60_000 }).toBeGreaterThan(5)
       // SwiftShader runs at ~2 FPS while shaders compile and assets load; wait for steady state.
-      await expect.poll(() => measureFps(page), { timeout: 60_000, intervals: [500] }).toBeGreaterThan(MIN_STEADY_FPS)
+      await expect.poll(() => measureFps(page), { timeout: 60_000, intervals: [500] }).toBeGreaterThan(minFps)
     })
   },
 })
