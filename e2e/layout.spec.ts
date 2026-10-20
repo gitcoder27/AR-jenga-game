@@ -93,5 +93,26 @@ for (const vp of VIEWPORTS) {
       for (const c of controls) expectApart(panel, c)
       await expectLabelsFit(page, '.hud-settings-panel')
     })
+
+    test('the tutorial card fits, clear of the controls and the camera preview [O-1, M-5]', async ({ page, driver, startGame }) => {
+      test.setTimeout(180_000)
+      await startGame('SANDBOX', { minFps: 1 })
+      await driver((d) => d.store().startTutorial())
+      // The calibrate step has the most buttons; the place step's card moves to the bottom
+      for (const step of ['calibrate', 'place'] as const) {
+        await driver((d, a) => d.store().setTutorialStep(a), step)
+        await expect(page.locator(`.hud-tutorial[data-step="${step}"]`)).toBeVisible()
+        const card = await boxOf(page.getByRole('region', { name: 'Tutorial' }), `tutorial card (${step})`)
+        expectInside(card, page)
+        const others = [
+          await boxOf(page.getByTestId('webcam-video'), 'camera preview'),
+          await boxOf(page.locator('.hud-title-container'), 'title'),
+          await boxOf(page.locator('.hud-score'), 'score'),
+          ...(await Promise.all((await page.locator('.hud-bottom-controls button').all()).map(async (b) => boxOf(b, `button "${await b.textContent()}"`)))),
+        ]
+        for (const o of others) expectApart(card, o)
+        await expectLabelsFit(page, '.hud-tutorial')
+      }
+    })
   })
 }

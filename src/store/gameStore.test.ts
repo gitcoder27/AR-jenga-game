@@ -19,6 +19,8 @@ describe('useGameStore', () => {
 
   it('starts game in classic mode', () => {
     act(() => {
+      // A returning player: the first Classic game would run the tutorial instead (O-1)
+      useGameStore.setState({ tutorialDone: true })
       useGameStore.getState().startGame('CLASSIC')
     })
     const state = useGameStore.getState()
@@ -123,11 +125,32 @@ describe('useGameStore', () => {
       depthSettings: { reachIn: true, calibration: { near: 0.3, far: 0.1 } },
     })
     const saved = JSON.parse(localStorage.getItem('ar-jenga-settings')!)
-    expect(Object.keys(saved.state)).toEqual(['depthSettings'])
+    expect(Object.keys(saved.state)).toEqual(['depthSettings', 'tutorialDone'])
     act(() => {
       useGameStore.getState().clearCalibration()
       useGameStore.getState().setReachIn(false)
     })
     expect(useGameStore.getState().depthSettings).toEqual({ calibration: null, reachIn: false })
+  })
+
+  it('the first Classic game runs the tutorial with the preview on; once done, it never starts again (O-1)', () => {
+    act(() => useGameStore.setState({ tutorialDone: false, isWebcamVisible: false }))
+    act(() => useGameStore.getState().startGame('SANDBOX'))
+    expect(useGameStore.getState().tutorialStep).toBeNull()
+    act(() => useGameStore.getState().startGame('CLASSIC'))
+    expect(useGameStore.getState()).toMatchObject({ tutorialStep: 'camera', isWebcamVisible: true, isInstructionsVisible: false })
+    // A foul's restart keeps it going
+    act(() => useGameStore.getState().resetGame())
+    expect(useGameStore.getState().tutorialStep).toBe('camera')
+    act(() => useGameStore.getState().setTutorialStep('done'))
+    expect(useGameStore.getState().tutorialDone).toBe(true)
+    act(() => useGameStore.getState().endTutorial())
+    act(() => useGameStore.getState().startGame('CLASSIC'))
+    expect(useGameStore.getState().tutorialStep).toBeNull()
+    // Replayable from SETTINGS
+    act(() => useGameStore.getState().startTutorial())
+    expect(useGameStore.getState()).toMatchObject({ gameMode: 'CLASSIC', tutorialStep: 'camera' })
+    act(() => useGameStore.getState().returnToMenu())
+    expect(useGameStore.getState().tutorialStep).toBeNull()
   })
 })

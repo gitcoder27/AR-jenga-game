@@ -7,6 +7,7 @@ import { useGameStore } from '../store/gameStore'
 import { BLOCK_FRICTION, BLOCK_HALF_EXTENTS, RESTITUTION } from '../game/config'
 import type { BlockUserData } from '../game/grab'
 import { blockShade } from '../game/towerLayout'
+import { TUTORIAL_TARGET } from '../game/tutorial'
 
 interface BlockProps {
     id: string
@@ -19,6 +20,9 @@ interface BlockProps {
 // Highlight color for hovered blocks
 const HIGHLIGHT_COLOR = new THREE.Color('#00e5ff')
 const HIGHLIGHT_INTENSITY = 0.4
+// The tutorial's block to touch, grab and pull out (O-1)
+const TUTORIAL_COLOR = new THREE.Color('#ff8f00')
+const TUTORIAL_STEPS_GLOWING = ['touch', 'grab', 'pull']
 
 /**
  * One tower block. Memoized, with selectors for its own held / hovered state
@@ -27,6 +31,7 @@ const HIGHLIGHT_INTENSITY = 0.4
 function Block({ id, position, rotation, seed = 1 }: BlockProps) {
     const isHeld = useGameStore((state) => state.heldBlockId === id)
     const isHovered = useGameStore((state) => state.hoveredBlockId === id)
+    const isTutorialTarget = useGameStore((state) => id === TUTORIAL_TARGET && TUTORIAL_STEPS_GLOWING.includes(state.tutorialStep ?? ''))
     const meshRef = useRef<THREE.Mesh>(null)
     const rigidBodyRef = useRef<RapierRigidBody>(null)
 
@@ -45,14 +50,15 @@ function Block({ id, position, rotation, seed = 1 }: BlockProps) {
             // Cyan highlight when hovered
             return baseColor.clone().lerp(HIGHLIGHT_COLOR, HIGHLIGHT_INTENSITY)
         }
+        if (isTutorialTarget) return TUTORIAL_COLOR
         return baseColor
-    }, [baseColor, isHovered, isHeld])
+    }, [baseColor, isHovered, isHeld, isTutorialTarget])
 
     // Animate highlight effect
     useFrame(() => {
         if (meshRef.current) {
-            // Smooth scale animation when hovered
-            const targetScale = isHovered ? 1.02 : 1.0
+            // Smooth scale animation when hovered; the tutorial's block pulses
+            const targetScale = isHovered ? 1.02 : isTutorialTarget ? 1.01 + 0.015 * Math.sin(performance.now() / 200) : 1.0
             const currentScale = meshRef.current.scale.x
             const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1)
             meshRef.current.scale.setScalar(newScale)

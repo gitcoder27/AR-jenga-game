@@ -43,6 +43,10 @@ window.__e2eDropUntil = 0;
 window.__e2eDetectCalls = 0;
 window.__e2eStreams = [];
 window.__e2eGumDelay = 0;
+// A returning player: the first-run tutorial (O-1) is off unless a test clears this
+if (!localStorage.getItem('ar-jenga-settings')) {
+  localStorage.setItem('ar-jenga-settings', JSON.stringify({ state: { tutorialDone: true }, version: 1 }));
+}
 (() => {
   const md = navigator.mediaDevices;
   if (!md) return;

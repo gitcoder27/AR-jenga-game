@@ -42,4 +42,14 @@ test.describe('a new tower after a reset stands', () => {
     expect(await driver((d) => d.store().gameState)).toBe('PLAYING')
     expect(await towerTop(driver)).toBeLessThan(28)
   })
+
+  test('REPLAY TUTORIAL [O-1]', async ({ page, driver, startGame }) => {
+    test.setTimeout(180_000)
+    await startGame('CLASSIC')
+    await page.getByRole('button', { name: 'SETTINGS' }).click()
+    await page.getByRole('button', { name: 'REPLAY TUTORIAL' }).click()
+    await page.waitForTimeout(3000)
+    expect(await driver((d) => d.store().gameState)).toBe('PLAYING')
+    expect(await towerTop(driver)).toBeLessThan(28)
+  })
 })

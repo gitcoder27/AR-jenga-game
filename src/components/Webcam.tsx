@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
+import { describeCameraError, type CameraErrorInfo } from '../tracking/cameraErrors'
 import './Webcam.css'
 
 interface WebcamProps {
@@ -10,10 +11,38 @@ function stopTracks(stream: MediaStream) {
   stream.getTracks().forEach((track) => track.stop())
 }
 
+/** A chosen camera, or the front one; the landmark model downscales anyway, so a smaller capture is cheaper to grab and decode (H-8) */
+function constraints(deviceId: string | null): MediaStreamConstraints {
+  return {
+    video: {
+      ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }),
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+    },
+    audio: false,
+  }
+}
+
+async function openCamera(deviceId: string | null): Promise<MediaStream> {
+  // Missing on non-secure pages (http on a LAN address): describeCameraError says so (O-4)
+  const media = navigator.mediaDevices
+  if (!media?.getUserMedia) throw new Error('navigator.mediaDevices is unavailable')
+  try {
+    return await media.getUserMedia(constraints(deviceId))
+  } catch (err) {
+    // A camera that can't meet even the ideal sizes: ask for anything it can do
+    if ((err as { name?: string }).name !== 'OverconstrainedError') throw err
+    return media.getUserMedia({ video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false })
+  }
+}
+
 export default function Webcam({ onVideoReady }: WebcamProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const isWebcamVisible = useGameStore((state) => state.isWebcamVisible)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<CameraErrorInfo | null>(null)
+  // Other cameras to offer when the error suggests one might work (O-4)
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
+  const [deviceId, setDeviceId] = useState<string | null>(null)
   // Bumped by Retry to request the camera again
   const [attempt, setAttempt] = useState(0)
 
@@ -25,15 +54,7 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
     let stream: MediaStream | null = null
     const video = videoRef.current
 
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'user',
-        // The landmark model downscales anyway; a smaller capture is cheaper to grab and decode (H-8)
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-      },
-      audio: false,
-    }).then((s) => {
+    openCamera(deviceId).then((s) => {
       if (cancelled) {
         stopTracks(s)
         return
@@ -49,7 +70,13 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
     }).catch((err) => {
       if (cancelled) return
       console.error('Error accessing webcam:', err)
-      setError('Camera access required')
+      const info = describeCameraError(err, Boolean(navigator.mediaDevices?.getUserMedia))
+      setError(info)
+      if (info.offerPicker) {
+        navigator.mediaDevices.enumerateDevices?.()
+          .then((devices) => { if (!cancelled) setCameras(devices.filter((d) => d.kind === 'videoinput' && d.deviceId)) })
+          .catch(() => { /* no list: Retry only */ })
+      }
     })
 
     return () => {
@@ -60,10 +87,12 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
         video.srcObject = null
       }
     }
-  }, [attempt, onVideoReady])
+  }, [attempt, deviceId, onVideoReady])
 
-  const retry = () => {
+  const retry = (camera: string | null = deviceId) => {
     setError(null)
+    setCameras([])
+    setDeviceId(camera)
     setAttempt((n) => n + 1)
   }
 
@@ -77,7 +106,7 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
         playsInline
       />
       {error && (
-        <div style={{
+        <div role="alert" data-error={error.kind} style={{
           position: 'absolute',
           top: 0,
           left: 0,
@@ -92,10 +121,10 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
           color: 'white',
           fontFamily: 'sans-serif'
         }}>
-          <h2>Camera access required</h2>
-          <p>Please enable camera access to play.</p>
+          <h2>{error.title}</h2>
+          <p style={{ maxWidth: 480, padding: '0 16px', textAlign: 'center' }}>{error.detail}</p>
           <button
-            onClick={retry}
+            onClick={() => retry()}
             style={{
               marginTop: 20,
               padding: '10px 20px',
@@ -108,6 +137,20 @@ export default function Webcam({ onVideoReady }: WebcamProps) {
           >
             Retry
           </button>
+          {cameras.length > 0 && (
+            <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+              <span style={{ width: '100%', textAlign: 'center' }}>Or try:</span>
+              {cameras.map((camera, i) => (
+                <button
+                  key={camera.deviceId}
+                  onClick={() => retry(camera.deviceId)}
+                  style={{ padding: '8px 14px', background: 'transparent', color: 'white', border: '1px solid #00e5ff', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  {camera.label || `Camera ${i + 1}`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>

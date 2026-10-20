@@ -76,6 +76,28 @@ test.describe('screenshots', () => {
       await driver((d) => d.store().setGameState('GAME_OVER'))
       await expect(page.getByText(/collapsed/i)).toBeVisible()
       await shot('6-game-over')
+
+      // The first-run tutorial (O-1) on its touch step: the card and the glowing block.
+      // The hand leaves first, or it would be inside the new tower.
+      await driver((d) => d.hideHand())
+      await page.waitForTimeout(1500)
+      await driver((d) => {
+        d.store().startTutorial()
+        d.store().setTutorialStep('touch')
+      })
+      await expect(page.getByRole('region', { name: 'Tutorial' })).toBeVisible()
+      await page.waitForTimeout(3000)
+      await shot('7-tutorial')
+      // Placing on top: the card moves off the top of the tower
+      await driver((d) => d.store().setTutorialStep('place'))
+      await page.waitForTimeout(1000)
+      await shot('7b-tutorial-place')
+
+      // Leaving a Classic game in play asks first (O-6)
+      await page.getByRole('button', { name: 'SKIP TUTORIAL' }).click()
+      await page.getByRole('button', { name: 'EXIT GAME' }).click()
+      await expect(page.getByRole('alertdialog')).toBeVisible()
+      await shot('8-exit-confirm')
     })
   }
 })

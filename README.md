@@ -64,6 +64,8 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
 ## 🕹️ Controls
 
 1. **Set up**: Use a well-lit room and keep your hand clearly visible to the webcam. The chip in the top bar shows the tracking state (loading, no hand, tracking).
+   - **First game**: Your first Classic game is a guided one. Cards under the top bar walk you through showing your hand, calibrating, touching the glowing block, grabbing it, pulling it out and putting it on top. **SKIP TUTORIAL** ends it. **SETTINGS → REPLAY TUTORIAL** runs it again, and **?** in the top bar shows the controls again.
+   - **Camera problems**: If the webcam can't start, the message says why: permission blocked, no camera, camera in use by another app, or a page that isn't on https or localhost. It offers **Retry**, and a list of other cameras when there are any.
 2. **Move**:
    - **Left, right, up, down**: Move your hand and the virtual hand follows, mirrored like a reflection.
    - **Depth (mirror, the default)**: Bring your hand **closer to the webcam** to bring the virtual hand **toward you**. Move your hand **away from the webcam** to reach **into the scene**, toward the tower.
@@ -82,7 +84,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
    - Drag with the mouse to orbit, or scroll to zoom. The view can't go under the table or zoom out of reach.
    - **SETTINGS → RESET VIEW** restores the default framing.
 5. **Rules**:
-   - **Classic**: Take blocks out of the tower and stack them on top. The game ends when any block other than the one you last moved touches the floor. Placements don't score yet: the score stays at 0 until the classic-rules work (GAME_REVIEW.md C-1) lands.
+   - **Classic**: Take a block out of the tower and put it on top. It scores once the tower settles. The game ends when a block falls from the tower, or when the block you're moving falls off the table. Leaving a Classic game in play (**EXIT GAME** or the title) asks first.
    - **Sandbox**: No score or game over. **RESET TOWER** rebuilds the tower.
 
 ## 📂 Project Structure
@@ -90,7 +92,7 @@ This project simulates the classic "Jenga" game in a 3D virtual environment. Ins
 ```
 src/
 ├── components/       # UI and 3D components
-│   ├── HUD/          # Heads-up display: score, tracking status, buttons
+│   ├── HUD/          # Heads-up display: score, tracking status, buttons, settings, tutorial card
 │   ├── StartScreen/  # Mode selection
 │   ├── Hand.tsx      # Virtual hand: landmarks → kinematic bodies
 │   ├── DepthCursor.tsx # Pinch cursor, grab feedback and drop marker
@@ -102,10 +104,11 @@ src/
 │   ├── grab.ts       # Grab candidate query and hand physics (soft grab, release, tracking loss)
 │   ├── fingertip.ts  # The hand's one collider: a speed- and force-capped fingertip
 │   ├── rules.ts      # Win and loss rules
+│   ├── tutorial.ts   # First-run tutorial steps and when each one is done
 │   └── towerLayout.ts # Seeded block layout
 ├── hooks/            # useHandTracking (MediaPipe)
 ├── store/            # gameStore.ts: game, tracking and view state (Zustand)
-├── tracking/         # HandTracker (filtering, gestures), camera-mode clutch, landmark → world mapping, asset paths
+├── tracking/         # HandTracker (filtering, gestures), camera-mode clutch, depth calibration, camera errors, landmark → world mapping, asset paths
 ├── utils/            # Depth, gesture classification
 ├── test/             # Test helpers: hand poses, e2e driver, store mocks
 └── App.tsx           # Application root

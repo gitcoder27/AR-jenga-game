@@ -480,3 +480,60 @@ implementing. Finding IDs refer to GAME_REVIEW.md.
   spec's hand-at-the-edges shots show it.
 - **The screenshot spec's phone FPS floor dropped from 8 to 4.** SwiftShader at 390×844 ran at about 5–6 FPS here,
   with or without these changes (measured both ways). The screenshots don't need a frame rate.
+
+### First run, camera errors and exits (O-1, O-4, O-6)
+
+- **The tutorial (O-1)** is the review's six steps, as cards in the hint slot under the top bar:
+  1. show your hand;
+  2. calibrate (H-4), with CALIBRATE and SKIP THIS STEP buttons;
+  3. touch the glowing block;
+  4. pinch, then let go;
+  5. pull it out;
+  6. put it on top.
+
+  A last card says "you've got it" and closes itself after 6 s.
+  - **Where it lives:**
+    - The steps and their conditions are in `game/tutorial.ts`. `advanceTutorial` is pure, and is tested on store
+      snapshots.
+    - `HUD/Tutorial.tsx` advances it on store changes.
+    - The pull step needs the block's position, so `TutorialRules` checks it on the physics world at the rules rate.
+      It counts as pulled out once its centre is past the tower's footprint by 80% of its half-length.
+  - **The target block** is `4-0`, a middle block on a low, even level. It turns orange and pulses; hover (cyan)
+    and held (green) still win.
+  - **The card** sits under the top bar. On the place step it moves to the bottom left, above the bar and beside
+    the preview, so it doesn't cover the top of the tower. `e2e/layout.spec.ts` checks both positions at the
+    three viewports. Screenshots: `docs/screenshots/after-o1/*-7-tutorial.png`, `*-7b-tutorial-place.png` and
+    `*-8-exit-confirm.png`. Before #13 there was nothing in their place (`after-m5`).
+  - **Scoring:** a score from the touch step onward finishes the tutorial, so a player who skips ahead isn't stuck
+    on a card.
+  - **When it runs:**
+    - It runs on the first Classic game only, with the camera preview turned on. `tutorialDone` persists with the
+      depth settings.
+    - A foul's restart keeps it on its step. EXIT and SKIP TUTORIAL end it.
+    - SETTINGS → REPLAY TUTORIAL starts a fresh Classic game on step 1, and **?** in the top bar shows the controls
+      overlay again.
+  - **E2E:** the fixtures mark the tutorial done, so every other test starts as a returning player.
+    `e2e/tutorial.spec.ts` clears that and walks it end to end, through a real extraction and placement, to a score
+    of 1.
+  - **Deviations:**
+    - **No landmark overlay** on the camera preview. The preview, the in-scene hand and the depth gauge already show
+      what is tracked.
+    - **The "Low light" chip state is not done.** Nothing measures light. A false warning is worse than none.
+    - **Classic only.** Sandbox has no move to teach toward.
+    - **Not measured:** the review's validation, 80% of first-time players finishing a move within 2 minutes
+      unaided, needs people. It is on the manual playtest checklist.
+- **Camera errors (O-4):**
+  - `tracking/cameraErrors.ts` maps the error to a title, what to do, and whether another camera might help.
+    The cases are: `NotAllowedError`/`SecurityError` (blocked), `NotFoundError`, `NotReadableError` (in use),
+    a missing `navigator.mediaDevices` (not https or localhost), and `OverconstrainedError` (the camera can't do the
+    requested video settings).
+  - An `OverconstrainedError` retries with no size constraints before it counts as an error.
+  - When another camera might work, `enumerateDevices` lists the others as buttons beside Retry.
+  - **Deviation:** the pointer-mode fallback (A-1) is not here. It is a Phase 3 item that this pass skips.
+- **Exits (O-6):**
+  - EXIT GAME, or the title, asks "LEAVE THIS GAME?" when a Classic game is in play. Escape or KEEP PLAYING
+    stays. Sandbox and a finished game leave at once.
+  - The top bar is `pointer-events: none`. Only the title, the **?** button and the controls take clicks, so a
+    mouse orbit can start anywhere above the tower. `e2e/exit.spec.ts` drags from the bar: the camera turns. Before
+    the fix it didn't move.
+

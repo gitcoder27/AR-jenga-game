@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { FoulReason, MovePhase } from '../game/moves'
 import { DEFAULT_DEPTH_SETTINGS, type DepthCalibration, type DepthSettings } from '../utils/depth'
+import type { TutorialStep } from '../game/tutorial'
 
 export type GameState = 'PLAYING' | 'GAME_OVER'
 export type GameMode = 'MENU' | 'CLASSIC' | 'SANDBOX'
@@ -53,6 +54,10 @@ export interface GameStore {
     /** Depth direction and calibration (H-3, H-4); kept in this browser across visits */
     depthSettings: DepthSettings
     calibrationStatus: CalibrationStatus
+    /** The guided first run (O-1): its current step, or null when it isn't running */
+    tutorialStep: TutorialStep | null
+    /** Finished or skipped once; kept in this browser, so it runs on the first Classic game only */
+    tutorialDone: boolean
     setGameState: (state: GameState) => void
     startGame: (mode: GameMode) => void
     returnToMenu: () => void
@@ -81,6 +86,11 @@ export interface GameStore {
     finishCalibration: (calibration: DepthCalibration) => void
     /** Back to the default range */
     clearCalibration: () => void
+    /** A new Classic game with the tutorial from its first step */
+    startTutorial: () => void
+    setTutorialStep: (step: TutorialStep) => void
+    /** Skip or close it; either way it is done */
+    endTutorial: () => void
 }
 
 const newTowerSeed = () => Math.floor(Math.random() * 2 ** 31)
@@ -102,6 +112,8 @@ const FRESH_GAME = {
 export const useGameStore = create<GameStore>()(persist((set) => ({
     gameMode: 'MENU',
     depthSettings: DEFAULT_DEPTH_SETTINGS,
+    tutorialStep: null,
+    tutorialDone: false,
     ...FRESH_GAME,
     gameId: 0,
     towerSeed: 1,
@@ -113,13 +125,19 @@ export const useGameStore = create<GameStore>()(persist((set) => ({
     trackingAttempt: 0,
     viewResetId: 0,
     setGameState: (gameState) => set({ gameState }),
-    startGame: (gameMode) => set({
-        gameMode,
-        ...FRESH_GAME,
-        towerSeed: newTowerSeed(),
-        isInstructionsVisible: true
+    startGame: (gameMode) => set((state) => {
+        // The first Classic game teaches (O-1), with the camera preview on for the camera check
+        const tutorial = gameMode === 'CLASSIC' && !state.tutorialDone
+        return {
+            gameMode,
+            ...FRESH_GAME,
+            towerSeed: newTowerSeed(),
+            isInstructionsVisible: !tutorial,
+            tutorialStep: tutorial ? 'camera' : null,
+            ...(tutorial ? { isWebcamVisible: true } : {}),
+        }
     }),
-    returnToMenu: () => set({ gameMode: 'MENU', ...FRESH_GAME }),
+    returnToMenu: () => set({ gameMode: 'MENU', ...FRESH_GAME, tutorialStep: null }),
     incrementScore: () => set((state) => ({ score: state.score + 1 })),
     setHeldBlockId: (heldBlockId) => set({ heldBlockId }),
     setMovePhase: (movePhase, movingBlockId) => set({ movePhase, movingBlockId }),
@@ -153,9 +171,21 @@ export const useGameStore = create<GameStore>()(persist((set) => ({
         depthSettings: { ...state.depthSettings, calibration },
     })),
     clearCalibration: () => set((state) => ({ depthSettings: { ...state.depthSettings, calibration: null } })),
+    startTutorial: () => set((state) => ({
+        gameMode: 'CLASSIC',
+        ...FRESH_GAME,
+        gameId: state.gameId + 1,
+        towerSeed: newTowerSeed(),
+        isInstructionsVisible: false,
+        isWebcamVisible: true,
+        tutorialStep: 'camera',
+    })),
+    // Reaching the end counts as done, even if the last card is never closed
+    setTutorialStep: (tutorialStep) => set(tutorialStep === 'done' ? { tutorialStep, tutorialDone: true } : { tutorialStep }),
+    endTutorial: () => set({ tutorialStep: null, tutorialDone: true }),
 }), {
-    // Only the player's depth settings outlive the page
+    // Only the player's depth settings and whether they've had the tutorial outlive the page
     name: 'ar-jenga-settings',
     version: 1,
-    partialize: (state) => ({ depthSettings: state.depthSettings }),
+    partialize: (state) => ({ depthSettings: state.depthSettings, tutorialDone: state.tutorialDone }),
 }))

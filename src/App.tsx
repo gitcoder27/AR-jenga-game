@@ -20,6 +20,7 @@ import { HUD } from './components/HUD/HUD'
 import StartScreen from './components/StartScreen/StartScreen'
 import GestureOrbitController from './components/GestureOrbitController'
 import GameRules from './components/GameRules'
+import TutorialRules from './components/TutorialRules'
 import CameraControls from './components/CameraControls'
 import SceneErrorBoundary from './components/SceneErrorBoundary'
 import { DepthGauge, DepthGaugeSync } from './components/DepthGauge'
@@ -108,6 +109,7 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <Table />
             <Tower key={gameId} />
             <GameRules />
+            <TutorialRules />
             <Hand handRef={handRef} clutch={clutch} />
 
             <CameraControls controlsRef={orbitControlsRef} />

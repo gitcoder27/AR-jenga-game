@@ -3,6 +3,7 @@ import { useGameStore, type TrackingStatus } from '../../store/gameStore';
 import type { FoulReason, MovePhase } from '../../game/moves';
 import { CalibrationOverlay, SettingsPanel } from './Settings';
 import { depthHint } from './depthHint';
+import { TutorialCard } from './Tutorial';
 import './HUD.css';
 
 const TRACKING_LABELS: Record<TrackingStatus, string> = {
@@ -47,8 +48,22 @@ export const HUD: React.FC = () => {
         toggleCameraMode,
         heldBlockId,
         depthSettings,
+        tutorialStep,
     } = useGameStore();
     const [settingsOpen, setSettingsOpen] = useState(false);
+    // O-6: leaving a Classic game in play loses it, so ask first
+    const [confirmingExit, setConfirmingExit] = useState(false);
+    const requestExit = () => {
+        if (gameMode === 'CLASSIC' && gameState === 'PLAYING') setConfirmingExit(true);
+        else returnToMenu();
+    };
+
+    useEffect(() => {
+        if (!confirmingExit) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmingExit(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [confirmingExit]);
     const moveHint = placementTarget !== null && movePhase === 'HOLDING' ? 'LET GO TO PLACE IT' : MOVE_HINTS[movePhase];
 
     // Keyboard fallback for camera mode (H-2)
@@ -76,8 +91,16 @@ export const HUD: React.FC = () => {
             {/* Top Bar: Score & Title */}
             <div className="hud-top-bar">
                 <div className="hud-title-container">
-                    <h1 onClick={returnToMenu} style={{ cursor: 'pointer' }}>ROBOTIC JENGA</h1>
+                    <h1 onClick={requestExit} style={{ cursor: 'pointer' }} title="Main menu">ROBOTIC JENGA</h1>
                     <div className="hud-status-led" data-state={gameState}></div>
+                    <button
+                        className="hud-help-button"
+                        onClick={() => setInstructionsVisible(true)}
+                        aria-label="How to play"
+                        title="How to play"
+                    >
+                        ?
+                    </button>
                     <div
                         className="hud-tracking-chip"
                         data-status={trackingStatus}
@@ -94,11 +117,13 @@ export const HUD: React.FC = () => {
                 </div>
             </div>
 
-            {/* Camera mode (H-2) takes the hint slot: it is what the hand does right now */}
+            {/* Camera mode (H-2) takes the hint slot: it is what the hand does right now; then the tutorial (O-1) */}
             {isCameraMode && gameState === 'PLAYING' ? (
                 <div className="hud-move-hint" role="status" data-phase="CAMERA">
                     TURNING THE VIEW: MOVE YOUR HAND · PINCH OR PRESS C TO STOP
                 </div>
+            ) : tutorialStep && gameState === 'PLAYING' ? (
+                <TutorialCard />
             ) : gameMode === 'CLASSIC' && gameState === 'PLAYING' && moveHint && (
                 <div className="hud-move-hint" role="status" data-phase={movePhase}>{moveHint}</div>
             )}
@@ -146,13 +171,31 @@ export const HUD: React.FC = () => {
                     SETTINGS
                 </button>
 
-                <button className="hud-button exit-game" onClick={returnToMenu}>
+                <button className="hud-button exit-game" onClick={requestExit}>
                     EXIT GAME
                 </button>
             </div>
 
             {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
             <CalibrationOverlay />
+
+            {/* Exit confirmation (O-6) */}
+            {confirmingExit && gameState === 'PLAYING' && (
+                <div className="hud-modal-overlay">
+                    <div className="hud-modal hud-confirm" role="alertdialog" aria-label="Leave this game?">
+                        <h2>LEAVE THIS GAME?</h2>
+                        <p className="hud-foul-detail">Your score of {score} will be lost.</p>
+                        <div className="hud-modal-actions">
+                            <button className="hud-reset-button" onClick={() => setConfirmingExit(false)} autoFocus>
+                                KEEP PLAYING
+                            </button>
+                            <button className="hud-menu-button" onClick={returnToMenu}>
+                                LEAVE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Hand tracking failed to start (H-9) */}
             {trackingStatus === 'error' && (

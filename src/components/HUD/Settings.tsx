@@ -21,6 +21,7 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     const setReachIn = useGameStore((s) => s.setReachIn);
     const startCalibration = useGameStore((s) => s.startCalibration);
     const clearCalibration = useGameStore((s) => s.clearCalibration);
+    const startTutorial = useGameStore((s) => s.startTutorial);
     const { reachIn, calibration } = depthSettings;
 
     return (
@@ -57,6 +58,18 @@ export const SettingsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                         DEFAULT RANGE
                     </button>
                 )}
+            </div>
+            <p className="hud-settings-label">LEARNING</p>
+            <div className="hud-settings-row">
+                <button
+                    className="hud-button"
+                    onClick={() => {
+                        startTutorial();
+                        onClose();
+                    }}
+                >
+                    REPLAY TUTORIAL
+                </button>
             </div>
             <button className="hud-settings-close" onClick={onClose} aria-label="Close settings">×</button>
         </div>

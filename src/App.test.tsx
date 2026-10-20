@@ -76,6 +76,10 @@ vi.mock('./components/GameRules', () => ({
     default: () => null,
 }))
 
+vi.mock('./components/TutorialRules', () => ({
+    default: () => null,
+}))
+
 vi.mock('./components/CameraControls', () => ({
     default: () => <div data-testid="camera-controls" />
 }))

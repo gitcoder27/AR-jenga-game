@@ -44,35 +44,77 @@ describe('Webcam Component', () => {
     })
   })
 
+  const denied = () => Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' })
+
   it('shows error overlay when permission is denied', async () => {
-    getUserMediaMock.mockRejectedValue(new Error('Permission denied'))
+    getUserMediaMock.mockRejectedValue(denied())
 
     render(<Webcam onVideoReady={() => {}} />)
 
     await waitFor(() => {
-        expect(screen.getByText(/Camera access required/i)).toBeInTheDocument()
+        expect(screen.getByText(/Camera access is blocked/i)).toBeInTheDocument()
     })
+  })
+
+  // O-4: each failure says what to do about it
+  it('says the camera is busy, and offers the other cameras', async () => {
+    getUserMediaMock.mockRejectedValue(Object.assign(new Error('Could not start video source'), { name: 'NotReadableError' }))
+    Object.assign(navigator.mediaDevices, {
+      enumerateDevices: vi.fn().mockResolvedValue([
+        { kind: 'videoinput', deviceId: 'a', label: 'Front camera' },
+        { kind: 'audioinput', deviceId: 'm', label: 'Mic' },
+        { kind: 'videoinput', deviceId: 'b', label: '' },
+      ]),
+    })
+
+    render(<Webcam onVideoReady={() => {}} />)
+
+    await waitFor(() => expect(screen.getByText(/The camera is busy/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Front camera' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Camera 2' }))
+    await waitFor(() => expect(getUserMediaMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      video: expect.objectContaining({ deviceId: { exact: 'b' } }),
+    })))
+  })
+
+  it('retries with any video mode when the camera cannot meet the requested size', async () => {
+    getUserMediaMock
+      .mockRejectedValueOnce(Object.assign(new Error('width'), { name: 'OverconstrainedError' }))
+      .mockResolvedValueOnce({ getTracks: () => [] } as unknown as MediaStream)
+
+    render(<Webcam onVideoReady={() => {}} />)
+
+    await waitFor(() => expect(getUserMediaMock).toHaveBeenLastCalledWith({ video: true, audio: false }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('on a page without navigator.mediaDevices, asks for https or localhost', async () => {
+    Object.defineProperty(globalThis.navigator, 'mediaDevices', { value: undefined, writable: true, configurable: true })
+
+    render(<Webcam onVideoReady={() => {}} />)
+
+    await waitFor(() => expect(screen.getByText(/needs a secure page/i)).toBeInTheDocument())
   })
 
   it('retries camera access when retry button is clicked', async () => {
     // First attempt fails
-    getUserMediaMock.mockRejectedValueOnce(new Error('Permission denied'))
+    getUserMediaMock.mockRejectedValueOnce(denied())
     
     render(<Webcam onVideoReady={() => {}} />)
 
     await waitFor(() => {
-        expect(screen.getByText(/Camera access required/i)).toBeInTheDocument()
+        expect(screen.getByText(/Camera access is blocked/i)).toBeInTheDocument()
     })
 
     // Second attempt succeeds
     getUserMediaMock.mockResolvedValue({ getTracks: () => [] } as unknown as MediaStream)
 
-    const retryButton = screen.getByText(/Retry/i)
+    const retryButton = screen.getByRole('button', { name: 'Retry' })
     fireEvent.click(retryButton)
 
     await waitFor(() => {
         expect(getUserMediaMock).toHaveBeenCalledTimes(2)
-        expect(screen.queryByText(/Camera access required/i)).not.toBeInTheDocument()
+        expect(screen.queryByText(/Camera access is blocked/i)).not.toBeInTheDocument()
     })
   })
 

@@ -18,8 +18,12 @@
     gap: 12px;
     padding: var(--inset-top) var(--inset-right) 12px var(--inset-left);
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+    /* Only the title is clickable: drags that start on the bar still orbit the view (O-6) */
+    pointer-events: none;
+}
+
+.hud-title-container h1 {
     pointer-events: auto;
-    /* Allow clicking title/score if needed */
 }
 
 .hud-title-container {
@@ -199,6 +203,15 @@
     padding: clamp(16px, 5vmin, 40px);
     text-align: center;
     box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+}
+
+.hud-confirm {
+    border-color: #00e5ff;
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
+}
+
+.hud-modal.hud-confirm h2 {
+    color: #00e5ff;
 }
 
 .hud-modal h2 {
@@ -451,4 +464,90 @@
 @keyframes hud-calibration-fill {
     from { transform: scaleX(0); }
     to { transform: scaleX(1); }
+}
+
+/* "?": the controls again (O-1) */
+.hud-help-button {
+    pointer-events: auto;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    flex: none;
+    border-radius: 50%;
+    border: 1px solid #00e5ff;
+    background: rgba(0, 0, 0, 0.5);
+    color: #00e5ff;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.hud-help-button:hover {
+    background: rgba(0, 229, 255, 0.2);
+}
+
+/* The guided first run (O-1): sits in the hint slot, under the top bar */
+.hud-tutorial {
+    position: absolute;
+    top: calc(var(--inset-top) + 60px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, calc(100vw - 32px));
+    box-sizing: border-box;
+    padding: 10px 16px 12px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid #ffb300;
+    color: #fff;
+    text-align: center;
+    letter-spacing: 1px;
+    pointer-events: none;
+    z-index: 6;
+}
+
+.hud-tutorial h2 {
+    margin: 2px 0 4px;
+    color: #ffb300;
+    font-size: clamp(0.85rem, 3vw, 1.1rem);
+}
+
+.hud-tutorial p {
+    margin: 0 0 8px;
+    font-size: clamp(0.7rem, 2.4vw, 0.85rem);
+}
+
+.hud-tutorial .hud-tutorial-step {
+    margin: 0;
+    color: #ffb300;
+    font-size: 0.65rem;
+    opacity: 0.85;
+}
+
+.hud-tutorial-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    pointer-events: auto;
+}
+
+/* Placing on top: the card moves down to the bottom left, off the top of the
+   tower, above the bar and beside the camera preview */
+.hud-tutorial[data-step='place'] {
+    top: auto;
+    bottom: calc(var(--inset-bottom) + var(--hud-bar-height) + 12px);
+    left: var(--inset-left);
+    transform: none;
+    width: min(460px, calc(100vw - var(--inset-left) - var(--inset-right) - var(--preview-width) - 16px));
+}
+
+/* Short screens: a tighter card, clear of the bottom bar (M-5) */
+@media (max-height: 500px) {
+    .hud-tutorial {
+        top: calc(var(--inset-top) + 48px);
+        padding: 6px 12px 8px;
+    }
+
+    .hud-tutorial p {
+        margin-bottom: 4px;
+    }
 }
