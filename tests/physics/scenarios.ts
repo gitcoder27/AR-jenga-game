@@ -51,9 +51,14 @@ export interface PullResult {
 
 /**
  * Grab a block by its front face and pull it `distance` units along its long
- * axis at a constant hand speed, then hold for `holdSeconds`.
+ * axis at a constant hand speed, then hold for `holdSeconds`. `jitter` adds
+ * uniform ±jitter tracking noise to every hand sample during the pull
+ * (GAME_REVIEW.md sim 6 used ±0.15), drawn from `random`.
  */
-export function pullBlock(scene: Scene, id: string, speed: number, distance = 9, holdSeconds = 2): PullResult {
+export function pullBlock(
+    scene: Scene, id: string, speed: number, distance = 9, holdSeconds = 2,
+    jitter = 0, random: () => number = Math.random,
+): PullResult {
     const block = scene.block(id);
     const axis = blockAxis(block);
     const start = { ...block.body.translation() };
@@ -63,7 +68,12 @@ export function pullBlock(scene: Scene, id: string, speed: number, distance = 9,
     const steps = Math.max(1, Math.round((distance / speed) * 60));
     for (let i = 1; i <= steps; i++) {
         const target = add(pinch, axis, (distance * i) / steps);
-        scene.step(() => scene.hand.update(handInput(target, true, axis), PHYSICS_TIMESTEP));
+        const noisy = jitter === 0 ? target : {
+            x: target.x + (random() * 2 - 1) * jitter,
+            y: target.y + (random() * 2 - 1) * jitter,
+            z: target.z + (random() * 2 - 1) * jitter,
+        };
+        scene.step(() => scene.hand.update(handInput(noisy, true, axis), PHYSICS_TIMESTEP));
     }
     const end = add(pinch, axis, distance);
     scene.stepFor(holdSeconds, () => scene.hand.update(handInput(end, true, axis), PHYSICS_TIMESTEP));

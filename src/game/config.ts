@@ -23,9 +23,17 @@ export const TOWER_JITTER_ROTATION = 0.02;
 export const GRAVITY: Vec3Tuple = [0, -9.81, 0];
 export const PHYSICS_TIMESTEP = 1 / 60;
 
-export const BLOCK_FRICTION = 1;
-export const TABLE_FRICTION = 1;
-export const FLOOR_FRICTION = 1;
+/*
+ * Contact friction (G-2). Wood on wood is about 0.3–0.5; with 1.0, pulling a
+ * block dragged its neighbours. Rapier's default combine rule averages the two
+ * colliders' coefficients, so the per-collider values are derived from the
+ * intended contact values.
+ */
+export const BLOCK_BLOCK_FRICTION = 0.45;
+export const BLOCK_TABLE_FRICTION = 0.6;
+export const BLOCK_FRICTION = BLOCK_BLOCK_FRICTION;
+export const TABLE_FRICTION = 2 * BLOCK_TABLE_FRICTION - BLOCK_FRICTION;
+export const FLOOR_FRICTION = TABLE_FRICTION;
 export const RESTITUTION = 0;
 
 export const TABLE_HALF_EXTENTS: Vec3Tuple = [5, 1, 5];
