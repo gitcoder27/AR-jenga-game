@@ -1,7 +1,7 @@
 import { test, expect, knownBug } from './fixtures'
 
 test.describe('asset failures [O-3, H-9]', () => {
-  knownBug('a blocked environment map shows an error instead of a blank screen', async ({ page }) => {
+  test('a blocked environment map shows an error instead of a blank screen', async ({ page }) => {
     await page.route(/\.hdr(\?|$)/, (route) => route.abort())
     await page.goto('/')
     await page.getByRole('button', { name: /classic/i }).click()
