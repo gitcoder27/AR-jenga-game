@@ -7,6 +7,7 @@ import {
   type GestureState,
   type GestureMetrics,
 } from '../utils/gestureState';
+import { TRACKING_LOSS_GRACE_S } from '../game/config';
 
 export interface Point3D {
   x: number;
@@ -40,15 +41,15 @@ export default function useGesture(landmarks: Point3D[] | undefined): GestureHoo
   const readyTimestampRef = useRef<number | null>(null);
   const lastPinchEndTimeRef = useRef<number>(0);
   const wasPinchingRef = useRef<boolean>(false);
+  const lostSinceRef = useRef<number | null>(null);
 
   const result = useMemo(() => {
     const now = performance.now();
     const metrics = calculateGestureMetrics(landmarks);
 
     if (!metrics) {
-      // Reset state when no hand detected
-      gestureStateRef.current = 'IDLE';
-      readyTimestampRef.current = null;
+      // Keep the gesture state through brief dropouts (see below)
+      lostSinceRef.current ??= now;
       return {
         isPinching: false,
         isOpenPalm: false,
@@ -59,6 +60,16 @@ export default function useGesture(landmarks: Point3D[] | undefined): GestureHoo
         metrics: null,
       };
     }
+
+    // Tracking came back. After a dropout within the grace period, carry on
+    // with the previous gesture, so a held pinch doesn't have to re-debounce
+    // (and release the block meanwhile). After a longer loss, start over (H-5).
+    if (lostSinceRef.current !== null && now - lostSinceRef.current > TRACKING_LOSS_GRACE_S * 1000) {
+      gestureStateRef.current = 'IDLE';
+      readyTimestampRef.current = null;
+      wasPinchingRef.current = false;
+    }
+    lostSinceRef.current = null;
 
     // Track when pinch ends for cooldown
     const wasPinching = wasPinchingRef.current;

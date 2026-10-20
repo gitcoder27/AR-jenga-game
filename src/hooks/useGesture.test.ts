@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import useGesture from './useGesture'
 
 /**
@@ -130,4 +130,34 @@ describe('useGesture', () => {
       expect(result.current.gestureState).not.toBe('FIST')
     });
   });
-});
+
+  describe('tracking dropouts (H-5)', () => {
+    afterEach(() => vi.restoreAllMocks())
+
+    // Fresh arrays every frame, like the real detector
+    const pinchFrame = () => {
+      const landmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }))
+      landmarks[8] = { x: 0.02, y: 0, z: 0 }
+      return landmarks
+    }
+
+    function pinchThenDrop(dropMs: number) {
+      let now = 1000
+      vi.spyOn(performance, 'now').mockImplementation(() => now)
+      const { result, rerender } = renderHook(({ lm }) => useGesture(lm), { initialProps: { lm: pinchFrame() as { x: number; y: number; z: number }[] | undefined } })
+      for (let i = 0; i < 10; i++) { now += 50; rerender({ lm: pinchFrame() }) }
+      expect(result.current.isPinching).toBe(true)
+      now += 16; rerender({ lm: undefined })
+      now += dropMs; rerender({ lm: pinchFrame() })
+      return result.current
+    }
+
+    it('keeps pinching after a dropout shorter than the grace period', () => {
+      expect(pinchThenDrop(150).isPinching).toBe(true)
+    })
+
+    it('starts over after a dropout longer than the grace period', () => {
+      expect(pinchThenDrop(1000).isPinching).toBe(false)
+    })
+  })
+})

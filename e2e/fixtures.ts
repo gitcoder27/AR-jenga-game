@@ -19,7 +19,9 @@ export const HandLandmarker = {
       detectForVideo: () => {
         window.__e2eDetectCalls = (window.__e2eDetectCalls || 0) + 1;
         if (window.__e2eDrop > 0) { window.__e2eDrop--; return { landmarks: [], worldLandmarks: [], handedness: [], handednesses: [] }; }
-        return { landmarks: window.__e2eHand ? [window.__e2eHand] : [], worldLandmarks: [], handedness: [], handednesses: [] };
+        // Fresh arrays every call, like the real detector: React hooks memoize on identity.
+        const hand = window.__e2eHand ? window.__e2eHand.map((l) => ({ ...l })) : null;
+        return { landmarks: hand ? [hand] : [], worldLandmarks: [], handedness: [], handednesses: [] };
       },
       close() {},
     };
