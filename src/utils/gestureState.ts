@@ -10,13 +10,25 @@
 
 export type GestureState = 'IDLE' | 'PINCH_READY' | 'PINCHING' | 'PALM_READY' | 'OPEN_PALM';
 
-// Thresholds with hysteresis bands to prevent flickering
-export const PINCH_ENTER_THRESHOLD = 0.06;  // Must be closer than this to start pinch
-export const PINCH_EXIT_THRESHOLD = 0.10;   // Must be farther than this to end pinch
+/*
+ * All distances are measured in palm lengths in aspect-corrected image space,
+ * so a pose classifies the same at any hand distance (H-1) and in any video
+ * aspect ratio. MediaPipe normalizes x by the frame width and y by its height,
+ * so raw horizontal gaps on a 16:9 camera read 1.78x too small.
+ */
 
-// Open palm detection: fingers must be far from wrist (extended)
-export const PALM_FINGER_MIN_DIST = 0.28;   // Each finger must be at least this far from wrist
-export const PALM_FINGER_SPREAD = 0.08;     // Adjacent fingers must be at least this far apart
+// Pinch: thumb–index tip gap / palm, with a hysteresis band
+export const PINCH_ENTER_THRESHOLD = 0.25;  // Must be closer than this to start pinch
+export const PINCH_EXIT_THRESHOLD = 0.40;   // Must be farther than this to end pinch
+
+/** A finger is extended when both its PIP and DIP joints bend less than this (degrees) */
+export const FINGER_STRAIGHT_MAX_BEND = 35;
+/** An index finger bent more than this at the PIP is folded into a fist, so it can't be pinching */
+export const INDEX_FOLDED_MIN_BEND = 120;
+/** Open palm: the thumb tip must be at least this far from the index knuckle (palm lengths) */
+export const PALM_THUMB_MIN_REACH = 0.68;
+/** Open palm: adjacent fingertips must be at least this far apart on average (palm lengths) */
+export const PALM_FINGER_SPREAD = 0.43;
 
 // Minimum time (ms) gesture must be held before activating
 export const GESTURE_DEBOUNCE_MS = 80;
@@ -25,11 +37,18 @@ export const GESTURE_DEBOUNCE_MS = 80;
 export const POST_PINCH_COOLDOWN_MS = 200;
 
 export interface GestureMetrics {
-    pinchDistance: number;      // Distance between thumb tip and index tip
-    avgFingerExtension: number; // Average distance of fingertips from wrist
-    fingerSpread: number;       // Average distance between adjacent fingertips
-    allFingersExtended: boolean;// Are all 4 fingers extended enough?
-    thumbExtended: boolean;     // Is thumb extended?
+    /** Hand scale in aspect-corrected image units: max(|wrist→middle MCP|, |index MCP→pinky MCP| × 1.4) */
+    palmSize: number;
+    /** Thumb tip to index tip, in palm lengths */
+    pinchRatio: number;
+    /** Average gap between adjacent fingertips, in palm lengths */
+    fingerSpread: number;
+    /** Index, middle, ring and pinky all straight (joint angles) */
+    allFingersExtended: boolean;
+    /** Thumb straight and reaching away from the index knuckle */
+    thumbExtended: boolean;
+    /** Index finger curled into the palm (fist), which rules out a pinch */
+    indexFolded: boolean;
 }
 
 export interface GestureResult {
@@ -38,55 +57,46 @@ export interface GestureResult {
     pinchPoint: { x: number; y: number; z: number } | null;
 }
 
+type Point = { x: number; y: number; z: number };
+
+const FINGERS = [
+    [5, 6, 7, 8],     // index: MCP, PIP, DIP, tip
+    [9, 10, 11, 12],  // middle
+    [13, 14, 15, 16], // ring
+    [17, 18, 19, 20], // pinky
+] as const;
+
 /**
- * Calculate gesture metrics from landmarks
+ * Calculate scale-free gesture metrics from landmarks. `aspect` is the video's
+ * width / height.
  */
 export function calculateGestureMetrics(
-    landmarks: Array<{ x: number; y: number; z: number }> | undefined
+    landmarks: Array<Point> | undefined,
+    aspect = 1,
 ): GestureMetrics | null {
     if (!landmarks || landmarks.length < 21) return null;
 
-    const wrist = landmarks[0];
-    const thumbTip = landmarks[4];
-    const indexTip = landmarks[8];
-    const middleTip = landmarks[12];
-    const ringTip = landmarks[16];
-    const pinkyTip = landmarks[20];
+    // Into one isotropic unit: image heights (MediaPipe's z uses the x scale)
+    const p = landmarks.map((l) => ({ x: l.x * aspect, y: l.y, z: l.z * aspect }));
 
-    // Pinch distance (thumb to index)
-    const pinchDistance = distance3D(thumbTip, indexTip);
+    const palmSize = Math.max(distance3D(p[0], p[9]), distance3D(p[5], p[17]) * 1.4);
+    if (palmSize === 0) return null;
 
-    // Finger extension distances from wrist
-    const thumbDist = distance3D(wrist, thumbTip);
-    const indexDist = distance3D(wrist, indexTip);
-    const middleDist = distance3D(wrist, middleTip);
-    const ringDist = distance3D(wrist, ringTip);
-    const pinkyDist = distance3D(wrist, pinkyTip);
+    const pinchRatio = distance3D(p[4], p[8]) / palmSize;
+    const fingerSpread = (distance3D(p[8], p[12]) + distance3D(p[12], p[16]) + distance3D(p[16], p[20])) / 3 / palmSize;
 
-    const avgFingerExtension = (indexDist + middleDist + ringDist + pinkyDist) / 4;
+    const allFingersExtended = FINGERS.every(([mcp, pip, dip, tip]) =>
+        bendDegrees(p[mcp], p[pip], p[dip]) < FINGER_STRAIGHT_MAX_BEND &&
+        bendDegrees(p[pip], p[dip], p[tip]) < FINGER_STRAIGHT_MAX_BEND);
 
-    // Calculate spread between adjacent fingers
-    const indexMiddleSpread = distance3D(indexTip, middleTip);
-    const middleRingSpread = distance3D(middleTip, ringTip);
-    const ringPinkySpread = distance3D(ringTip, pinkyTip);
-    const fingerSpread = (indexMiddleSpread + middleRingSpread + ringPinkySpread) / 3;
+    const thumbExtended =
+        bendDegrees(p[1], p[2], p[3]) < FINGER_STRAIGHT_MAX_BEND &&
+        bendDegrees(p[2], p[3], p[4]) < FINGER_STRAIGHT_MAX_BEND &&
+        distance3D(p[4], p[5]) / palmSize > PALM_THUMB_MIN_REACH;
 
-    // Check if fingers are extended (for open palm)
-    const allFingersExtended =
-        indexDist > PALM_FINGER_MIN_DIST &&
-        middleDist > PALM_FINGER_MIN_DIST &&
-        ringDist > PALM_FINGER_MIN_DIST &&
-        pinkyDist > PALM_FINGER_MIN_DIST;
+    const indexFolded = bendDegrees(p[5], p[6], p[7]) > INDEX_FOLDED_MIN_BEND;
 
-    const thumbExtended = thumbDist > PALM_FINGER_MIN_DIST * 0.8;
-
-    return {
-        pinchDistance,
-        avgFingerExtension,
-        fingerSpread,
-        allFingersExtended,
-        thumbExtended,
-    };
+    return { palmSize, pinchRatio, fingerSpread, allFingersExtended, thumbExtended, indexFolded };
 }
 
 /**
@@ -100,11 +110,12 @@ export function transitionGestureState(
     now: number,
     lastPinchEndTime: number = 0
 ): { newState: GestureState; newReadyTimestamp: number | null } {
-    const { pinchDistance, allFingersExtended, thumbExtended, fingerSpread } = metrics;
+    const { pinchRatio, allFingersExtended, thumbExtended, fingerSpread, indexFolded } = metrics;
 
-    // Calculate if conditions are met
-    const pinchConditionEnter = pinchDistance < PINCH_ENTER_THRESHOLD;
-    const pinchConditionExit = pinchDistance > PINCH_EXIT_THRESHOLD;
+    // Calculate if conditions are met. A fist brings the thumb onto the index
+    // finger too, so a folded index never starts a pinch.
+    const pinchConditionEnter = pinchRatio < PINCH_ENTER_THRESHOLD && !indexFolded;
+    const pinchConditionExit = pinchRatio > PINCH_EXIT_THRESHOLD;
 
     // Open palm: all fingers extended AND spread apart AND thumb extended
     const palmCondition = allFingersExtended && thumbExtended && fingerSpread > PALM_FINGER_SPREAD;
@@ -173,15 +184,13 @@ export function calculateConfidence(state: GestureState, metrics: GestureMetrics
         case 'PINCHING':
         case 'PINCH_READY': {
             // Closer = higher confidence
-            const normalized = 1 - (metrics.pinchDistance / PINCH_EXIT_THRESHOLD);
+            const normalized = 1 - (metrics.pinchRatio / PINCH_EXIT_THRESHOLD);
             return Math.max(0, Math.min(1, normalized));
         }
         case 'OPEN_PALM':
         case 'PALM_READY': {
-            // More extended + more spread = higher confidence
-            const extNorm = Math.min(1, metrics.avgFingerExtension / 0.4);
-            const spreadNorm = Math.min(1, metrics.fingerSpread / 0.15);
-            return (extNorm + spreadNorm) / 2;
+            // Wider spread = higher confidence
+            return Math.min(1, metrics.fingerSpread / (PALM_FINGER_SPREAD * 1.5));
         }
         default:
             return 0;
@@ -204,6 +213,16 @@ export function calculatePinchPoint(
         y: (thumbTip.y + indexTip.y) / 2,
         z: (thumbTip.z + indexTip.z) / 2,
     };
+}
+
+/** Angle (degrees) between segments a→b and b→c: 0 for a straight joint */
+function bendDegrees(a: Point, b: Point, c: Point): number {
+    const ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z;
+    const vx = c.x - b.x, vy = c.y - b.y, vz = c.z - b.z;
+    const lengths = Math.hypot(ux, uy, uz) * Math.hypot(vx, vy, vz);
+    if (lengths === 0) return 0;
+    const cos = (ux * vx + uy * vy + uz * vz) / lengths;
+    return (Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI;
 }
 
 // Helper: 3D Euclidean distance

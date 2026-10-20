@@ -44,6 +44,9 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
   const gameId = useGameStore((state) => state.gameId)
   const resetGame = useGameStore((state) => state.resetGame)
 
+  // MediaPipe landmarks are normalized per axis; gestures need the frame's aspect
+  const videoAspect = videoElement && videoElement.videoHeight ? videoElement.videoWidth / videoElement.videoHeight : 1
+
   const handleVideoReady = useCallback((vid: HTMLVideoElement) => {
     setCameraActive(true)
     setVideoElement(vid)
@@ -82,10 +85,10 @@ function Game({ detect, isReady }: ReturnType<typeof useHandTracking>) {
             <Table />
             <Tower key={gameId} />
             <GameRules />
-            <Hand result={result} />
+            <Hand result={result} aspect={videoAspect} />
 
             <OrbitControls ref={orbitControlsRef} />
-            <GestureOrbitController result={result} controlsRef={orbitControlsRef} />
+            <GestureOrbitController result={result} controlsRef={orbitControlsRef} aspect={videoAspect} />
             <gridHelper args={[20, 20]} />
           </Physics>
         </Canvas>

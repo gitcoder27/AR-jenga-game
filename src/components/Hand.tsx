@@ -14,6 +14,8 @@ import { useGameStore } from '../store/gameStore'
 
 interface HandProps {
     result: HandLandmarkerResult | null
+    /** Video width / height, for the gesture classifier */
+    aspect?: number
 }
 
 const CONNECTIONS = [
@@ -26,9 +28,9 @@ const CONNECTIONS = [
 ];
 
 
-export default function Hand({ result }: HandProps) {
+export default function Hand({ result, aspect = 1 }: HandProps) {
     const refs = useRef<(RapierRigidBody | null)[]>([])
-    const { isPinching, isClosedFist, confidence, gestureState } = useGesture(result?.landmarks?.[0])
+    const { isPinching, isClosedFist, confidence, gestureState } = useGesture(result?.landmarks?.[0], aspect)
 
     // We keep the component mounted to avoid "pop-in" at [0,0,0]
     // but we hide the visuals if no result

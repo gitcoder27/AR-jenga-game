@@ -7,12 +7,14 @@ import useGesture from '../hooks/useGesture';
 interface GestureOrbitControllerProps {
     result: HandLandmarkerResult | null;
     controlsRef: React.RefObject<OrbitControlsImpl | null>;
+    /** Video width / height, for the gesture classifier */
+    aspect?: number;
 }
 
 const SENSITIVITY = 15; // Adjustment factor for orbit speed
 
-export default function GestureOrbitController({ result, controlsRef }: GestureOrbitControllerProps) {
-    const { isClosedFist } = useGesture(result?.landmarks?.[0]);
+export default function GestureOrbitController({ result, controlsRef, aspect = 1 }: GestureOrbitControllerProps) {
+    const { isClosedFist } = useGesture(result?.landmarks?.[0], aspect);
     const previousPalmPos = useRef<{ x: number; y: number } | null>(null);
 
     useFrame(() => {

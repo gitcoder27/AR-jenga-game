@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import useGesture from './useGesture'
+import { buildLandmarks } from '../test/handPoses'
 
 /**
  * Hook-level tests for useGesture
@@ -21,34 +22,28 @@ describe('useGesture', () => {
   })
 
   it('returns metrics when landmarks provided', () => {
-    const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-    landmarks[4] = { x: 0, y: 0, z: 0 }; // thumb
-    landmarks[8] = { x: 0.1, y: 0, z: 0 }; // index
-
-    const { result } = renderHook(() => useGesture(landmarks))
+    const { result } = renderHook(() => useGesture(buildLandmarks('pinch', 0.2, 0.5, 0.5)))
 
     expect(result.current.metrics).not.toBe(null)
-    expect(result.current.metrics?.pinchDistance).toBeCloseTo(0.1)
+    expect(result.current.metrics?.palmSize).toBeCloseTo(0.2)
+  })
+
+  it('returns no metrics for a degenerate hand with no palm', () => {
+    const { result } = renderHook(() => useGesture(Array(21).fill({ x: 0, y: 0, z: 0 })))
+    expect(result.current.metrics).toBe(null)
+    expect(result.current.gestureState).toBe('IDLE')
   })
 
   describe('Pinch Detection', () => {
     it('enters ready state when thumb and index are close', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      landmarks[4] = { x: 0, y: 0, z: 0 };
-      landmarks[8] = { x: 0.05, y: 0, z: 0 }; // Below 0.06 enter threshold
-
-      const { result } = renderHook(() => useGesture(landmarks))
+      const { result } = renderHook(() => useGesture(buildLandmarks('pinch', 0.2, 0.5, 0.5)))
 
       // Should at least be in PINCH_READY (debounce prevents immediate PINCHING)
       expect(['PINCH_READY', 'PINCHING'].includes(result.current.gestureState)).toBe(true)
     });
 
     it('stays IDLE when thumb and index are far apart', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      landmarks[4] = { x: 0, y: 0, z: 0 };
-      landmarks[8] = { x: 0.2, y: 0, z: 0 }; // Well above threshold
-
-      const { result } = renderHook(() => useGesture(landmarks))
+      const { result } = renderHook(() => useGesture(buildLandmarks('relaxed', 0.2, 0.5, 0.5)))
 
       expect(result.current.gestureState).toBe('IDLE')
       expect(result.current.isPinching).toBe(false)
@@ -56,27 +51,16 @@ describe('useGesture', () => {
   });
 
   describe('Fist Detection', () => {
-    it('enters ready state when all fingers are curled', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      // All fingertips including thumb close to wrist
-      [4, 8, 12, 16, 20].forEach(idx => {
-        landmarks[idx] = { x: 0.15, y: 0, z: 0 }; // Below 0.22 threshold
-      });
+    it('a fist is not a pinch (H-1)', () => {
+      // The thumb rests on the folded index finger, so the tips are close
+      const { result } = renderHook(() => useGesture(buildLandmarks('fist', 0.2, 0.5, 0.5)))
 
-      const { result } = renderHook(() => useGesture(landmarks))
-
-      // Should at least be in ready state
-      expect(['FIST_READY', 'FIST'].includes(result.current.gestureState)).toBe(true)
+      expect(result.current.gestureState).toBe('IDLE')
+      expect(result.current.isPinching).toBe(false)
     });
 
-    it('stays IDLE when fingers are extended', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      // Fingers extended
-      [8, 12, 16, 20].forEach(idx => {
-        landmarks[idx] = { x: 0.4, y: 0, z: 0 }; // Well above threshold
-      });
-
-      const { result } = renderHook(() => useGesture(landmarks))
+    it('a relaxed open hand is not an open palm', () => {
+      const { result } = renderHook(() => useGesture(buildLandmarks('relaxed', 0.35, 0.5, 0.5)))
 
       expect(result.current.gestureState).toBe('IDLE')
       expect(result.current.isClosedFist).toBe(false)
@@ -85,11 +69,7 @@ describe('useGesture', () => {
 
   describe('Confidence Score', () => {
     it('returns confidence score for pinch-ready state', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      landmarks[4] = { x: 0, y: 0, z: 0 };
-      landmarks[8] = { x: 0.02, y: 0, z: 0 }; // Very close
-
-      const { result } = renderHook(() => useGesture(landmarks))
+      const { result } = renderHook(() => useGesture(buildLandmarks('pinch', 0.2, 0.5, 0.5)))
 
       expect(result.current.confidence).toBeGreaterThan(0.5)
     });
@@ -97,37 +77,23 @@ describe('useGesture', () => {
 
   describe('Pinch Point Calculation', () => {
     it('calculates midpoint between thumb and index', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      landmarks[4] = { x: 0, y: 0, z: 0 };
-      landmarks[8] = { x: 0.1, y: 0.2, z: 0.3 };
+      const landmarks = buildLandmarks('pinch', 0.2, 0.5, 0.5)
+      landmarks[4] = { x: 0.4, y: 0.4, z: 0 };
+      landmarks[8] = { x: 0.5, y: 0.6, z: 0.3 };
 
       const { result } = renderHook(() => useGesture(landmarks))
 
-      expect(result.current.pinchPoint).toEqual({
-        x: 0.05,
-        y: 0.1,
-        z: 0.15
-      });
+      expect(result.current.pinchPoint!.x).toBeCloseTo(0.45)
+      expect(result.current.pinchPoint!.y).toBeCloseTo(0.5)
+      expect(result.current.pinchPoint!.z).toBeCloseTo(0.15)
     });
   });
 
   describe('Mutual Exclusion', () => {
-    it('pinch conditions detected over fist when both could apply', () => {
-      const landmarks = Array(21).fill({ x: 0, y: 0, z: 0 });
-      // Pinch: thumb and index close
-      landmarks[4] = { x: 0, y: 0, z: 0 };
-      landmarks[8] = { x: 0.05, y: 0, z: 0 };
-      // Other fingers curled (fist-like)
-      [12, 16, 20].forEach(idx => {
-        landmarks[idx] = { x: 0.15, y: 0, z: 0 };
-      });
+    it('a pinch with the other fingers tucked is still a pinch', () => {
+      const { result } = renderHook(() => useGesture(buildLandmarks('tuckedPinch', 0.2, 0.5, 0.5)))
 
-      const { result } = renderHook(() => useGesture(landmarks))
-
-      // Should detect pinch intent, not fist
       expect(['PINCH_READY', 'PINCHING'].includes(result.current.gestureState)).toBe(true)
-      expect(result.current.gestureState).not.toBe('FIST_READY')
-      expect(result.current.gestureState).not.toBe('FIST')
     });
   });
 
@@ -135,11 +101,7 @@ describe('useGesture', () => {
     afterEach(() => vi.restoreAllMocks())
 
     // Fresh arrays every frame, like the real detector
-    const pinchFrame = () => {
-      const landmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }))
-      landmarks[8] = { x: 0.02, y: 0, z: 0 }
-      return landmarks
-    }
+    const pinchFrame = () => buildLandmarks('pinch', 0.2, 0.5, 0.5)
 
     function pinchThenDrop(dropMs: number) {
       let now = 1000

@@ -35,7 +35,11 @@ export interface GestureHookResult {
  * - Post-pinch cooldown to prevent false triggers
  * - Open palm detection for camera control
  */
-export default function useGesture(landmarks: Point3D[] | undefined): GestureHookResult {
+/**
+ * @param aspect the video's width / height; gesture metrics are measured in
+ *   aspect-corrected image space (H-1)
+ */
+export default function useGesture(landmarks: Point3D[] | undefined, aspect = 1): GestureHookResult {
   // State refs for persistence across frames
   const gestureStateRef = useRef<GestureState>('IDLE');
   const readyTimestampRef = useRef<number | null>(null);
@@ -45,7 +49,7 @@ export default function useGesture(landmarks: Point3D[] | undefined): GestureHoo
 
   const result = useMemo(() => {
     const now = performance.now();
-    const metrics = calculateGestureMetrics(landmarks);
+    const metrics = calculateGestureMetrics(landmarks, aspect);
 
     if (!metrics) {
       // Keep the gesture state through brief dropouts (see below)
@@ -111,7 +115,7 @@ export default function useGesture(landmarks: Point3D[] | undefined): GestureHoo
       pinchPoint,
       metrics,
     };
-  }, [landmarks]);
+  }, [landmarks, aspect]);
 
   return result;
 }
